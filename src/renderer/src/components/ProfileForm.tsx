@@ -59,8 +59,12 @@ export function ProfileForm(props: {
         setVerifyCert(parsed.profile.ssl.rejectUnauthorized)
       }
       setExtraParams(parsed.extraParams)
+      // Clear the pasted URL once consumed so the (cleartext) password from the
+      // DSN isn't left sitting in a plain text field.
+      setConnUrl('')
     } catch {
       setUrlError("Couldn't parse that URL")
+      setExtraParams({}) // don't leave a prior parse's params next to an error
     }
   }
 

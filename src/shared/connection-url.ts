@@ -25,9 +25,12 @@ export function parseConnectionUrl(input: string): ParsedConnection {
   const extraParams: Record<string, string> = {}
   for (const [key, value] of url.searchParams) {
     if (key === 'sslmode') {
-      // require/prefer/allow → encrypt but don't verify; verify-ca/verify-full → verify
-      const verify = value === 'verify-ca' || value === 'verify-full'
-      profile.ssl = { rejectUnauthorized: verify }
+      // disable → no SSL at all (leave profile.ssl unset); require/prefer/allow →
+      // encrypt without verifying; verify-ca/verify-full → verify the server cert.
+      if (value === 'disable') {
+        continue
+      }
+      profile.ssl = { rejectUnauthorized: value === 'verify-ca' || value === 'verify-full' }
       continue
     }
     extraParams[key] = value

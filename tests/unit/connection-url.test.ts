@@ -28,6 +28,11 @@ describe('parseConnectionUrl', () => {
     expect(r2.profile.ssl?.rejectUnauthorized).toBe(true)
     expect(r.extraParams.sslmode).toBeUndefined() // consumed, not left in extras
   })
+  it('sslmode=disable leaves ssl unset (does not turn SSL on)', () => {
+    const r = parseConnectionUrl('postgres://u@h/d?sslmode=disable')
+    expect(r.profile.ssl).toBeUndefined()
+    expect(r.extraParams.sslmode).toBeUndefined() // still consumed
+  })
   it('percent-decodes credentials', () => {
     const r = parseConnectionUrl('postgres://a%40b:p%3Aw@h/d')
     expect(r.profile.user).toBe('a@b')
