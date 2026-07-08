@@ -4,3 +4,5 @@ dist/
 *.local
 *.tsbuildinfo
 .superpowers/
+test-results/
+playwright-report/
