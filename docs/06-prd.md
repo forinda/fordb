@@ -15,6 +15,7 @@ Existing database GUIs force a bad trade: single-engine tools (pgAdmin, MongoDB 
 - Leanness is a measured feature, not an adjective: published cold-start and RAM numbers each release.
 
 ### Non-goals (permanent scope discipline)
+
 No ERD designers, no report builders, no migration frameworks, no dashboards, no AI chat. If a feature compromises lean + keyboard-first, it dies.
 
 ## 3. Users
@@ -49,15 +50,15 @@ main process: windows, menus, updater, keychain only
 
 ## 5. v0.1 — Read-only Postgres core
 
-| Feature | Requirement |
-|---|---|
-| Connection manager | Saved profiles: host/port/db/user/password, SSL (CA, client cert/key, trust-server toggle), SSH (password/key/agent). Test-connection button. |
-| Schema tree | react-arborist, lazy-loaded: server → databases → schemas → tables/views → columns. Virtualized for 1k+ tables. |
-| SQL editor | CodeMirror 6 + lang-sql. Schema-aware autocomplete, multiple tabs, run selection/statement/all, local query history. |
-| Results grid | Glide Data Grid, virtualized. Cursor-based page streaming (pg-cursor) — 500k-row results without renderer freeze. Cell copy, client-side sort per page. |
-| Export | CSV + JSON of current result set. |
-| Command palette | Ctrl+K, primary navigation. Every action is a registered command with optional shortcut. Ships in v0.1 — keyboard-first is a design principle, not a feature. |
-| Query cancel | Stop button + shortcut; `pg_cancel_backend` over utility connection. |
+| Feature            | Requirement                                                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Connection manager | Saved profiles: host/port/db/user/password, SSL (CA, client cert/key, trust-server toggle), SSH (password/key/agent). Test-connection button.                 |
+| Schema tree        | react-arborist, lazy-loaded: server → databases → schemas → tables/views → columns. Virtualized for 1k+ tables.                                               |
+| SQL editor         | CodeMirror 6 + lang-sql. Schema-aware autocomplete, multiple tabs, run selection/statement/all, local query history.                                          |
+| Results grid       | Glide Data Grid, virtualized. Cursor-based page streaming (pg-cursor) — 500k-row results without renderer freeze. Cell copy, client-side sort per page.       |
+| Export             | CSV + JSON of current result set.                                                                                                                             |
+| Command palette    | Ctrl+K, primary navigation. Every action is a registered command with optional shortcut. Ships in v0.1 — keyboard-first is a design principle, not a feature. |
+| Query cancel       | Stop button + shortcut; `pg_cancel_backend` over utility connection.                                                                                          |
 
 Out of v0.1: row editing, table-data browse mode, any second engine.
 
@@ -69,15 +70,15 @@ Out of v0.1: row editing, table-data browse mode, any second engine.
 
 ## 7. Tech stack (research-verified, docs 01–04)
 
-| Slot | Choice |
-|---|---|
-| Shell | Electron (doc 01: wins Linux reliability, rendering consistency, pure-TS drivers) |
-| UI | React 19 + TypeScript, Vite + electron-vite, Zustand |
-| Grid | Glide Data Grid (canvas, MIT, ~64KB gzip; TanStack Table+Virtual fallback if maintenance stall bites) |
-| Editor | CodeMirror 6 + @codemirror/lang-sql |
-| Tree | react-arborist |
-| Drivers | pg 8.x (+pg-cursor), better-sqlite3, mongodb 7.x, ssh2/tunnel-ssh |
-| Packaging | electron-builder; GitHub Actions matrix (doc 02 workflow) |
+| Slot      | Choice                                                                                                |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| Shell     | Electron (doc 01: wins Linux reliability, rendering consistency, pure-TS drivers)                     |
+| UI        | React 19 + TypeScript, Vite + electron-vite, Zustand                                                  |
+| Grid      | Glide Data Grid (canvas, MIT, ~64KB gzip; TanStack Table+Virtual fallback if maintenance stall bites) |
+| Editor    | CodeMirror 6 + @codemirror/lang-sql                                                                   |
+| Tree      | react-arborist                                                                                        |
+| Drivers   | pg 8.x (+pg-cursor), better-sqlite3, mongodb 7.x, ssh2/tunnel-ssh                                     |
+| Packaging | electron-builder; GitHub Actions matrix (doc 02 workflow)                                             |
 
 ## 8. Success criteria (v0.1 release gate)
 
@@ -89,9 +90,9 @@ Out of v0.1: row editing, table-data browse mode, any second engine.
 
 ## 9. Risks
 
-| Risk | Mitigation |
-|---|---|
+| Risk                                                        | Mitigation                                                                                                     |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | Glide Data Grid maintenance stalled (last release Feb 2024) | Pin version; grid usage isolated behind our own ResultsGrid component so TanStack fallback is a component swap |
-| better-sqlite3 Electron ABI rebuild tax (v0.2) | @electron/rebuild + asarUnpack, known recipe; adapter interface already async for node:sqlite swap |
-| Beekeeper un-paywalls engines | Wedge also rests on keyboard-first + measured leanness, not price alone |
-| Solo-dev scope creep | Non-goals list above; every feature must pass lean + keyboard-first test |
+| better-sqlite3 Electron ABI rebuild tax (v0.2)              | @electron/rebuild + asarUnpack, known recipe; adapter interface already async for node:sqlite swap             |
+| Beekeeper un-paywalls engines                               | Wedge also rests on keyboard-first + measured leanness, not price alone                                        |
+| Solo-dev scope creep                                        | Non-goals list above; every feature must pass lean + keyboard-first test                                       |

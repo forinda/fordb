@@ -4,14 +4,14 @@ Question: grid for large result sets, SQL editor, schema tree, UI framework, Mon
 
 ## Result grid (100k+ rows)
 
-| Library | gzip | Virtualization | Editing | License | Bindings |
-|---|---|---|---|---|---|
-| Glide Data Grid v6 | 63.8 KB | Canvas, rows+cols, "millions of rows" | Built in | MIT | React only |
-| AG Grid Community v36 | 338 KB | Row+col DOM | Yes | MIT | React/Vue/Angular/vanilla |
-| TanStack Table + Virtual | ~22 KB | DIY wiring | DIY (headless) | MIT | React/Vue/Svelte/Solid/vanilla |
-| RevoGrid v4 | 56.3 KB | Both axes | Excel-like | MIT core (Pro plugins paid) | Web Component, any framework |
-| Handsontable v18 | 286 KB | Yes | Excellent | **Non-commercial only free** — disqualified | React/Vue/Angular |
-| Tabulator v6.5 | 102 KB | Virtual DOM rows | Yes | MIT | Vanilla, framework-agnostic |
+| Library                  | gzip    | Virtualization                        | Editing        | License                                     | Bindings                       |
+| ------------------------ | ------- | ------------------------------------- | -------------- | ------------------------------------------- | ------------------------------ |
+| Glide Data Grid v6       | 63.8 KB | Canvas, rows+cols, "millions of rows" | Built in       | MIT                                         | React only                     |
+| AG Grid Community v36    | 338 KB  | Row+col DOM                           | Yes            | MIT                                         | React/Vue/Angular/vanilla      |
+| TanStack Table + Virtual | ~22 KB  | DIY wiring                            | DIY (headless) | MIT                                         | React/Vue/Svelte/Solid/vanilla |
+| RevoGrid v4              | 56.3 KB | Both axes                             | Excel-like     | MIT core (Pro plugins paid)                 | Web Component, any framework   |
+| Handsontable v18         | 286 KB  | Yes                                   | Excellent      | **Non-commercial only free** — disqualified | React/Vue/Angular              |
+| Tabulator v6.5           | 102 KB  | Virtual DOM rows                      | Yes            | MIT                                         | Vanilla, framework-agnostic    |
 
 - Glide Data Grid: performance standout (canvas rendering — "once you need to load/unload hundreds of DOM elements per frame nothing can save you"), but **maintenance stalled** — last release Feb 2024. Budget for pinning/forking. ([repo](https://github.com/glideapps/glide-data-grid))
 - Precedent verified: **Beekeeper Studio uses Tabulator** (`tabulator-tables ^6.5.2` + own MIT fork), with an open issue to replace Tabulator's editors — sign its editing model chafes at scale. ([package.json](https://raw.githubusercontent.com/beekeeper-studio/beekeeper-studio/master/apps/studio/package.json), [issue #2713](https://github.com/beekeeper-studio/beekeeper-studio/issues/2713))
@@ -50,13 +50,13 @@ Deciding factor is **component gravity**: the two best-in-class picks for this e
 
 ## Lean stack summary
 
-| Slot | Pick | gzip |
-|---|---|---|
-| Framework | React + TypeScript | — |
-| Grid | Glide Data Grid | ~64 KB |
-| SQL editor | CodeMirror 6 + lang-sql | ~120 KB |
-| Schema tree | react-arborist | ~31 KB |
-| Mongo docs | @uiw/react-json-view + CM6 JSON | ~9 KB |
+| Slot        | Pick                            | gzip    |
+| ----------- | ------------------------------- | ------- |
+| Framework   | React + TypeScript              | —       |
+| Grid        | Glide Data Grid                 | ~64 KB  |
+| SQL editor  | CodeMirror 6 + lang-sql         | ~120 KB |
+| Schema tree | react-arborist                  | ~31 KB  |
+| Mongo docs  | @uiw/react-json-view + CM6 JSON | ~9 KB   |
 
 **Total ~250 KB gzip** vs 3 MB+ for AG Grid + Monaco + jsoneditor. Leanness won at the component layer, as planned in doc 01.
 
