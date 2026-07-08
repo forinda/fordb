@@ -63,5 +63,8 @@ contextBridge.exposeInMainWorld('fordb', {
     onThemeChanged: (cb: (t: 'light' | 'dark') => void): void => {
       ipcRenderer.on('appearance:theme-changed', (_e, t: 'light' | 'dark') => cb(t))
     }
+  },
+  onDbHostRestarted: (cb: () => void): void => {
+    ipcRenderer.on('db-host:restarted', () => cb())
   }
 })

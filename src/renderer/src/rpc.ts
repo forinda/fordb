@@ -24,6 +24,7 @@ declare global {
         setMode: (mode: 'light' | 'dark' | 'system') => Promise<void>
         onThemeChanged: (cb: (t: 'light' | 'dark') => void) => void
       }
+      onDbHostRestarted: (cb: () => void) => void
     }
   }
 }

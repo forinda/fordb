@@ -31,6 +31,10 @@ function broadcastTheme(): void {
     win.webContents.send('appearance:theme-changed', t)
 }
 
+function broadcastDbHostRestarted(): void {
+  for (const win of BrowserWindow.getAllWindows()) win.webContents.send('db-host:restarted')
+}
+
 // Sync read so preload can stamp the theme before the renderer's React mounts.
 ipcMain.on('appearance:get-initial', (e) => {
   e.returnValue = effectiveTheme()
@@ -84,7 +88,12 @@ function startDbHost(): void {
     const backoffMs = Math.min(1000 * 2 ** (rapidRestarts - 1), 30000)
     setTimeout(
       () => {
-        if (!quitting) startDbHost()
+        if (!quitting) {
+          startDbHost()
+          // The old connections are gone; tell the renderer so it surfaces
+          // "connection lost" instead of hanging on a dead port.
+          broadcastDbHostRestarted()
+        }
       },
       rapidRestarts > 0 ? backoffMs : 0
     )
