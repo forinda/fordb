@@ -1,5 +1,6 @@
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 
 export default defineConfig({
@@ -16,7 +17,9 @@ export default defineConfig({
         // and turns the missing optional native binding into a hard crash
         // at process start. Keeping it external preserves pg's real runtime
         // require + try/catch.
-        external: ['pg-native']
+        // ssh2 and related modules (tunnel-ssh, cpu-features) have optional
+        // native bindings; mark them as external to preserve their guard clauses.
+        external: ['pg-native', 'cpu-features']
       }
     }
   },
@@ -39,6 +42,6 @@ export default defineConfig({
     build: {
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } }
     },
-    plugins: [react()]
+    plugins: [react(), tailwindcss()]
   }
 })
