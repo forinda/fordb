@@ -51,7 +51,7 @@ export function SchemaTree(): React.JSX.Element {
     }
   }, [connId])
 
-  if (error) return <div className="p-4 text-red-400">Schema load failed: {error}</div>
+  if (error) return <div className="p-4 text-destructive">Schema load failed: {error}</div>
   return (
     <div className="p-2">
       <Tree data={nodes} openByDefault={false} width={400} height={600} indent={16} rowHeight={24}>
@@ -61,10 +61,10 @@ export function SchemaTree(): React.JSX.Element {
             ref={dragHandle}
             className="flex items-center gap-1 text-sm cursor-default"
           >
-            <span className="text-neutral-400">
+            <span className="text-muted-foreground">
               {node.data.kind === 'schema' ? '▸' : node.data.kind === 'view' ? '◇' : '▪'}
             </span>
-            <span className="text-neutral-100">{node.data.name}</span>
+            <span className="text-foreground">{node.data.name}</span>
           </div>
         )}
       </Tree>
