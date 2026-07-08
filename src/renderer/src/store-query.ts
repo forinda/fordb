@@ -76,11 +76,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
           open.fields,
           PAGE_SIZE
         )
+        // Store the source on the tab BEFORE awaiting the first page, so that a
+        // rejecting fetchPage lands in catch with the source reachable (and
+        // therefore disposable) — otherwise the server cursor would leak.
+        set((s) => ({ tabs: patch(s.tabs, id, { source }) }))
         await source.ensureLoaded(0) // first page
         set((s) => ({
           tabs: patch(s.tabs, id, {
             status: 'done',
-            source,
             elapsedMs: performance.now() - started
           })
         }))
@@ -95,9 +98,12 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         }))
       }
     } catch (err) {
+      const cur = get().tabs.find((t) => t.id === id)?.source
+      void cur?.dispose()
       set((s) => ({
         tabs: patch(s.tabs, id, {
           status: 'error',
+          source: undefined,
           message: err instanceof Error ? err.message : String(err)
         })
       }))

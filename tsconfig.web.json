@@ -13,5 +13,10 @@
     "baseUrl": ".",
     "paths": { "@shared/*": ["src/shared/*"] }
   },
-  "include": ["src/renderer/src/**/*", "src/shared/**/*", "src/preload/**/*"]
+  "include": [
+    "src/renderer/src/**/*",
+    "src/shared/**/*",
+    "src/preload/**/*",
+    "tests/unit/query-store.test.ts"
+  ]
 }

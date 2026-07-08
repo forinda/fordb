@@ -71,7 +71,7 @@ function startDbHost(): void {
   // Private control channel: main keeps one end as an RPC client to HostApi.
   const { port1, port2 } = new MessageChannelMain()
   dbHost.postMessage({ type: 'new-client' }, [port1])
-  const client = createRpcClient<HostApi>(controlPortLike(port2))
+  const client = createRpcClient<HostApi>(controlPortLike(port2), { timeoutMs: 120_000 })
   port2.start()
   hostControl = client
   dbHost.on('exit', () => {
