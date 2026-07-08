@@ -10,7 +10,7 @@ export function ThemeToggle(): React.JSX.Element {
   const next = ORDER[(ORDER.indexOf(mode) + 1) % ORDER.length]!
   return (
     <button
-      className="px-2 py-1 rounded border border-border text-foreground hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring"
+      className="px-2 py-1 rounded border border-border text-foreground hover:bg-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       onClick={() => void setMode(next)}
       title={`Theme: ${LABEL[mode]} (click for ${LABEL[next]})`}
     >
