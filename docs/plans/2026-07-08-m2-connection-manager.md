@@ -1922,3 +1922,137 @@ git commit -m "feat: command palette and end-to-end connect smoke"
 3. **Type consistency:** `ConnectionId`, `HostApi`, `ConnectionProfile` (with `ssh`/`sshPassword`/`sshPassphrase`), `TestResult`, `SafeStorageLike`/`StoredSecrets` consistent across tasks. Secret field set to strip in ProfileStore = {password, sshPassword, sshPassphrase} (Tasks 1/5/7 aligned). `hostControl` getter shape matches `HostApi`.
 
 **Known deliberate deferrals (call out to executor):** live SSH-tunnel integration test (config-unit + manual smoke instead unless CI sshd added); true lazy-on-expand tree (schema-granular eager load for M2); "connection lost" UX is error-surfaced not a dedicated banner. These are acceptable within M2 scope per the spec.
+
+---
+
+### Task 13: Import connection from URL/DSN (added 2026-07-08, user request)
+
+**Files:**
+
+- Create: `src/shared/connection-url.ts`, `tests/unit/connection-url.test.ts`
+- Modify: `src/renderer/src/components/ProfileForm.tsx`
+
+**Interfaces:**
+
+- Produces: `parseConnectionUrl(input: string): ParsedConnection` where
+  `ParsedConnection = { profile: Partial<ConnectionProfile>; password?: string; extraParams: Record<string,string> }`.
+  Pure, shared (renderer imports it). ProfileForm gains a "Paste connection URL" field that fills the form.
+
+Rationale: like DataGrip — paste `postgres://user:pass@host:5432/db?sslmode=require&application_name=x` and auto-populate host/port/db/user/password plus recognized args, keeping the rest as extra params.
+
+- [ ] **Step 1: Write failing unit tests for the parser**
+
+`tests/unit/connection-url.test.ts`:
+
+```ts
+import { describe, it, expect } from 'vitest'
+import { parseConnectionUrl } from '../../src/shared/connection-url'
+
+describe('parseConnectionUrl', () => {
+  it('parses a full postgres URL', () => {
+    const r = parseConnectionUrl(
+      'postgres://alice:s3cret@db.example.com:6543/shop?application_name=fordb'
+    )
+    expect(r.profile.engine).toBe('postgres')
+    expect(r.profile.host).toBe('db.example.com')
+    expect(r.profile.port).toBe(6543)
+    expect(r.profile.database).toBe('shop')
+    expect(r.profile.user).toBe('alice')
+    expect(r.password).toBe('s3cret')
+    expect(r.extraParams).toEqual({ application_name: 'fordb' })
+  })
+  it('accepts the postgresql:// scheme and defaults port 5432', () => {
+    const r = parseConnectionUrl('postgresql://bob@localhost/mydb')
+    expect(r.profile.port).toBe(5432)
+    expect(r.profile.user).toBe('bob')
+    expect(r.password).toBeUndefined()
+    expect(r.profile.database).toBe('mydb')
+  })
+  it('maps sslmode to ssl (require/verify-full → ssl on)', () => {
+    const r = parseConnectionUrl('postgres://u@h/d?sslmode=require')
+    expect(r.profile.ssl?.rejectUnauthorized).toBe(false) // require = encrypt, do not verify CA
+    const r2 = parseConnectionUrl('postgres://u@h/d?sslmode=verify-full')
+    expect(r2.profile.ssl?.rejectUnauthorized).toBe(true)
+    expect(r.extraParams.sslmode).toBeUndefined() // consumed, not left in extras
+  })
+  it('percent-decodes credentials', () => {
+    const r = parseConnectionUrl('postgres://a%40b:p%3Aw@h/d')
+    expect(r.profile.user).toBe('a@b')
+    expect(r.password).toBe('p:w')
+  })
+  it('throws on an unsupported scheme', () => {
+    expect(() => parseConnectionUrl('mysql://u@h/d')).toThrow(/unsupported|scheme|postgres/i)
+  })
+  it('throws on unparseable input', () => {
+    expect(() => parseConnectionUrl('not a url')).toThrow()
+  })
+})
+```
+
+- [ ] **Step 2: Run to verify failure**
+
+Run: `pnpm test` — FAIL, module missing.
+
+- [ ] **Step 3: Implement the parser**
+
+`src/shared/connection-url.ts`:
+
+```ts
+import type { ConnectionProfile } from './adapter/types'
+
+export interface ParsedConnection {
+  profile: Partial<ConnectionProfile>
+  password?: string
+  extraParams: Record<string, string>
+}
+
+const SCHEMES = new Set(['postgres:', 'postgresql:'])
+
+export function parseConnectionUrl(input: string): ParsedConnection {
+  const url = new URL(input.trim())
+  if (!SCHEMES.has(url.protocol)) {
+    throw new Error(`Unsupported scheme "${url.protocol}"; expected a postgres:// URL`)
+  }
+  const profile: Partial<ConnectionProfile> = {
+    engine: 'postgres',
+    host: url.hostname || 'localhost',
+    port: url.port ? Number(url.port) : 5432,
+    database: decodeURIComponent(url.pathname.replace(/^\//, '')) || undefined,
+    user: url.username ? decodeURIComponent(url.username) : undefined
+  }
+  const password = url.password ? decodeURIComponent(url.password) : undefined
+
+  const extraParams: Record<string, string> = {}
+  for (const [key, value] of url.searchParams) {
+    if (key === 'sslmode') {
+      // require/prefer/allow → encrypt but don't verify; verify-ca/verify-full → verify
+      const verify = value === 'verify-ca' || value === 'verify-full'
+      profile.ssl = { rejectUnauthorized: verify }
+      continue
+    }
+    extraParams[key] = value
+  }
+  return { profile, password, extraParams }
+}
+```
+
+- [ ] **Step 4: Run to verify pass**
+
+Run: `pnpm test` — the 6 parser tests PASS.
+
+- [ ] **Step 5: Wire into ProfileForm**
+
+Add a "Paste connection URL" text input at the top of `ProfileForm`. On change/blur (or a small "Fill from URL" button), call `parseConnectionUrl` in a try/catch; on success, set the form state fields from `parsed.profile` (name/host/port/database/user), set the password field from `parsed.password`, and stash `parsed.extraParams` into a read-only "Extra parameters" display (they're carried for reference; applying arbitrary libpq params to the pg driver is out of M2 scope — show them so the user sees what was in the URL). On parse error, show an inline message ("Couldn't parse that URL") and leave the form untouched. Do NOT auto-submit. Exact wiring follows ProfileForm's existing `useState` field pattern from Task 10.
+
+- [ ] **Step 6: Verify**
+
+Run: `pnpm typecheck && pnpm lint && pnpm test && pnpm build` — all clean; parser tests green.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/shared/connection-url.ts tests/unit/connection-url.test.ts src/renderer/src/components/ProfileForm.tsx
+git commit -m "feat: import connection profile from a pasted URL/DSN"
+```
+
+Deferred: applying arbitrary libpq query params (application_name, connect_timeout, …) to the actual pg connection — M2 parses and displays them; wiring them into the driver config is an M3 follow-up.
