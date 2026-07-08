@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { QueryResultSource } from '../../src/renderer/src/query/result-source'
+import { QueryResultSource } from '../../src/shared/query/result-source'
 import type { Page } from '../../src/shared/adapter/types'
 
-function fakeApi(total: number, pageSize: number): {
+function fakeApi(
+  total: number,
+  pageSize: number
+): {
   closedFlag: () => boolean
   fetchPage: (q: string) => Promise<Page>
   closeQuery: (q: string) => Promise<void>

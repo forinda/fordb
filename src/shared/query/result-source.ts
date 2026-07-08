@@ -1,4 +1,4 @@
-import type { FieldInfo, Page } from '../../../shared/adapter/types'
+import type { FieldInfo, Page } from '../adapter/types'
 
 export interface QueryApi {
   fetchPage(queryId: string): Promise<Page>
