@@ -69,19 +69,21 @@ export function ProfileForm(props: {
   }
 
   function build(): ConnectionProfile {
+    const parsedPort = Number(port)
+    const parsedSshPort = Number(sshPort)
     return {
       id: p?.id ?? newId(),
       name,
       engine: 'postgres',
       host,
-      port: Number(port),
+      port: Number.isNaN(parsedPort) ? 5432 : parsedPort,
       database,
       user,
       ssl: useSsl ? { rejectUnauthorized: verifyCert } : undefined,
       ssh: useSsh
         ? {
             host: sshHost,
-            port: Number(sshPort),
+            port: Number.isNaN(parsedSshPort) ? 22 : parsedSshPort,
             user: sshUser,
             authMethod,
             privateKeyPath: authMethod === 'key' ? privateKeyPath : undefined
@@ -160,6 +162,7 @@ export function ProfileForm(props: {
       />
       <input
         className={field}
+        type="number"
         placeholder="Port"
         value={port}
         onChange={(e) => setPort(e.target.value)}
@@ -213,6 +216,7 @@ export function ProfileForm(props: {
           />
           <input
             className={field}
+            type="number"
             placeholder="SSH port"
             value={sshPort}
             onChange={(e) => setSshPort(e.target.value)}
