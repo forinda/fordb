@@ -52,5 +52,16 @@ contextBridge.exposeInMainWorld('fordb', {
     open: (profileId: string): Promise<string> => ipcRenderer.invoke('connection:open', profileId),
     close: (connectionId: string): Promise<void> =>
       ipcRenderer.invoke('connection:close', connectionId)
+  },
+  appearance: {
+    // sendSync runs at preload load, before the renderer's scripts — so the
+    // renderer entry can stamp the <html> theme class before React mounts.
+    initialTheme: ipcRenderer.sendSync('appearance:get-initial') as 'light' | 'dark',
+    getMode: (): Promise<'light' | 'dark' | 'system'> => ipcRenderer.invoke('appearance:get-mode'),
+    setMode: (mode: 'light' | 'dark' | 'system'): Promise<void> =>
+      ipcRenderer.invoke('appearance:set-mode', mode),
+    onThemeChanged: (cb: (t: 'light' | 'dark') => void): void => {
+      ipcRenderer.on('appearance:theme-changed', (_e, t: 'light' | 'dark') => cb(t))
+    }
   }
 })
