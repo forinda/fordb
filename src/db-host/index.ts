@@ -1,6 +1,14 @@
 import { serveRpc } from '../shared/rpc/server'
 import type { PortLike } from '../shared/rpc/protocol'
+import { ConnectionRegistry } from './connection-registry'
+import { HostApiImpl } from './host-api-impl'
 import { PostgresAdapter } from './postgres/postgres-adapter'
+
+let idCounter = 0
+const registry = new ConnectionRegistry(
+  () => new PostgresAdapter(),
+  () => `conn-${process.pid}-${++idCounter}`
+)
 
 function electronPort(port: Electron.MessagePortMain): PortLike {
   return {
@@ -13,15 +21,8 @@ function electronPort(port: Electron.MessagePortMain): PortLike {
 process.parentPort.on('message', (e) => {
   const [port] = e.ports
   if (!port) return
-  // One adapter instance per renderer client; M2 adds a connection registry.
-  const adapter = new PostgresAdapter()
-  serveRpc(electronPort(port), adapter)
-  // Free the pg connection when the renderer's port closes (e.g. on reload),
-  // instead of leaking it until process exit. Swallow disconnect errors: a
-  // rejecting client.end() here would otherwise be an unhandled rejection that
-  // can crash the db-host process on the reload this cleanup exists to handle.
-  port.on('close', () => {
-    void adapter.disconnect().catch(() => undefined)
-  })
+  // Every port (main's control port and each renderer port) gets its own
+  // HostApi facade, all backed by the one process-wide registry.
+  serveRpc(electronPort(port), new HostApiImpl(registry))
   port.start()
 })
