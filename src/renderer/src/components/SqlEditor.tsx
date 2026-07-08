@@ -2,11 +2,11 @@ import { useEffect, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState } from '@codemirror/state'
 import { defaultKeymap } from '@codemirror/commands'
-import { sql, PostgreSQL, type SQLNamespace } from '@codemirror/lang-sql'
+import { sql, PostgreSQL } from '@codemirror/lang-sql'
 import { autocompletion } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
 import { cmTheme } from '../query/cm-theme'
-import { loadSqlSchema } from '../query/completion'
+import { schemaCompletionSource } from '../query/completion'
 
 export function SqlEditor(props: {
   value: string
@@ -22,19 +22,14 @@ export function SqlEditor(props: {
 
   useEffect(() => {
     if (!host.current) return
-    let schema: SQLNamespace = {}
-    if (props.connectionId) {
-      void loadSqlSchema(props.connectionId).then((s) => {
-        schema = s
-      })
-    }
+    const connId = props.connectionId
     const state = EditorState.create({
       doc: props.value,
       extensions: [
         basicSetup,
         cmTheme,
-        sql({ dialect: PostgreSQL, schema, upperCaseKeywords: true }),
-        autocompletion(),
+        sql({ dialect: PostgreSQL, upperCaseKeywords: true }),
+        autocompletion(connId ? { override: [schemaCompletionSource(connId)] } : {}),
         keymap.of([
           {
             key: 'Mod-Enter',
