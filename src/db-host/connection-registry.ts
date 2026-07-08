@@ -1,6 +1,6 @@
-import type { DbAdapter } from '../shared/adapter/db-adapter'
-import type { ConnectionProfile } from '../shared/adapter/types'
-import type { ConnectionId } from '../shared/host/host-api'
+import type { DbAdapter } from '@shared/adapter/db-adapter'
+import type { ConnectionProfile } from '@shared/adapter/types'
+import type { ConnectionId } from '@shared/host/host-api'
 import { connectAdapter } from './connect-with-tunnel'
 import type { TunnelHandle } from './ssh-tunnel'
 

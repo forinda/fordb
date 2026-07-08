@@ -9,7 +9,9 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
-    "lib": ["ES2023", "DOM", "DOM.Iterable"]
+    "lib": ["ES2023", "DOM", "DOM.Iterable"],
+    "baseUrl": ".",
+    "paths": { "@shared/*": ["src/shared/*"] }
   },
   "include": ["src/renderer/src/**/*", "src/shared/**/*", "src/preload/**/*"]
 }

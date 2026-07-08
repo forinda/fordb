@@ -2,8 +2,8 @@ import { ipcMain, safeStorage, app } from 'electron'
 import { join } from 'node:path'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
-import type { ConnectionProfile } from '../shared/adapter/types'
-import type { HostApi } from '../shared/host/host-api'
+import type { ConnectionProfile } from '@shared/adapter/types'
+import type { HostApi } from '@shared/host/host-api'
 
 export function registerIpc(getHostControl: () => HostApi | null): void {
   const dir = app.getPath('userData')
