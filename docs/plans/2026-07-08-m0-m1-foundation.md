@@ -6,7 +6,7 @@
 
 **Architecture:** Electron with three processes — renderer (React, no Node), main (windows only), and a `db-host` utilityProcess that owns all DB drivers. A transport-agnostic RPC layer (works over Node `MessageChannel` in tests and Electron `MessagePortMain` in production) exposes the same `DbAdapter` TypeScript interface on both sides of the process boundary. The contract test suite is engine-agnostic so SQLite (M6) and future engines must pass the identical tests.
 
-**Tech Stack:** pnpm, TypeScript (strict), electron-vite, Electron ~39, React 18, vitest, pg 8.x + pg-cursor, Docker (postgres:16-alpine) for contract tests.
+**Tech Stack:** pnpm, TypeScript (strict), electron-vite, Electron ~39, React 19, vitest, pg 8.x + pg-cursor, Docker (postgres:16-alpine) for contract tests. (React 19 decided 2026-07-08; fall back to 18 only if Glide/arborist peer conflicts appear in M3/M4.)
 
 ## Global Constraints
 
@@ -84,8 +84,8 @@ tests/
 Run:
 ```bash
 pnpm add -D electron@^39.0.0 electron-vite@^4.0.0 vite@^7.0.0 typescript@^5.8.0 @vitejs/plugin-react@^5.0.0
-pnpm add react@^18.3.0 react-dom@^18.3.0
-pnpm add -D @types/react@^18.3.0 @types/react-dom@^18.3.0 @types/node@^22.0.0
+pnpm add react@^19.0.0 react-dom@^19.0.0
+pnpm add -D @types/react@^19.0.0 @types/react-dom@^19.0.0 @types/node@^22.0.0
 ```
 Expected: lockfile created, no peer warnings that block install.
 
@@ -139,6 +139,7 @@ Note: db-host is bundled as a second entry of the main-process build — utility
 {
   "compilerOptions": {
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -156,6 +157,7 @@ Note: db-host is bundled as a second entry of the main-process build — utility
 {
   "compilerOptions": {
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.web.tsbuildinfo",
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",

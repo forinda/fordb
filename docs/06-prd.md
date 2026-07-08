@@ -72,7 +72,7 @@ Out of v0.1: row editing, table-data browse mode, any second engine.
 | Slot | Choice |
 |---|---|
 | Shell | Electron (doc 01: wins Linux reliability, rendering consistency, pure-TS drivers) |
-| UI | React 18 + TypeScript, Vite + electron-vite, Zustand |
+| UI | React 19 + TypeScript, Vite + electron-vite, Zustand |
 | Grid | Glide Data Grid (canvas, MIT, ~64KB gzip; TanStack Table+Virtual fallback if maintenance stall bites) |
 | Editor | CodeMirror 6 + @codemirror/lang-sql |
 | Tree | react-arborist |
