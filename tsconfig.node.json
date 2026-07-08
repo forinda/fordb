@@ -25,6 +25,7 @@
   "exclude": [
     "tests/unit/query-store.test.ts",
     "tests/unit/query-keys.test.ts",
-    "tests/unit/introspection-invalidate.test.ts"
+    "tests/unit/introspection-invalidate.test.ts",
+    "tests/unit/schema-tree-model.test.ts"
   ]
 }
