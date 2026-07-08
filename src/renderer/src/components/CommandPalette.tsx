@@ -28,12 +28,12 @@ export function CommandPalette(props: { commands: Command[] }): React.JSX.Elemen
       onClick={() => setOpen(false)}
     >
       <div
-        className="bg-neutral-900 border border-neutral-700 rounded w-96"
+        className="bg-neutral-900 border border-neutral-600 rounded w-96 text-neutral-100"
         onClick={(e) => e.stopPropagation()}
       >
         <input
           autoFocus
-          className="w-full px-3 py-2 bg-transparent outline-none"
+          className="w-full px-3 py-2 bg-transparent text-neutral-100 placeholder-neutral-400 outline-none"
           placeholder="Command…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -42,7 +42,7 @@ export function CommandPalette(props: { commands: Command[] }): React.JSX.Elemen
           {filtered.map((c) => (
             <button
               key={c.id}
-              className="block w-full text-left px-3 py-2 hover:bg-neutral-800"
+              className="block w-full text-left px-3 py-2 text-neutral-100 hover:bg-neutral-800 focus:bg-neutral-800 focus:outline-none"
               onClick={() => {
                 setOpen(false)
                 c.run()

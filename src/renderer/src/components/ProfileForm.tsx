@@ -80,7 +80,8 @@ export function ProfileForm(props: {
     setTestMsg(r.ok ? 'OK' : `Error: ${r.error ?? 'failed'}`)
   }
 
-  const field = 'px-2 py-1 rounded bg-neutral-900 border border-neutral-700'
+  const field =
+    'px-2 py-1 rounded bg-neutral-900 border border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-400'
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
       <input
@@ -199,17 +200,32 @@ export function ProfileForm(props: {
       )}
 
       <div className="flex gap-2 mt-2">
-        <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={() => void save()}>
+        <button
+          className="px-3 py-1 rounded bg-blue-700 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={() => void save()}
+        >
           Save
         </button>
-        <button className="px-3 py-1 rounded border border-neutral-600" onClick={() => void test()}>
+        <button
+          className="px-3 py-1 rounded border border-neutral-500 text-neutral-100 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={() => void test()}
+        >
           Test
         </button>
-        <button className="px-3 py-1 rounded" onClick={props.onCancel}>
+        <button
+          className="px-3 py-1 rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+          onClick={props.onCancel}
+        >
           Cancel
         </button>
       </div>
-      {testMsg && <div className="text-sm">{testMsg}</div>}
+      {testMsg && (
+        <div
+          className={`text-sm ${testMsg === 'OK' ? 'text-green-400' : testMsg.startsWith('Error') ? 'text-red-400' : 'text-neutral-300'}`}
+        >
+          {testMsg}
+        </div>
+      )}
     </div>
   )
 }
