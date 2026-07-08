@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useConnStore } from '../store'
 import type { ConnectionProfile } from '../../../shared/adapter/types'
+import { connectionLabel } from '../../../shared/connection-label'
 import { Button } from './ui/button'
 
 export function ConnectionList(props: {
@@ -33,7 +34,7 @@ export function ConnectionList(props: {
             className="text-left flex-1 text-foreground rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => void connect(p.id)}
           >
-            {p.name}
+            {connectionLabel(p)}
           </button>
           {/* Revealed on hover OR keyboard focus within the row, so keyboard users can reach them. */}
           <button

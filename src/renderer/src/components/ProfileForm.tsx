@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useConnStore } from '../store'
 import type { ConnectionProfile, SshOptions } from '../../../shared/adapter/types'
 import { parseConnectionUrl } from '../../../shared/connection-url'
+import { connectionLabel } from '../../../shared/connection-label'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -76,7 +77,7 @@ export function ProfileForm(props: {
   function build(): ConnectionProfile {
     const parsedPort = Number(port)
     const parsedSshPort = Number(sshPort)
-    return {
+    const base: ConnectionProfile = {
       id: p?.id ?? newId(),
       name,
       engine: 'postgres',
@@ -95,6 +96,8 @@ export function ProfileForm(props: {
           }
         : undefined
     }
+    // Never persist a blank name — derive one so the sidebar row isn't empty.
+    return { ...base, name: name.trim() || connectionLabel(base) }
   }
 
   function secrets(): { password?: string; sshPassword?: string; sshPassphrase?: string } {
