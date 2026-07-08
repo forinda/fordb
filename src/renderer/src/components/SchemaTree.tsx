@@ -61,10 +61,10 @@ export function SchemaTree(): React.JSX.Element {
             ref={dragHandle}
             className="flex items-center gap-1 text-sm cursor-default"
           >
-            <span className="text-neutral-500">
+            <span className="text-neutral-400">
               {node.data.kind === 'schema' ? '▸' : node.data.kind === 'view' ? '◇' : '▪'}
             </span>
-            <span>{node.data.name}</span>
+            <span className="text-neutral-100">{node.data.name}</span>
           </div>
         )}
       </Tree>
