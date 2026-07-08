@@ -1,22 +1,43 @@
-import { useEffect, useState } from 'react'
-import { createRpcClient } from '../../shared/rpc/client'
-import type { DbAdapter } from '../../shared/adapter/db-adapter'
+import { useState } from 'react'
+import { ConnectionList } from './components/ConnectionList'
+import { ProfileForm } from './components/ProfileForm'
+import { SchemaTree } from './components/SchemaTree'
+import { useConnStore } from './store'
+import type { ConnectionProfile } from '../../shared/adapter/types'
 // The global `Window.fordb` type is declared once in ./rpc.ts (imported for
-// its ambient `declare global` augmentation as well as the RPC client it
-// exports for Task 10+).
+// its ambient `declare global` augmentation).
 import './rpc'
 
+type View =
+  { kind: 'welcome' } | { kind: 'form'; profile?: ConnectionProfile } | { kind: 'connected' }
+
 export function App(): React.JSX.Element {
-  const [status, setStatus] = useState('starting…')
-  useEffect(() => {
-    void window.fordb.getDbHostPort().then((port) => {
-      const adapter = createRpcClient<DbAdapter>(port)
-      // Proves RPC wiring end-to-end; errors expectedly if no local Postgres.
-      adapter
-        .listDatabases()
-        .then((dbs) => setStatus(`databases: ${dbs.join(', ')}`))
-        .catch((err: Error) => setStatus(`db-host reachable, connect error: ${err.message}`))
-    })
-  }, [])
-  return <h1>fordb — {status}</h1>
+  const [view, setView] = useState<View>({ kind: 'welcome' })
+  const setActive = useConnStore((s) => s.setActive)
+
+  return (
+    <div className="flex h-screen text-neutral-100 bg-neutral-950">
+      <ConnectionList
+        onNew={() => setView({ kind: 'form' })}
+        onEdit={(profile) => setView({ kind: 'form', profile })}
+        onConnect={(connectionId, profileId) => {
+          setActive(connectionId, profileId)
+          setView({ kind: 'connected' })
+        }}
+      />
+      <div className="flex-1 overflow-auto">
+        {view.kind === 'welcome' && (
+          <div className="p-6 text-neutral-400">Select or create a connection.</div>
+        )}
+        {view.kind === 'form' && (
+          <ProfileForm
+            profile={view.profile}
+            onSaved={() => setView({ kind: 'welcome' })}
+            onCancel={() => setView({ kind: 'welcome' })}
+          />
+        )}
+        {view.kind === 'connected' && <SchemaTree />}
+      </div>
+    </div>
+  )
 }
