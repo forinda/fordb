@@ -15,7 +15,10 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:up": "docker compose -f docker-compose.test.yml up -d --wait",
+    "db:down": "docker compose -f docker-compose.test.yml down -v",
+    "test:contract": "vitest run -c vitest.contract.config.ts --passWithNoTests"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
