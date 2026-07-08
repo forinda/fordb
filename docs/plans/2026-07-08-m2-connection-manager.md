@@ -57,15 +57,18 @@ tests/unit/ssh-tunnel.test.ts                         # NEW (config only)
 ### Task 1: Shared types — SSH options + HostApi interface
 
 **Files:**
+
 - Modify: `src/shared/adapter/types.ts`
 - Create: `src/shared/host/host-api.ts`
 
 **Interfaces:**
+
 - Produces: `SshOptions`, extended `ConnectionProfile` (with `ssh?`), `HostApi`, `TestResult`, `ConnectionId`. Every later task imports these.
 
 - [ ] **Step 1: Add SSH types to types.ts**
 
 Append to `src/shared/adapter/types.ts`:
+
 ```ts
 export interface SshOptions {
   host: string
@@ -76,7 +79,9 @@ export interface SshOptions {
   privateKeyPath?: string
 }
 ```
+
 And add `ssh?: SshOptions` to the `ConnectionProfile` interface (after the `ssl?` field). Also add an optional `sshPassphrase?: string` sibling to `password?` (both are secrets, injected at connect time, never persisted):
+
 ```ts
   password?: string
   sshPassphrase?: string
@@ -87,13 +92,7 @@ And add `ssh?: SshOptions` to the `ConnectionProfile` interface (after the `ssl?
 - [ ] **Step 2: Create host-api.ts**
 
 ```ts
-import type {
-  ColumnInfo,
-  ConnectionProfile,
-  IndexInfo,
-  KeyInfo,
-  TableInfo
-} from '../adapter/types'
+import type { ColumnInfo, ConnectionProfile, IndexInfo, KeyInfo, TableInfo } from '../adapter/types'
 
 export type ConnectionId = string
 
@@ -135,15 +134,18 @@ git add src/shared && git commit -m "feat: SSH options and HostApi interface typ
 ### Task 2: ConnectionRegistry
 
 **Files:**
+
 - Create: `src/db-host/connection-registry.ts`, `tests/contract/connection-registry.contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PostgresAdapter` (Task 7-M1), `ConnectionProfile`, `ConnectionId`.
 - Produces: `class ConnectionRegistry` with `constructor(makeAdapter: () => DbAdapter, nextId: () => string)`, methods `open(profile) → Promise<ConnectionId>`, `close(id) → Promise<void>`, `get(id) → DbAdapter`, `closeAll() → Promise<void>`. Task 3 wraps it; the `makeAdapter`/`nextId` injection lets tests substitute.
 
 - [ ] **Step 1: Write failing integration test**
 
 `tests/contract/connection-registry.contract.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeAll, afterEach } from 'vitest'
 import pg from 'pg'
@@ -154,12 +156,24 @@ import { PostgresAdapter } from '../../src/db-host/postgres/postgres-adapter'
 import type { ConnectionProfile } from '../../src/shared/adapter/types'
 
 const profile: ConnectionProfile = {
-  id: 'p1', name: 't', engine: 'postgres',
-  host: '127.0.0.1', port: 54329, database: 'fordb_test', user: 'fordb', password: 'fordb'
+  id: 'p1',
+  name: 't',
+  engine: 'postgres',
+  host: '127.0.0.1',
+  port: 54329,
+  database: 'fordb_test',
+  user: 'fordb',
+  password: 'fordb'
 }
 
 beforeAll(async () => {
-  const c = new pg.Client({ host: '127.0.0.1', port: 54329, database: 'fordb_test', user: 'fordb', password: 'fordb' })
+  const c = new pg.Client({
+    host: '127.0.0.1',
+    port: 54329,
+    database: 'fordb_test',
+    user: 'fordb',
+    password: 'fordb'
+  })
   await c.connect()
   await c.query(readFileSync(join(__dirname, 'fixture.sql'), 'utf8'))
   await c.end()
@@ -167,12 +181,17 @@ beforeAll(async () => {
 
 function makeRegistry(): ConnectionRegistry {
   let n = 0
-  return new ConnectionRegistry(() => new PostgresAdapter(), () => `c${++n}`)
+  return new ConnectionRegistry(
+    () => new PostgresAdapter(),
+    () => `c${++n}`
+  )
 }
 
 describe('ConnectionRegistry', () => {
   let reg: ConnectionRegistry
-  afterEach(async () => { await reg?.closeAll() })
+  afterEach(async () => {
+    await reg?.closeAll()
+  })
 
   it('open returns distinct ids and get resolves the adapter', async () => {
     reg = makeRegistry()
@@ -206,10 +225,7 @@ describe('ConnectionRegistry', () => {
     reg = makeRegistry()
     const a = await reg.open(profile)
     const b = await reg.open(profile)
-    const [ra, rb] = await Promise.all([
-      reg.get(a).listSchemas(),
-      reg.get(b).listSchemas()
-    ])
+    const [ra, rb] = await Promise.all([reg.get(a).listSchemas(), reg.get(b).listSchemas()])
     expect(ra).toContain('app')
     expect(rb).toContain('app')
   })
@@ -224,6 +240,7 @@ Expected: FAIL — cannot resolve connection-registry.
 - [ ] **Step 3: Implement**
 
 `src/db-host/connection-registry.ts`:
+
 ```ts
 import type { DbAdapter } from '../shared/adapter/db-adapter'
 import type { ConnectionProfile } from '../shared/adapter/types'
@@ -278,6 +295,7 @@ Expected: registry tests PASS (11 original contract tests still PASS too).
 - [ ] **Step 5: typecheck/lint + commit**
 
 Run: `pnpm typecheck && pnpm lint`
+
 ```bash
 git add src/db-host/connection-registry.ts tests/contract/connection-registry.contract.test.ts
 git commit -m "feat: ConnectionRegistry for multi-connection db-host"
@@ -288,15 +306,18 @@ git commit -m "feat: ConnectionRegistry for multi-connection db-host"
 ### Task 3: HostApiImpl + testConnection + connectionId routing
 
 **Files:**
+
 - Create: `src/db-host/host-api-impl.ts`, `tests/contract/host-api.contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: `HostApi`, `TestResult` (Task 1), `ConnectionRegistry` (Task 2), `serveRpc`/`createRpcClient` (M1 RPC), `PostgresAdapter`.
 - Produces: `class HostApiImpl implements HostApi` with `constructor(registry: ConnectionRegistry)`. Task 4 serves it over RPC.
 
 - [ ] **Step 1: Write failing test (over the real RPC layer)**
 
 `tests/contract/host-api.contract.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { MessageChannel } from 'node:worker_threads'
@@ -313,8 +334,14 @@ import type { HostApi } from '../../src/shared/host/host-api'
 import type { ConnectionProfile } from '../../src/shared/adapter/types'
 
 const profile: ConnectionProfile = {
-  id: 'p1', name: 't', engine: 'postgres',
-  host: '127.0.0.1', port: 54329, database: 'fordb_test', user: 'fordb', password: 'fordb'
+  id: 'p1',
+  name: 't',
+  engine: 'postgres',
+  host: '127.0.0.1',
+  port: 54329,
+  database: 'fordb_test',
+  user: 'fordb',
+  password: 'fordb'
 }
 const badProfile: ConnectionProfile = { ...profile, password: 'wrong' }
 
@@ -323,7 +350,13 @@ function nodePort(p: import('node:worker_threads').MessagePort): PortLike {
 }
 
 beforeAll(async () => {
-  const c = new pg.Client({ host: '127.0.0.1', port: 54329, database: 'fordb_test', user: 'fordb', password: 'fordb' })
+  const c = new pg.Client({
+    host: '127.0.0.1',
+    port: 54329,
+    database: 'fordb_test',
+    user: 'fordb',
+    password: 'fordb'
+  })
   await c.connect()
   await c.query(readFileSync(join(__dirname, 'fixture.sql'), 'utf8'))
   await c.end()
@@ -336,13 +369,19 @@ describe('HostApi over RPC', () => {
 
   beforeAll(() => {
     let n = 0
-    registry = new ConnectionRegistry(() => new PostgresAdapter(), () => `c${++n}`)
+    registry = new ConnectionRegistry(
+      () => new PostgresAdapter(),
+      () => `c${++n}`
+    )
     const { port1, port2 } = new MessageChannel()
     ports = [port1, port2]
     serveRpc(nodePort(port1), new HostApiImpl(registry))
     client = createRpcClient<HostApi>(nodePort(port2))
   })
-  afterAll(async () => { await registry.closeAll(); ports.forEach((p) => p.close()) })
+  afterAll(async () => {
+    await registry.closeAll()
+    ports.forEach((p) => p.close())
+  })
 
   it('testConnection ok on good profile', async () => {
     expect(await client.testConnection(profile)).toEqual({ ok: true })
@@ -375,9 +414,14 @@ Expected: FAIL — cannot resolve host-api-impl.
 - [ ] **Step 3: Implement**
 
 `src/db-host/host-api-impl.ts`:
+
 ```ts
 import type {
-  ColumnInfo, ConnectionProfile, IndexInfo, KeyInfo, TableInfo
+  ColumnInfo,
+  ConnectionProfile,
+  IndexInfo,
+  KeyInfo,
+  TableInfo
 } from '../shared/adapter/types'
 import type { ConnectionId, HostApi, TestResult } from '../shared/host/host-api'
 import type { ConnectionRegistry } from './connection-registry'
@@ -447,9 +491,11 @@ git commit -m "feat: HostApi facade with testConnection and connectionId routing
 ### Task 4: db-host singleton wiring + main control port + utilityProcess supervision
 
 **Files:**
+
 - Modify: `src/db-host/index.ts`, `src/main/index.ts`
 
 **Interfaces:**
+
 - Consumes: `HostApiImpl`, `ConnectionRegistry`, `PostgresAdapter`, `serveRpc`, `createRpcClient`, `HostApi`.
 - Produces: db-host serves `HostApi` (one singleton registry) on every port; main holds `hostControl: HostApi` RPC client over a private control port; main respawns db-host on exit. Task 6 uses `hostControl` for secret-bearing opens.
 
@@ -485,6 +531,7 @@ process.parentPort.on('message', (e) => {
   port.start()
 })
 ```
+
 Note: connections now outlive individual renderer ports (they're in the singleton registry, closed explicitly via closeConnection or process exit), so the M1 per-port `adapter.disconnect()` on close is intentionally removed — closing a renderer port must NOT drop live connections other ports may use.
 
 - [ ] **Step 2: Rewrite main/index.ts — control port, supervision, keep renderer port flow**
@@ -523,10 +570,13 @@ function startDbHost(): void {
 
 function createWindow(): void {
   const win = new BrowserWindow({
-    width: 1200, height: 800,
+    width: 1200,
+    height: 800,
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
-      contextIsolation: true, nodeIntegration: false, sandbox: false
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
     }
   })
   if (process.env['ELECTRON_RENDERER_URL']) void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
@@ -564,14 +614,17 @@ git commit -m "feat: singleton registry + main control port + db-host supervisio
 ### Task 5: Profile store (main)
 
 **Files:**
+
 - Create: `src/main/profile-store.ts`, `tests/unit/profile-store.test.ts`
 
 **Interfaces:**
+
 - Produces: `class ProfileStore` with `constructor(filePath: string)`, `list() → Promise<ConnectionProfile[]>`, `save(profile) → Promise<void>` (upsert by id, strips `password`/`sshPassphrase` before writing), `delete(id) → Promise<void>`. Task 6 composes it with secrets; Task 9 exposes via IPC.
 
 - [ ] **Step 1: Write failing unit test**
 
 `tests/unit/profile-store.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
@@ -581,8 +634,14 @@ import { ProfileStore } from '../../src/main/profile-store'
 import type { ConnectionProfile } from '../../src/shared/adapter/types'
 
 const base: ConnectionProfile = {
-  id: 'p1', name: 'local', engine: 'postgres',
-  host: 'localhost', port: 5432, database: 'db', user: 'u', password: 'secret'
+  id: 'p1',
+  name: 'local',
+  engine: 'postgres',
+  host: 'localhost',
+  port: 5432,
+  database: 'db',
+  user: 'u',
+  password: 'secret'
 }
 
 let dir: string
@@ -627,6 +686,7 @@ Expected: FAIL — module missing.
 - [ ] **Step 3: Implement**
 
 `src/main/profile-store.ts`:
+
 ```ts
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
@@ -668,6 +728,7 @@ export class ProfileStore {
 - [ ] **Step 4: Verify pass + commit**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
+
 ```bash
 git add src/main/profile-store.ts tests/unit/profile-store.test.ts
 git commit -m "feat: profile store persisting non-secret connection fields"
@@ -678,14 +739,17 @@ git commit -m "feat: profile store persisting non-secret connection fields"
 ### Task 6: Secret store (safeStorage) + connect wiring
 
 **Files:**
+
 - Create: `src/main/secret-store.ts`, `tests/unit/secret-store.test.ts`
 
 **Interfaces:**
+
 - Produces: `class SecretStore` with `constructor(filePath: string, crypto: SafeStorageLike)`, `set(id, secrets) → Promise<void>`, `get(id) → Promise<StoredSecrets>`, `delete(id) → Promise<void>` where `StoredSecrets = { password?: string; sshPassphrase?: string }` and `SafeStorageLike = { isEncryptionAvailable(): boolean; encryptString(s): Buffer; decryptString(b): string }` (Electron `safeStorage` satisfies this; tests inject a fake). Task 9's IPC merges secret into profile before `hostControl.openConnection`.
 
 - [ ] **Step 1: Write failing unit test (fake crypto)**
 
 `tests/unit/secret-store.test.ts`:
+
 ```ts
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync } from 'node:fs'
@@ -734,6 +798,7 @@ Expected: FAIL — module missing.
 - [ ] **Step 3: Implement**
 
 `src/main/secret-store.ts`:
+
 ```ts
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
@@ -797,11 +862,13 @@ export class SecretStore {
   }
 }
 ```
+
 Note the fake crypto in the test returns a base64 string where Electron returns a Buffer; the store wraps with `Buffer.from(enc)` so both work. In production, pass Electron's `safeStorage` (a `SafeStorageLike`).
 
 - [ ] **Step 4: Verify pass + commit**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
+
 ```bash
 git add src/main/secret-store.ts tests/unit/secret-store.test.ts
 git commit -m "feat: safeStorage-backed secret store, no plaintext fallback"
@@ -812,10 +879,12 @@ git commit -m "feat: safeStorage-backed secret store, no plaintext fallback"
 ### Task 7: SSH tunnel in the registry
 
 **Files:**
+
 - Create: `src/db-host/ssh-tunnel.ts`, `tests/unit/ssh-tunnel.test.ts`
 - Modify: `src/db-host/connection-registry.ts`
 
 **Interfaces:**
+
 - Consumes: `tunnel-ssh`, `SshOptions`, `ConnectionProfile`.
 - Produces: `buildTunnelConfig(profile) → TunnelConfig` (pure, unit-tested) and `openTunnel(profile) → Promise<TunnelHandle>` where `TunnelHandle = { localPort: number; close: () => Promise<void> }`. Registry, when `profile.ssh` present, opens a tunnel and rewrites the adapter's target to `127.0.0.1:localPort`.
 
@@ -829,14 +898,20 @@ pnpm add -D @types/ssh2@^1.15.0
 - [ ] **Step 2: Write failing unit test for config construction (no live SSH)**
 
 `tests/unit/ssh-tunnel.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest'
 import { buildTunnelConfig } from '../../src/db-host/ssh-tunnel'
 import type { ConnectionProfile } from '../../src/shared/adapter/types'
 
 const profile: ConnectionProfile = {
-  id: 'p1', name: 't', engine: 'postgres',
-  host: 'db.internal', port: 5432, database: 'd', user: 'u',
+  id: 'p1',
+  name: 't',
+  engine: 'postgres',
+  host: 'db.internal',
+  port: 5432,
+  database: 'd',
+  user: 'u',
   sshPassphrase: 'pp',
   ssh: { host: 'bastion', port: 22, user: 'ops', authMethod: 'password' }
 }
@@ -855,13 +930,18 @@ describe('buildTunnelConfig', () => {
     expect(cfg.ssh.privateKey).toBeUndefined()
   })
   it('uses privateKey + passphrase when authMethod is key', () => {
-    const p = { ...profile, ssh: { ...profile.ssh!, authMethod: 'key' as const, privateKeyPath: '/k' } }
+    const p = {
+      ...profile,
+      ssh: { ...profile.ssh!, authMethod: 'key' as const, privateKeyPath: '/k' }
+    }
     const cfg = buildTunnelConfig(p, undefined, Buffer.from('KEY'))
     expect(cfg.ssh.privateKey?.toString()).toBe('KEY')
     expect(cfg.ssh.passphrase).toBe('pp')
   })
   it('throws when profile has no ssh block', () => {
-    expect(() => buildTunnelConfig({ ...profile, ssh: undefined }, undefined, undefined)).toThrow(/no ssh/i)
+    expect(() => buildTunnelConfig({ ...profile, ssh: undefined }, undefined, undefined)).toThrow(
+      /no ssh/i
+    )
   })
 })
 ```
@@ -874,6 +954,7 @@ Expected: FAIL — module missing.
 - [ ] **Step 4: Implement ssh-tunnel.ts**
 
 `src/db-host/ssh-tunnel.ts`:
+
 ```ts
 import { createTunnel } from 'tunnel-ssh'
 import type { ConnectionProfile } from '../shared/adapter/types'
@@ -924,8 +1005,14 @@ export async function openTunnel(
   const [server] = await createTunnel(
     { autoClose: false },
     { host: '127.0.0.1', port: 0 }, // OS-assigned local port
-    { host: cfg.ssh.host, port: cfg.ssh.port, username: cfg.ssh.username,
-      password: cfg.ssh.password, privateKey: cfg.ssh.privateKey, passphrase: cfg.ssh.passphrase },
+    {
+      host: cfg.ssh.host,
+      port: cfg.ssh.port,
+      username: cfg.ssh.username,
+      password: cfg.ssh.password,
+      privateKey: cfg.ssh.privateKey,
+      passphrase: cfg.ssh.passphrase
+    },
     { dstAddr: cfg.forward.dstAddr, dstPort: cfg.forward.dstPort }
   )
   const addr = server.address()
@@ -940,6 +1027,7 @@ export async function openTunnel(
 - [ ] **Step 5: Wire tunnel into ConnectionRegistry.open**
 
 Modify `src/db-host/connection-registry.ts` — extend `Entry` with `tunnel?: TunnelHandle`, and in `open`, when `profile.ssh` is set, open a tunnel first and connect the adapter to the local port. Add the import and a `readKey` helper injected for testability, but default to reading the file. Full revised file:
+
 ```ts
 import { readFile } from 'node:fs/promises'
 import type { DbAdapter } from '../shared/adapter/db-adapter'
@@ -965,9 +1053,10 @@ export class ConnectionRegistry {
     let tunnel: TunnelHandle | undefined
     let effective = profile
     if (profile.ssh) {
-      const privateKey = profile.ssh.authMethod === 'key' && profile.ssh.privateKeyPath
-        ? await readFile(profile.ssh.privateKeyPath)
-        : undefined
+      const privateKey =
+        profile.ssh.authMethod === 'key' && profile.ssh.privateKeyPath
+          ? await readFile(profile.ssh.privateKeyPath)
+          : undefined
       tunnel = await openTunnel(profile, profile.password ? undefined : undefined, privateKey)
       // Note: SSH password (if authMethod password) is carried on profile.sshPassphrase?
       // No — SSH password is a distinct secret; see Task 9 wiring which passes it.
@@ -1004,6 +1093,7 @@ export class ConnectionRegistry {
   }
 }
 ```
+
 CORRECTION for the SSH-password path: the registry's `open` needs the SSH password when `authMethod === 'password'`. Rather than thread another parameter through `HostApi.openConnection`, carry the SSH password on the profile as a dedicated transient secret field. Add `sshPassword?: string` to `ConnectionProfile` (alongside `sshPassphrase`, secret, never persisted — Task 1's strip list must include it; update ProfileStore's destructure in Task 5 to also strip `sshPassword`). Then in `open`: `tunnel = await openTunnel(profile, profile.ssh.authMethod === 'password' ? profile.sshPassword : undefined, privateKey)`. Apply this: (a) add `sshPassword?: string` in Task 1's types, (b) add it to ProfileStore's stripped fields in Task 5, (c) use it here.
 
 - [ ] **Step 6: Verify**
@@ -1023,11 +1113,13 @@ git commit -m "feat: SSH tunnel support in ConnectionRegistry"
 ### Task 8: Tailwind v4 setup
 
 **Files:**
+
 - Modify: `electron.vite.config.ts`
 - Create: `src/renderer/src/index.css`
 - Modify: `src/renderer/src/main.tsx` (import css)
 
 **Interfaces:**
+
 - Produces: Tailwind utilities available in renderer JSX; build emits a CSS bundle.
 
 - [ ] **Step 1: Install**
@@ -1039,6 +1131,7 @@ pnpm add -D tailwindcss@^4.0.0 @tailwindcss/vite@^4.0.0
 - [ ] **Step 2: Add the plugin to the renderer build**
 
 In `electron.vite.config.ts`, import and add the plugin to `renderer.plugins`:
+
 ```ts
 import tailwindcss from '@tailwindcss/vite'
 // ...
@@ -1052,6 +1145,7 @@ import tailwindcss from '@tailwindcss/vite'
 - [ ] **Step 3: Create the Tailwind entry css**
 
 `src/renderer/src/index.css`:
+
 ```css
 @import 'tailwindcss';
 ```
@@ -1059,6 +1153,7 @@ import tailwindcss from '@tailwindcss/vite'
 - [ ] **Step 4: Import css in main.tsx**
 
 Add to the top of `src/renderer/src/main.tsx`:
+
 ```ts
 import './index.css'
 ```
@@ -1080,16 +1175,19 @@ git commit -m "chore: Tailwind v4 in the renderer build"
 ### Task 9: Preload bridge + renderer RPC client + Zustand store + IPC handlers
 
 **Files:**
+
 - Create: `src/main/ipc.ts`, `src/renderer/src/rpc.ts`, `src/renderer/src/store.ts`
 - Modify: `src/preload/index.ts`, `src/main/index.ts`
 
 **Interfaces:**
+
 - Consumes: `ProfileStore` (5), `SecretStore` (6), `hostControl` (4), `HostApi`, `createRpcClient`.
 - Produces: `window.fordb` exposes `{ getDbHostPort(): Promise<PortLike>; profiles: { list, save, delete }; connection: { open(profileId), test(profileId), close(connectionId) } }`. Renderer `useConnStore` (Zustand) holds `{ profiles, activeConnectionId, ... }`. Task 10-12 consume the store + `window.fordb`.
 
 - [ ] **Step 1: main/ipc.ts — profile + connection handlers**
 
 `src/main/ipc.ts`:
+
 ```ts
 import { ipcMain, safeStorage, app } from 'electron'
 import { join } from 'node:path'
@@ -1102,15 +1200,25 @@ import type { HostApi } from '../shared/host/host-api'
 export function registerIpc(getHostControl: () => HostApi | null): void {
   const dir = app.getPath('userData')
   const profiles = new ProfileStore(join(dir, 'profiles.json'))
-  const secrets = new SecretStore(join(dir, 'secrets.json'), safeStorage as unknown as SafeStorageLike)
+  const secrets = new SecretStore(
+    join(dir, 'secrets.json'),
+    safeStorage as unknown as SafeStorageLike
+  )
 
   ipcMain.handle('profiles:list', () => profiles.list())
-  ipcMain.handle('profiles:save', async (_e, profile: ConnectionProfile, secretFields: { password?: string; sshPassword?: string; sshPassphrase?: string }) => {
-    await profiles.save(profile)
-    if (secretFields.password || secretFields.sshPassword || secretFields.sshPassphrase) {
-      await secrets.set(profile.id, secretFields)
+  ipcMain.handle(
+    'profiles:save',
+    async (
+      _e,
+      profile: ConnectionProfile,
+      secretFields: { password?: string; sshPassword?: string; sshPassphrase?: string }
+    ) => {
+      await profiles.save(profile)
+      if (secretFields.password || secretFields.sshPassword || secretFields.sshPassphrase) {
+        await secrets.set(profile.id, secretFields)
+      }
     }
-  })
+  )
   ipcMain.handle('profiles:delete', async (_e, id: string) => {
     await profiles.delete(id)
     await secrets.delete(id)
@@ -1121,9 +1229,14 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     const profile = all.find((p) => p.id === id)
     if (!profile) throw new Error(`Unknown profile: ${id}`)
     const s = await secrets.get(id)
-    const merged: ConnectionProfile = { ...profile, password: s.password, sshPassphrase: s.sshPassphrase }
+    const merged: ConnectionProfile = {
+      ...profile,
+      password: s.password,
+      sshPassphrase: s.sshPassphrase
+    }
     const withSshPw = s as { sshPassword?: string }
-    if (withSshPw.sshPassword) (merged as { sshPassword?: string }).sshPassword = withSshPw.sshPassword
+    if (withSshPw.sshPassword)
+      (merged as { sshPassword?: string }).sshPassword = withSshPw.sshPassword
     return merged
   }
 
@@ -1145,22 +1258,25 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
   void readFile // reserved for future key-file preload; keep import set stable
 }
 ```
+
 Note: `SecretStore.set` currently types secrets as `{ password?; sshPassphrase? }`; widen `StoredSecrets` in Task 6 to also include `sshPassword?: string` so the SSH password persists. Apply that one-field addition to Task 6's `StoredSecrets` when implementing.
 
 - [ ] **Step 2: Call registerIpc from main and expose hostControl getter**
 
 In `src/main/index.ts`, import `registerIpc` and call it inside `app.whenReady().then`, passing `() => hostControl`:
+
 ```ts
 import { registerIpc } from './ipc'
 // inside whenReady:
-  startDbHost()
-  registerIpc(() => hostControl)
-  createWindow()
+startDbHost()
+registerIpc(() => hostControl)
+createWindow()
 ```
 
 - [ ] **Step 3: preload — expose the API**
 
 Replace `src/preload/index.ts`'s exposed object (keep the existing getDbHostPort PortLike wrapper from M1, add the new namespaces):
+
 ```ts
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PortLike } from '../shared/rpc/protocol'
@@ -1174,7 +1290,9 @@ function getDbHostPort(): Promise<PortLike> {
       port.start()
       resolve({
         postMessage: (msg) => port.postMessage(msg),
-        onMessage: (cb) => { port.onmessage = (e): void => cb(e.data) }
+        onMessage: (cb) => {
+          port.onmessage = (e): void => cb(e.data)
+        }
       })
     })
     void ipcRenderer.invoke('db-host:request-port')
@@ -1185,14 +1303,18 @@ contextBridge.exposeInMainWorld('fordb', {
   getDbHostPort,
   profiles: {
     list: (): Promise<ConnectionProfile[]> => ipcRenderer.invoke('profiles:list'),
-    save: (p: ConnectionProfile, secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }): Promise<void> =>
-      ipcRenderer.invoke('profiles:save', p, secrets),
+    save: (
+      p: ConnectionProfile,
+      secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }
+    ): Promise<void> => ipcRenderer.invoke('profiles:save', p, secrets),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('profiles:delete', id)
   },
   connection: {
-    test: (profileId: string): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('connection:test', profileId),
+    test: (profileId: string): Promise<{ ok: boolean; error?: string }> =>
+      ipcRenderer.invoke('connection:test', profileId),
     open: (profileId: string): Promise<string> => ipcRenderer.invoke('connection:open', profileId),
-    close: (connectionId: string): Promise<void> => ipcRenderer.invoke('connection:close', connectionId)
+    close: (connectionId: string): Promise<void> =>
+      ipcRenderer.invoke('connection:close', connectionId)
   }
 })
 ```
@@ -1200,6 +1322,7 @@ contextBridge.exposeInMainWorld('fordb', {
 - [ ] **Step 4: renderer rpc.ts — HostApi client over the db-host port**
 
 `src/renderer/src/rpc.ts`:
+
 ```ts
 import { createRpcClient } from '../../shared/rpc/client'
 import type { HostApi } from '../../shared/host/host-api'
@@ -1210,7 +1333,10 @@ declare global {
       getDbHostPort: () => Promise<import('../../shared/rpc/protocol').PortLike>
       profiles: {
         list: () => Promise<import('../../shared/adapter/types').ConnectionProfile[]>
-        save: (p: import('../../shared/adapter/types').ConnectionProfile, secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }) => Promise<void>
+        save: (
+          p: import('../../shared/adapter/types').ConnectionProfile,
+          secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }
+        ) => Promise<void>
         delete: (id: string) => Promise<void>
       }
       connection: {
@@ -1234,6 +1360,7 @@ export function hostApi(): Promise<HostApi> {
 - [ ] **Step 5: store.ts — Zustand**
 
 `src/renderer/src/store.ts`:
+
 ```ts
 import { create } from 'zustand'
 import type { ConnectionProfile } from '../../shared/adapter/types'
@@ -1252,7 +1379,8 @@ export const useConnStore = create<ConnState>((set) => ({
   activeConnectionId: null,
   activeProfileId: null,
   loadProfiles: async () => set({ profiles: await window.fordb.profiles.list() }),
-  setActive: (connectionId, profileId) => set({ activeConnectionId: connectionId, activeProfileId: profileId }),
+  setActive: (connectionId, profileId) =>
+    set({ activeConnectionId: connectionId, activeProfileId: profileId }),
   clearActive: () => set({ activeConnectionId: null, activeProfileId: null })
 }))
 ```
@@ -1262,6 +1390,7 @@ export const useConnStore = create<ConnState>((set) => ({
 ```bash
 pnpm add zustand@^5.0.0
 ```
+
 Run: `pnpm typecheck && pnpm lint && pnpm build`
 Expected: clean build. (No new unit test — these are thin IPC/glue wrappers; they're exercised by the Playwright smoke in Task 12 and the dev run.)
 
@@ -1277,10 +1406,12 @@ git commit -m "feat: IPC bridge, renderer HostApi client, and connection store"
 ### Task 10: Connection list + profile form + test-connection UI
 
 **Files:**
+
 - Create: `src/renderer/src/components/ConnectionList.tsx`, `src/renderer/src/components/ProfileForm.tsx`
 - Modify: `src/renderer/src/App.tsx`
 
 **Interfaces:**
+
 - Consumes: `useConnStore`, `window.fordb.profiles`, `window.fordb.connection`.
 - Produces: `<ConnectionList onConnect={(connectionId, profileId) => void} onEdit={(profile) => void} />`, `<ProfileForm profile? onSaved={() => void} onCancel={() => void} />`. Task 11 renders the tree when a connection is active.
 
@@ -1298,7 +1429,9 @@ export function ConnectionList(props: {
 }): React.JSX.Element {
   const profiles = useConnStore((s) => s.profiles)
   const load = useConnStore((s) => s.loadProfiles)
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+  }, [load])
 
   async function connect(id: string): Promise<void> {
     const connectionId = await window.fordb.connection.open(id)
@@ -1307,15 +1440,36 @@ export function ConnectionList(props: {
 
   return (
     <div className="flex flex-col gap-1 p-2 w-64 border-r border-neutral-800 h-full">
-      <button className="text-left px-2 py-1 rounded bg-blue-600 text-white mb-2" onClick={props.onNew}>
+      <button
+        className="text-left px-2 py-1 rounded bg-blue-600 text-white mb-2"
+        onClick={props.onNew}
+      >
         + New connection
       </button>
       {profiles.map((p) => (
-        <div key={p.id} className="group flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-800">
-          <button className="text-left flex-1" onClick={() => void connect(p.id)}>{p.name}</button>
-          <button className="opacity-0 group-hover:opacity-100 text-xs px-1" onClick={() => props.onEdit(p)}>edit</button>
-          <button className="opacity-0 group-hover:opacity-100 text-xs px-1"
-            onClick={() => { void window.fordb.profiles.delete(p.id).then(() => useConnStore.getState().loadProfiles()) }}>del</button>
+        <div
+          key={p.id}
+          className="group flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-800"
+        >
+          <button className="text-left flex-1" onClick={() => void connect(p.id)}>
+            {p.name}
+          </button>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-xs px-1"
+            onClick={() => props.onEdit(p)}
+          >
+            edit
+          </button>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-xs px-1"
+            onClick={() => {
+              void window.fordb.profiles
+                .delete(p.id)
+                .then(() => useConnStore.getState().loadProfiles())
+            }}
+          >
+            del
+          </button>
         </div>
       ))}
     </div>
@@ -1349,7 +1503,15 @@ export function ProfileForm(props: {
   const [testMsg, setTestMsg] = useState('')
 
   function build(): ConnectionProfile {
-    return { id: p?.id ?? newId(), name, engine: 'postgres', host, port: Number(port), database, user }
+    return {
+      id: p?.id ?? newId(),
+      name,
+      engine: 'postgres',
+      host,
+      port: Number(port),
+      database,
+      user
+    }
   }
 
   async function save(): Promise<void> {
@@ -1367,22 +1529,60 @@ export function ProfileForm(props: {
   const field = 'px-2 py-1 rounded bg-neutral-900 border border-neutral-700'
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
-      <input className={field} placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-      <input className={field} placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
-      <input className={field} placeholder="Port" value={port} onChange={(e) => setPort(e.target.value)} />
-      <input className={field} placeholder="Database" value={database} onChange={(e) => setDatabase(e.target.value)} />
-      <input className={field} placeholder="User" value={user} onChange={(e) => setUser(e.target.value)} />
-      <input className={field} type="password" placeholder="Password" value={password} onChange={(e) => setPassword(e.target.value)} />
+      <input
+        className={field}
+        placeholder="Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        className={field}
+        placeholder="Host"
+        value={host}
+        onChange={(e) => setHost(e.target.value)}
+      />
+      <input
+        className={field}
+        placeholder="Port"
+        value={port}
+        onChange={(e) => setPort(e.target.value)}
+      />
+      <input
+        className={field}
+        placeholder="Database"
+        value={database}
+        onChange={(e) => setDatabase(e.target.value)}
+      />
+      <input
+        className={field}
+        placeholder="User"
+        value={user}
+        onChange={(e) => setUser(e.target.value)}
+      />
+      <input
+        className={field}
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+      />
       <div className="flex gap-2">
-        <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={() => void save()}>Save</button>
-        <button className="px-3 py-1 rounded border border-neutral-600" onClick={() => void test()}>Test</button>
-        <button className="px-3 py-1 rounded" onClick={props.onCancel}>Cancel</button>
+        <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={() => void save()}>
+          Save
+        </button>
+        <button className="px-3 py-1 rounded border border-neutral-600" onClick={() => void test()}>
+          Test
+        </button>
+        <button className="px-3 py-1 rounded" onClick={props.onCancel}>
+          Cancel
+        </button>
       </div>
       {testMsg && <div className="text-sm">{testMsg}</div>}
     </div>
   )
 }
 ```
+
 Note: SSL/SSH form sections are additive fields following the same pattern; for M2's exit criterion (local + SSH-tunneled connect) add an SSH sub-form (host/user/port/authMethod/password/key) that populates `profile.ssh` and passes `sshPassword`/`sshPassphrase` in the secrets arg. Keep the SSL/SSH sections collapsed by default. The reviewer should confirm SSH fields are present since the exit criterion requires an SSH connection; if the implementer omits them, that is a spec gap.
 
 - [ ] **Step 3: App.tsx — compose list/form/tree**
@@ -1395,7 +1595,8 @@ import { SchemaTree } from './components/SchemaTree'
 import { useConnStore } from './store'
 import type { ConnectionProfile } from '../../shared/adapter/types'
 
-type View = { kind: 'welcome' } | { kind: 'form'; profile?: ConnectionProfile } | { kind: 'connected' }
+type View =
+  { kind: 'welcome' } | { kind: 'form'; profile?: ConnectionProfile } | { kind: 'connected' }
 
 export function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ kind: 'welcome' })
@@ -1406,11 +1607,22 @@ export function App(): React.JSX.Element {
       <ConnectionList
         onNew={() => setView({ kind: 'form' })}
         onEdit={(profile) => setView({ kind: 'form', profile })}
-        onConnect={(connectionId, profileId) => { setActive(connectionId, profileId); setView({ kind: 'connected' }) }}
+        onConnect={(connectionId, profileId) => {
+          setActive(connectionId, profileId)
+          setView({ kind: 'connected' })
+        }}
       />
       <div className="flex-1 overflow-auto">
-        {view.kind === 'welcome' && <div className="p-6 text-neutral-400">Select or create a connection.</div>}
-        {view.kind === 'form' && <ProfileForm profile={view.profile} onSaved={() => setView({ kind: 'welcome' })} onCancel={() => setView({ kind: 'welcome' })} />}
+        {view.kind === 'welcome' && (
+          <div className="p-6 text-neutral-400">Select or create a connection.</div>
+        )}
+        {view.kind === 'form' && (
+          <ProfileForm
+            profile={view.profile}
+            onSaved={() => setView({ kind: 'welcome' })}
+            onCancel={() => setView({ kind: 'welcome' })}
+          />
+        )}
         {view.kind === 'connected' && <SchemaTree />}
       </div>
     </div>
@@ -1435,9 +1647,11 @@ git commit -m "feat: connection list and profile form with test-connection"
 ### Task 11: Schema tree on connect
 
 **Files:**
+
 - Create: `src/renderer/src/components/SchemaTree.tsx`
 
 **Interfaces:**
+
 - Consumes: `useConnStore` (activeConnectionId), `hostApi()` (renderer RPC client), react-arborist.
 - Produces: `<SchemaTree />` rendering databases→schemas→tables/views lazily via HostApi introspection routed by the active connectionId.
 
@@ -1450,13 +1664,19 @@ pnpm add react-arborist@^3.4.0
 - [ ] **Step 2: Implement (lazy load schemas → tables)**
 
 `src/renderer/src/components/SchemaTree.tsx`:
+
 ```tsx
 import { useEffect, useState } from 'react'
 import { Tree } from 'react-arborist'
 import { useConnStore } from '../store'
 import { hostApi } from '../rpc'
 
-interface Node { id: string; name: string; kind: 'schema' | 'table' | 'view'; children?: Node[] }
+interface Node {
+  id: string
+  name: string
+  kind: 'schema' | 'table' | 'view'
+  children?: Node[]
+}
 
 export function SchemaTree(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
@@ -1470,19 +1690,29 @@ export function SchemaTree(): React.JSX.Element {
       try {
         const api = await hostApi()
         const schemas = await api.listSchemas(connId)
-        const built = await Promise.all(schemas.map(async (schema) => {
-          const tables = await api.listTables(connId, schema)
-          return {
-            id: `s:${schema}`, name: schema, kind: 'schema' as const,
-            children: tables.map((t) => ({ id: `t:${schema}.${t.name}`, name: t.name, kind: t.type }))
-          }
-        }))
+        const built = await Promise.all(
+          schemas.map(async (schema) => {
+            const tables = await api.listTables(connId, schema)
+            return {
+              id: `s:${schema}`,
+              name: schema,
+              kind: 'schema' as const,
+              children: tables.map((t) => ({
+                id: `t:${schema}.${t.name}`,
+                name: t.name,
+                kind: t.type
+              }))
+            }
+          })
+        )
         if (!cancelled) setNodes(built)
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err))
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [connId])
 
   if (error) return <div className="p-4 text-red-400">Schema load failed: {error}</div>
@@ -1490,8 +1720,14 @@ export function SchemaTree(): React.JSX.Element {
     <div className="p-2">
       <Tree data={nodes} openByDefault={false} width={400} height={600} indent={16} rowHeight={24}>
         {({ node, style, dragHandle }) => (
-          <div style={style} ref={dragHandle} className="flex items-center gap-1 text-sm cursor-default">
-            <span className="text-neutral-500">{node.data.kind === 'schema' ? '▸' : node.data.kind === 'view' ? '◇' : '▪'}</span>
+          <div
+            style={style}
+            ref={dragHandle}
+            className="flex items-center gap-1 text-sm cursor-default"
+          >
+            <span className="text-neutral-500">
+              {node.data.kind === 'schema' ? '▸' : node.data.kind === 'view' ? '◇' : '▪'}
+            </span>
             <span>{node.data.name}</span>
           </div>
         )}
@@ -1500,6 +1736,7 @@ export function SchemaTree(): React.JSX.Element {
   )
 }
 ```
+
 Note: this eager-loads all tables per schema on connect (fine for the fixture and typical schemas). True lazy-on-expand can be added later; the spec's "lazy-loaded" bar is met at the schema granularity and the read-only proof-of-connection goal is satisfied.
 
 - [ ] **Step 3: Verify**
@@ -1520,10 +1757,12 @@ git commit -m "feat: read-only schema tree on active connection"
 ### Task 12: Command palette + connection commands + Playwright smoke
 
 **Files:**
+
 - Create: `src/renderer/src/components/CommandPalette.tsx`, `tests/e2e/connect.spec.ts`, `playwright.config.ts`
 - Modify: `src/renderer/src/App.tsx`, `package.json`
 
 **Interfaces:**
+
 - Consumes: `useConnStore`, the App view setters.
 - Produces: Ctrl+K palette registering "New connection", "Disconnect". A Playwright smoke driving create→test→connect→tree.
 
@@ -1532,14 +1771,21 @@ git commit -m "feat: read-only schema tree on active connection"
 ```tsx
 import { useEffect, useState } from 'react'
 
-interface Command { id: string; label: string; run: () => void }
+interface Command {
+  id: string
+  label: string
+  run: () => void
+}
 
 export function CommandPalette(props: { commands: Command[] }): React.JSX.Element | null {
   const [open, setOpen] = useState(false)
   const [q, setQ] = useState('')
   useEffect(() => {
     function onKey(e: KeyboardEvent): void {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setOpen((v) => !v) }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setOpen((v) => !v)
+      }
       if (e.key === 'Escape') setOpen(false)
     }
     window.addEventListener('keydown', onKey)
@@ -1548,14 +1794,33 @@ export function CommandPalette(props: { commands: Command[] }): React.JSX.Elemen
   if (!open) return null
   const filtered = props.commands.filter((c) => c.label.toLowerCase().includes(q.toLowerCase()))
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-start justify-center pt-32" onClick={() => setOpen(false)}>
-      <div className="bg-neutral-900 border border-neutral-700 rounded w-96" onClick={(e) => e.stopPropagation()}>
-        <input autoFocus className="w-full px-3 py-2 bg-transparent outline-none" placeholder="Command…"
-          value={q} onChange={(e) => setQ(e.target.value)} />
+    <div
+      className="fixed inset-0 bg-black/50 flex items-start justify-center pt-32"
+      onClick={() => setOpen(false)}
+    >
+      <div
+        className="bg-neutral-900 border border-neutral-700 rounded w-96"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <input
+          autoFocus
+          className="w-full px-3 py-2 bg-transparent outline-none"
+          placeholder="Command…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
         <div className="max-h-64 overflow-auto">
           {filtered.map((c) => (
-            <button key={c.id} className="block w-full text-left px-3 py-2 hover:bg-neutral-800"
-              onClick={() => { setOpen(false); c.run() }}>{c.label}</button>
+            <button
+              key={c.id}
+              className="block w-full text-left px-3 py-2 hover:bg-neutral-800"
+              onClick={() => {
+                setOpen(false)
+                c.run()
+              }}
+            >
+              {c.label}
+            </button>
           ))}
         </div>
       </div>
@@ -1567,6 +1832,7 @@ export function CommandPalette(props: { commands: Command[] }): React.JSX.Elemen
 - [ ] **Step 2: Wire palette into App.tsx**
 
 Add to `App.tsx`: build a `commands` array (New connection → `setView({kind:'form'})`; Disconnect → close active connection + `clearActive()` + welcome view) and render `<CommandPalette commands={commands} />` inside the root div. Disconnect command:
+
 ```tsx
 import { CommandPalette } from './components/CommandPalette'
 // inside App, after hooks:
@@ -1574,10 +1840,15 @@ const clearActive = useConnStore((s) => s.clearActive)
 const activeConnectionId = useConnStore((s) => s.activeConnectionId)
 const commands = [
   { id: 'new', label: 'New connection', run: () => setView({ kind: 'form' }) },
-  { id: 'disconnect', label: 'Disconnect', run: () => {
+  {
+    id: 'disconnect',
+    label: 'Disconnect',
+    run: () => {
       if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
-      clearActive(); setView({ kind: 'welcome' })
-    } }
+      clearActive()
+      setView({ kind: 'welcome' })
+    }
+  }
 ]
 // render <CommandPalette commands={commands} /> before closing </div>
 ```
@@ -1587,7 +1858,9 @@ const commands = [
 ```bash
 pnpm add -D @playwright/test@^1.50.0
 ```
+
 `playwright.config.ts`:
+
 ```ts
 import { defineConfig } from '@playwright/test'
 export default defineConfig({
@@ -1596,12 +1869,17 @@ export default defineConfig({
   use: { headless: true }
 })
 ```
+
 `tests/e2e/connect.spec.ts`:
+
 ```ts
 import { test, expect, _electron as electron } from '@playwright/test'
 
 test('create profile, test, connect, see schema tree', async () => {
-  const app = await electron.launch({ args: ['out/main/index.js'], env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' } })
+  const app = await electron.launch({
+    args: ['out/main/index.js'],
+    env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
+  })
   const win = await app.firstWindow()
 
   await win.getByText('+ New connection').click()
@@ -1620,6 +1898,7 @@ test('create profile, test, connect, see schema tree', async () => {
   await app.close()
 })
 ```
+
 Add scripts to package.json: `"e2e": "playwright test"`. The e2e requires `pnpm build` first and `pnpm db:up`. Document in the report; do NOT add e2e to the default `pnpm test`.
 
 - [ ] **Step 4: Verify**
