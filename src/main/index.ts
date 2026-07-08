@@ -3,6 +3,7 @@ import { join } from 'node:path'
 import { createRpcClient } from '../shared/rpc/client'
 import type { PortLike } from '../shared/rpc/protocol'
 import type { HostApi } from '../shared/host/host-api'
+import { registerIpc } from './ipc'
 
 let dbHost: Electron.UtilityProcess | null = null
 export let hostControl: HostApi | null = null
@@ -78,6 +79,7 @@ ipcMain.handle('db-host:request-port', (event) => {
 
 void app.whenReady().then(() => {
   startDbHost()
+  registerIpc(() => hostControl)
   createWindow()
 })
 app.on('before-quit', () => {

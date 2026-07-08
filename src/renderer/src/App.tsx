@@ -1,13 +1,10 @@
 import { useEffect, useState } from 'react'
 import { createRpcClient } from '../../shared/rpc/client'
 import type { DbAdapter } from '../../shared/adapter/db-adapter'
-import type { PortLike } from '../../shared/rpc/protocol'
-
-declare global {
-  interface Window {
-    fordb: { getDbHostPort: () => Promise<PortLike> }
-  }
-}
+// The global `Window.fordb` type is declared once in ./rpc.ts (imported for
+// its ambient `declare global` augmentation as well as the RPC client it
+// exports for Task 10+).
+import './rpc'
 
 export function App(): React.JSX.Element {
   const [status, setStatus] = useState('starting…')
