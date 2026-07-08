@@ -3,6 +3,8 @@ import { hostApi } from './rpc'
 import { useConnStore } from './store'
 import { isSelectLike } from '@shared/sql/classify'
 import { QueryResultSource } from '@shared/query/result-source'
+import { queryClient } from './query/client'
+import { invalidateIntrospection } from './query/introspection'
 
 const PAGE_SIZE = 1000
 
@@ -96,6 +98,8 @@ export const useQueryStore = create<QueryState>((set, get) => ({
             elapsedMs: performance.now() - started
           })
         }))
+        // A non-SELECT may have been DDL — the schema could have changed.
+        void invalidateIntrospection(queryClient, connId)
       }
     } catch (err) {
       const cur = get().tabs.find((t) => t.id === id)?.source
