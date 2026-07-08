@@ -33,8 +33,11 @@ export class ConnectionRegistry {
       )
       effective = { ...profile, host: '127.0.0.1', port: tunnel.localPort }
     }
-    const adapter = this.makeAdapter()
+    // makeAdapter() inside the guard too: if it throws after a tunnel was
+    // opened, the tunnel must still be torn down rather than leaked.
+    let adapter: DbAdapter
     try {
+      adapter = this.makeAdapter()
       await adapter.connect(effective)
     } catch (err) {
       await tunnel?.close()
