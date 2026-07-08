@@ -1,0 +1,57 @@
+import { useEffect } from 'react'
+import { useConnStore } from '../store'
+import type { ConnectionProfile } from '../../../shared/adapter/types'
+
+export function ConnectionList(props: {
+  onConnect: (connectionId: string, profileId: string) => void
+  onEdit: (profile: ConnectionProfile) => void
+  onNew: () => void
+}): React.JSX.Element {
+  const profiles = useConnStore((s) => s.profiles)
+  const load = useConnStore((s) => s.loadProfiles)
+  useEffect(() => {
+    void load()
+  }, [load])
+
+  async function connect(id: string): Promise<void> {
+    const connectionId = await window.fordb.connection.open(id)
+    props.onConnect(connectionId, id)
+  }
+
+  return (
+    <div className="flex flex-col gap-1 p-2 w-64 border-r border-neutral-800 h-full">
+      <button
+        className="text-left px-2 py-1 rounded bg-blue-600 text-white mb-2"
+        onClick={props.onNew}
+      >
+        + New connection
+      </button>
+      {profiles.map((p) => (
+        <div
+          key={p.id}
+          className="group flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-800"
+        >
+          <button className="text-left flex-1" onClick={() => void connect(p.id)}>
+            {p.name}
+          </button>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-xs px-1"
+            onClick={() => props.onEdit(p)}
+          >
+            edit
+          </button>
+          <button
+            className="opacity-0 group-hover:opacity-100 text-xs px-1"
+            onClick={() => {
+              void window.fordb.profiles
+                .delete(p.id)
+                .then(() => useConnStore.getState().loadProfiles())
+            }}
+          >
+            del
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+}
