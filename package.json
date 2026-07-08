@@ -19,9 +19,11 @@
     "test": "vitest run",
     "db:up": "docker compose -f docker-compose.test.yml up -d --wait",
     "db:down": "docker compose -f docker-compose.test.yml down -v",
-    "test:contract": "vitest run -c vitest.contract.config.ts --passWithNoTests"
+    "test:contract": "vitest run -c vitest.contract.config.ts --passWithNoTests",
+    "e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^22.20.1",
     "@types/pg": "^8.20.0",
