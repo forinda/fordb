@@ -63,7 +63,9 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen text-foreground bg-background">
-      <div className="flex flex-col">
+      {/* One unified left sidebar: connections on top, the active connection's
+          schema tree below, theme toggle pinned at the bottom. */}
+      <div className="flex flex-col w-64 border-r border-border">
         <ConnectionList
           onNew={() => setView({ kind: 'form' })}
           onEdit={(profile) => setView({ kind: 'form', profile })}
@@ -72,11 +74,16 @@ export function App(): React.JSX.Element {
             setView({ kind: 'connected' })
           }}
         />
+        {view.kind === 'connected' && (
+          <div className="flex-1 min-h-0 overflow-auto border-t border-border">
+            <SchemaTree />
+          </div>
+        )}
         <div className="p-2 border-t border-border">
           <ThemeToggle />
         </div>
       </div>
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 min-w-0 overflow-auto">
         {view.kind === 'welcome' && (
           <div className="p-6 text-muted-foreground">Select or create a connection.</div>
         )}
@@ -88,13 +95,8 @@ export function App(): React.JSX.Element {
           />
         )}
         {view.kind === 'connected' && (
-          <div className="flex h-full">
-            <div className="w-64 border-r border-border overflow-auto">
-              <SchemaTree />
-            </div>
-            <div className="flex-1 min-w-0">
-              <QueryWorkbench />
-            </div>
+          <div className="h-full">
+            <QueryWorkbench />
           </div>
         )}
       </div>
