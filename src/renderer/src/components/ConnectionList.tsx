@@ -1,7 +1,6 @@
-import { useEffect } from 'react'
-import { useConnStore } from '../store'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import { connectionLabel } from '@shared/connection-label'
+import { useProfiles, useInvalidateProfiles } from '../query/profiles'
 import { Button } from './ui/button'
 
 export function ConnectionList(props: {
@@ -9,11 +8,8 @@ export function ConnectionList(props: {
   onEdit: (profile: ConnectionProfile) => void
   onNew: () => void
 }): React.JSX.Element {
-  const profiles = useConnStore((s) => s.profiles)
-  const load = useConnStore((s) => s.loadProfiles)
-  useEffect(() => {
-    void load()
-  }, [load])
+  const { data: profiles = [] } = useProfiles()
+  const invalidateProfiles = useInvalidateProfiles()
 
   async function connect(id: string): Promise<void> {
     const connectionId = await window.fordb.connection.open(id)
@@ -46,9 +42,7 @@ export function ConnectionList(props: {
           <button
             className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-xs px-1 text-muted-foreground rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
-              void window.fordb.profiles
-                .delete(p.id)
-                .then(() => useConnStore.getState().loadProfiles())
+              void window.fordb.profiles.delete(p.id).then(() => invalidateProfiles())
             }}
           >
             del
