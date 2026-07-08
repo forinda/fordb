@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useConnStore } from '../store'
 import type { ConnectionProfile, SshOptions } from '../../../shared/adapter/types'
+import { parseConnectionUrl } from '../../../shared/connection-url'
 
 function newId(): string {
   return `p-${Date.now().toString(36)}-${Math.floor(performance.now()).toString(36)}`
@@ -36,6 +37,32 @@ export function ProfileForm(props: {
   const [sshPassphrase, setSshPassphrase] = useState('')
 
   const [testMsg, setTestMsg] = useState('')
+
+  // Paste-a-URL import — DataGrip-style. Parsing is pure and only fills the
+  // form fields above; it never auto-submits.
+  const [connUrl, setConnUrl] = useState('')
+  const [urlError, setUrlError] = useState('')
+  const [extraParams, setExtraParams] = useState<Record<string, string>>({})
+
+  function fillFromUrl(): void {
+    if (!connUrl.trim()) return
+    try {
+      const parsed = parseConnectionUrl(connUrl)
+      setUrlError('')
+      if (parsed.profile.host !== undefined) setHost(parsed.profile.host)
+      if (parsed.profile.port !== undefined) setPort(String(parsed.profile.port))
+      if (parsed.profile.database !== undefined) setDatabase(parsed.profile.database)
+      if (parsed.profile.user !== undefined) setUser(parsed.profile.user)
+      if (parsed.password !== undefined) setPassword(parsed.password)
+      if (parsed.profile.ssl !== undefined) {
+        setUseSsl(true)
+        setVerifyCert(parsed.profile.ssl.rejectUnauthorized)
+      }
+      setExtraParams(parsed.extraParams)
+    } catch {
+      setUrlError("Couldn't parse that URL")
+    }
+  }
 
   function build(): ConnectionProfile {
     return {
@@ -84,6 +111,37 @@ export function ProfileForm(props: {
     'px-2 py-1 rounded bg-neutral-900 border border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-400'
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
+      <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-neutral-700">
+        <label className="text-sm text-neutral-300" htmlFor="conn-url">
+          Paste connection URL
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="conn-url"
+            className={`${field} flex-1`}
+            placeholder="postgres://user:pass@host:5432/db?sslmode=require"
+            value={connUrl}
+            onChange={(e) => setConnUrl(e.target.value)}
+            onBlur={fillFromUrl}
+          />
+          <button
+            type="button"
+            className="px-3 py-1 rounded border border-neutral-500 text-neutral-100 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
+            onClick={fillFromUrl}
+          >
+            Fill from URL
+          </button>
+        </div>
+        {urlError && <div className="text-sm text-red-400">{urlError}</div>}
+        {Object.keys(extraParams).length > 0 && (
+          <div className="text-sm text-neutral-400">
+            Extra parameters (not applied yet):{' '}
+            {Object.entries(extraParams)
+              .map(([k, v]) => `${k}=${v}`)
+              .join(', ')}
+          </div>
+        )}
+      </div>
       <input
         className={field}
         placeholder="Name"
