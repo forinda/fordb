@@ -22,5 +22,5 @@
     "vitest.config.ts",
     "vitest.contract.config.ts"
   ],
-  "exclude": ["tests/unit/query-store.test.ts"]
+  "exclude": ["tests/unit/query-store.test.ts", "tests/unit/query-keys.test.ts"]
 }

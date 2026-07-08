@@ -17,6 +17,7 @@
     "src/renderer/src/**/*",
     "src/shared/**/*",
     "src/preload/**/*",
-    "tests/unit/query-store.test.ts"
+    "tests/unit/query-store.test.ts",
+    "tests/unit/query-keys.test.ts"
   ]
 }
