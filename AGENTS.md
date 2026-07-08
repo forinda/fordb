@@ -29,40 +29,43 @@ Key rules that fall out of this:
 - **Connections are addressed by `connectionId`, not by port.** The `ConnectionRegistry` is a db-host process singleton; a `HostApi` facade is served on every RPC port (main's control port + each renderer port), all backed by that one registry. Closing a renderer port must NOT drop registry connections.
 - **The `DbAdapter` interface is the core asset.** It's async + serializable so it crosses the process boundary unchanged. Every engine implements it; a shared contract test suite enforces it.
 
-## File structure
+## Architectural flow
+
+Two channels reach db-host: a **privileged control channel** (main ↔ db-host, carries secrets) and a **renderer data channel** (renderer ↔ db-host, connectionId only). Follow the two lifecycles:
+
+**Opening a connection** (secret-bearing → goes through main):
+
+1. Renderer calls `window.fordb.connection.open(profileId)` (preload → IPC to main).
+2. Main **hydrates**: `ProfileStore` loads the profile, `SecretStore` decrypts its secrets from the keychain, main merges them into a full `ConnectionProfile`.
+3. Main calls `hostControl.openConnection(profile)` over the **control** port.
+4. db-host's `ConnectionRegistry.open` sets up an SSH tunnel if `profile.ssh` is present, constructs the engine adapter, connects it, stores `{adapter, tunnel?}` under a fresh `connectionId`, and returns that id.
+5. The id flows back main → renderer. The renderer now holds only the opaque `connectionId`; secrets stayed in main and db-host.
+
+**Reading schema / running a query** (no secrets → renderer talks to db-host directly):
+
+1. Renderer gets its `HostApi` client via `hostApi()` (RPC over `getDbHostPort`).
+2. Renderer calls e.g. `listSchemas(connectionId)` / `listTables(connectionId, schema)`.
+3. db-host's `HostApiImpl` routes by id through `registry.get(connectionId)` to the adapter; an unknown id becomes an RPC rejection.
+4. Results serialize back over the port. Large result sets stream page-by-page via the adapter's cursor methods.
+
+**Supporting flows:** `testConnection` mirrors the open flow (hydrate → control port) but opens a throwaway adapter, runs `SELECT 1`, and always closes — it never registers a connection. If db-host crashes, main's supervisor respawns it with backoff; in-flight RPC calls reject, and the renderer surfaces the loss rather than hanging.
+
+## Folder layout (a map, not an inventory — files move; trust the layout, grep for specifics)
 
 ```
 src/
-  shared/                     # imported by BOTH main-side and renderer (compiles under both tsconfigs)
-    adapter/types.ts          # ConnectionProfile, ColumnInfo, QueryResult, … (+ secret fields, SshOptions)
-    adapter/db-adapter.ts     # DbAdapter interface — the engine contract
-    host/host-api.ts          # HostApi interface (connectionId-routed), TestResult, ConnectionId
-    rpc/                      # transport-agnostic RPC over a PortLike abstraction
-      protocol.ts             # RpcRequest/Response, RpcError, PortLike
-      server.ts               # serveRpc(port, target)
-      client.ts               # createRpcClient<T>(port)
-  main/
-    index.ts                  # BrowserWindow, spawns db-host, control port, supervision
-    ipc.ts                    # registerIpc — profiles:*/connection:* handlers, secret hydrate
-    profile-store.ts          # profiles.json (secrets stripped)
-    secret-store.ts           # secrets via safeStorage, NO plaintext fallback
-  preload/index.ts            # contextBridge → window.fordb (ESM: emits index.mjs)
-  db-host/
-    index.ts                  # singleton ConnectionRegistry, serves HostApi per port
-    connection-registry.ts    # multi-connection registry (open/get/close), SSH tunnel wiring
-    host-api-impl.ts          # HostApiImpl — testConnection + connectionId routing
-    ssh-tunnel.ts             # buildTunnelConfig (pure) + openTunnel (tunnel-ssh)
-    postgres/                 # PostgresAdapter + introspection SQL
-  renderer/src/
-    rpc.ts                    # hostApi() — renderer's HostApi client over getDbHostPort
-    store.ts                  # Zustand useConnStore
-    components/               # ConnectionList, ProfileForm, SchemaTree, CommandPalette
-    App.tsx, main.tsx, index.css (Tailwind entry)
+  shared/    types + DbAdapter + HostApi contracts, and the transport-agnostic RPC layer
+             (imported by BOTH main-side and renderer; compiles under both tsconfigs)
+  main/      window/menu/keychain, profile + secret stores, IPC handlers, db-host supervision
+  preload/   contextBridge → window.fordb (ESM; emits index.mjs)
+  db-host/   utilityProcess: ConnectionRegistry, HostApi impl, SSH tunnel, per-engine adapters (postgres/, …)
+  renderer/  React UI: RPC client, Zustand store, components
 tests/
-  unit/**/*.test.ts           # fast, no Docker — run by `pnpm test`
-  contract/**/*.contract.test.ts   # against Dockerized Postgres — run by `pnpm test:contract`
-  contract/adapter-contract.ts     # engine-agnostic suite every adapter must pass
+  unit/      fast, no Docker — `pnpm test`
+  contract/  against Dockerized Postgres — `pnpm test:contract`; adapter-contract.ts is the shared suite every engine must pass
 ```
+
+The load-bearing contracts live in `src/shared` — `adapter/db-adapter.ts` (engine interface), `host/host-api.ts` (connectionId-routed facade), `rpc/` (PortLike transport). Start there when tracing anything.
 
 ## Conventions
 
