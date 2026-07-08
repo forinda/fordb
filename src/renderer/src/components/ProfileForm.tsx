@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useConnStore } from '../store'
+import { useInvalidateProfiles } from '../query/profiles'
 import type { ConnectionProfile, SshOptions } from '@shared/adapter/types'
 import { parseConnectionUrl } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
@@ -43,6 +43,7 @@ export function ProfileForm(props: {
   const [sshPassphrase, setSshPassphrase] = useState('')
 
   const [testMsg, setTestMsg] = useState('')
+  const invalidateProfiles = useInvalidateProfiles()
 
   // Paste-a-URL import — DataGrip-style. Parsing is pure and only fills the
   // form fields above; it never auto-submits.
@@ -110,7 +111,7 @@ export function ProfileForm(props: {
 
   async function save(): Promise<void> {
     await window.fordb.profiles.save(build(), secrets())
-    await useConnStore.getState().loadProfiles()
+    invalidateProfiles()
     props.onSaved()
   }
   async function test(): Promise<void> {
