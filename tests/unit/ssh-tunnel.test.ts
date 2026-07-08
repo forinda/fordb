@@ -36,6 +36,24 @@ describe('buildTunnelConfig', () => {
     expect(cfg.ssh.privateKey?.toString()).toBe('KEY')
     expect(cfg.ssh.passphrase).toBe('pp')
   })
+  it('uses the agent socket when authMethod is agent, without password/privateKey', () => {
+    const p = {
+      ...profile,
+      ssh: { ...profile.ssh!, authMethod: 'agent' as const }
+    }
+    const prevSock = process.env.SSH_AUTH_SOCK
+    process.env.SSH_AUTH_SOCK = '/tmp/ssh-agent.sock'
+    try {
+      const cfg = buildTunnelConfig(p, undefined, undefined)
+      expect(cfg.ssh.agent).toBe('/tmp/ssh-agent.sock')
+      expect(cfg.ssh.password).toBeUndefined()
+      expect(cfg.ssh.privateKey).toBeUndefined()
+      expect(cfg.ssh.passphrase).toBeUndefined()
+    } finally {
+      if (prevSock === undefined) delete process.env.SSH_AUTH_SOCK
+      else process.env.SSH_AUTH_SOCK = prevSock
+    }
+  })
   it('throws when profile has no ssh block', () => {
     expect(() => buildTunnelConfig({ ...profile, ssh: undefined }, undefined, undefined)).toThrow(
       /no ssh/i
