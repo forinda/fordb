@@ -5,6 +5,15 @@ export interface SslOptions {
   rejectUnauthorized: boolean
 }
 
+export interface SshOptions {
+  host: string
+  port: number
+  user: string
+  authMethod: 'password' | 'key' | 'agent'
+  /** Path to a private key file; used when authMethod === 'key'. */
+  privateKeyPath?: string
+}
+
 export interface ConnectionProfile {
   id: string
   name: string
@@ -14,7 +23,10 @@ export interface ConnectionProfile {
   database: string
   user: string
   password?: string
+  sshPassword?: string
+  sshPassphrase?: string
   ssl?: SslOptions
+  ssh?: SshOptions
 }
 
 export interface TableInfo {
