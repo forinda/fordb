@@ -22,6 +22,10 @@ export interface ConnectionProfile {
   port: number
   database: string
   user: string
+  // SECRETS — transient, injected at connect time, NEVER persisted. Any new
+  // secret field added here MUST also be stripped in ProfileStore.save()
+  // (src/main/profile-store.ts). See M2 final-review note on nesting these
+  // under a single `secrets?` key to make omission structural, not enumerated.
   password?: string
   sshPassword?: string
   sshPassphrase?: string
