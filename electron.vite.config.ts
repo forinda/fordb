@@ -9,7 +9,14 @@ export default defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
           'db-host': resolve(__dirname, 'src/db-host/index.ts')
-        }
+        },
+        // pg lazily/optionally requires pg-native behind a try/catch guard
+        // (only touched via `pg.native` or NODE_PG_FORCE_NATIVE). Rollup's
+        // commonjs interop otherwise hoists that require out of the guard
+        // and turns the missing optional native binding into a hard crash
+        // at process start. Keeping it external preserves pg's real runtime
+        // require + try/catch.
+        external: ['pg-native']
       }
     }
   },
