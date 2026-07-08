@@ -203,7 +203,7 @@ export function ProfileForm(props: {
             value={authMethod}
             onValueChange={(v) => setAuthMethod(v as SshOptions['authMethod'])}
           >
-            <SelectTrigger>
+            <SelectTrigger aria-label="SSH authentication method">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
