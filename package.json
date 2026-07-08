@@ -21,6 +21,7 @@
     "test:contract": "vitest run -c vitest.contract.config.ts --passWithNoTests"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^22.20.1",
     "@types/pg": "^8.20.0",
     "@types/pg-cursor": "^2.7.2",
@@ -32,6 +33,7 @@
     "electron-vite": "^4.0.1",
     "eslint": "^9.39.4",
     "prettier": "^3.9.4",
+    "tailwindcss": "^4.3.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.63.0",
     "vite": "^7.3.6",
