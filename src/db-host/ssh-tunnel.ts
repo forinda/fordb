@@ -9,6 +9,7 @@ export interface TunnelConfig {
     password?: string
     privateKey?: Buffer
     passphrase?: string
+    agent?: string
   }
   forward: { dstAddr: string; dstPort: number }
 }
@@ -32,7 +33,8 @@ export function buildTunnelConfig(
       username: ssh.user,
       password: ssh.authMethod === 'password' ? sshPassword : undefined,
       privateKey: ssh.authMethod === 'key' ? privateKey : undefined,
-      passphrase: ssh.authMethod === 'key' ? profile.sshPassphrase : undefined
+      passphrase: ssh.authMethod === 'key' ? profile.sshPassphrase : undefined,
+      agent: ssh.authMethod === 'agent' ? process.env.SSH_AUTH_SOCK : undefined
     },
     forward: { dstAddr: profile.host, dstPort: profile.port }
   }
@@ -53,7 +55,8 @@ export async function openTunnel(
       username: cfg.ssh.username,
       password: cfg.ssh.password,
       privateKey: cfg.ssh.privateKey,
-      passphrase: cfg.ssh.passphrase
+      passphrase: cfg.ssh.passphrase,
+      agent: cfg.ssh.agent
     },
     { dstAddr: cfg.forward.dstAddr, dstPort: cfg.forward.dstPort }
   )

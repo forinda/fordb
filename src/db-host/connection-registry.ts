@@ -1,8 +1,8 @@
-import { readFile } from 'node:fs/promises'
 import type { DbAdapter } from '../shared/adapter/db-adapter'
 import type { ConnectionProfile } from '../shared/adapter/types'
 import type { ConnectionId } from '../shared/host/host-api'
-import { openTunnel, type TunnelHandle } from './ssh-tunnel'
+import { connectAdapter } from './connect-with-tunnel'
+import type { TunnelHandle } from './ssh-tunnel'
 
 interface Entry {
   adapter: DbAdapter
@@ -19,30 +19,7 @@ export class ConnectionRegistry {
   ) {}
 
   async open(profile: ConnectionProfile): Promise<ConnectionId> {
-    let tunnel: TunnelHandle | undefined
-    let effective = profile
-    if (profile.ssh) {
-      const privateKey =
-        profile.ssh.authMethod === 'key' && profile.ssh.privateKeyPath
-          ? await readFile(profile.ssh.privateKeyPath)
-          : undefined
-      tunnel = await openTunnel(
-        profile,
-        profile.ssh.authMethod === 'password' ? profile.sshPassword : undefined,
-        privateKey
-      )
-      effective = { ...profile, host: '127.0.0.1', port: tunnel.localPort }
-    }
-    // makeAdapter() inside the guard too: if it throws after a tunnel was
-    // opened, the tunnel must still be torn down rather than leaked.
-    let adapter: DbAdapter
-    try {
-      adapter = this.makeAdapter()
-      await adapter.connect(effective)
-    } catch (err) {
-      await tunnel?.close()
-      throw err
-    }
+    const { adapter, tunnel } = await connectAdapter(this.makeAdapter, profile)
     const id = this.nextId()
     this.entries.set(id, { adapter, profile, tunnel })
     return id
@@ -58,8 +35,11 @@ export class ConnectionRegistry {
     const entry = this.entries.get(id)
     if (!entry) return
     this.entries.delete(id)
-    await entry.adapter.disconnect()
-    await entry.tunnel?.close()
+    try {
+      await entry.adapter.disconnect()
+    } finally {
+      await entry.tunnel?.close()
+    }
   }
 
   async closeAll(): Promise<void> {
