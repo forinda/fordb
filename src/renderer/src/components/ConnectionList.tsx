@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useConnStore } from '../store'
 import type { ConnectionProfile } from '../../../shared/adapter/types'
+import { Button } from './ui/button'
 
 export function ConnectionList(props: {
   onConnect: (connectionId: string, profileId: string) => void
@@ -19,33 +20,30 @@ export function ConnectionList(props: {
   }
 
   return (
-    <div className="flex flex-col gap-1 p-2 w-64 border-r border-neutral-800 h-full">
-      <button
-        className="text-left px-2 py-1 rounded bg-blue-700 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400 mb-2"
-        onClick={props.onNew}
-      >
+    <div className="flex flex-col gap-1 p-2 w-64 border-r border-border h-full">
+      <Button className="text-left mb-2" onClick={props.onNew}>
         + New connection
-      </button>
+      </Button>
       {profiles.map((p) => (
         <div
           key={p.id}
-          className="group flex items-center justify-between px-2 py-1 rounded hover:bg-neutral-800 focus-within:bg-neutral-800"
+          className="group flex items-center justify-between px-2 py-1 rounded hover:bg-muted focus-within:bg-muted"
         >
           <button
-            className="text-left flex-1 text-neutral-100 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="text-left flex-1 text-foreground rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => void connect(p.id)}
           >
             {p.name}
           </button>
           {/* Revealed on hover OR keyboard focus within the row, so keyboard users can reach them. */}
           <button
-            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-xs px-1 text-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-xs px-1 text-muted-foreground rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => props.onEdit(p)}
           >
             edit
           </button>
           <button
-            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-xs px-1 text-neutral-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+            className="opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 text-xs px-1 text-muted-foreground rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             onClick={() => {
               void window.fordb.profiles
                 .delete(p.id)

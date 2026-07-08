@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { useConnStore } from '../store'
 import type { ConnectionProfile, SshOptions } from '../../../shared/adapter/types'
 import { parseConnectionUrl } from '../../../shared/connection-url'
+import { Button } from './ui/button'
+import { Input } from './ui/input'
+import { Label } from './ui/label'
+import { Checkbox } from './ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select'
 
 function newId(): string {
   return `p-${Date.now().toString(36)}-${Math.floor(performance.now()).toString(36)}`
@@ -113,34 +118,26 @@ export function ProfileForm(props: {
     setTestMsg(r.ok ? 'OK' : `Error: ${r.error ?? 'failed'}`)
   }
 
-  const field =
-    'px-2 py-1 rounded bg-neutral-900 border border-neutral-600 text-neutral-100 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-blue-400'
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
-      <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-neutral-700">
-        <label className="text-sm text-neutral-300" htmlFor="conn-url">
-          Paste connection URL
-        </label>
+      <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-border">
+        <Label htmlFor="conn-url">Paste connection URL</Label>
         <div className="flex gap-2">
-          <input
+          <Input
             id="conn-url"
-            className={`${field} flex-1`}
+            className="flex-1"
             placeholder="postgres://user:pass@host:5432/db?sslmode=require"
             value={connUrl}
             onChange={(e) => setConnUrl(e.target.value)}
             onBlur={fillFromUrl}
           />
-          <button
-            type="button"
-            className="px-3 py-1 rounded border border-neutral-500 text-neutral-100 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-            onClick={fillFromUrl}
-          >
+          <Button type="button" variant="outline" onClick={fillFromUrl}>
             Fill from URL
-          </button>
+          </Button>
         </div>
-        {urlError && <div className="text-sm text-red-400">{urlError}</div>}
+        {urlError && <div className="text-sm text-destructive">{urlError}</div>}
         {Object.keys(extraParams).length > 0 && (
-          <div className="text-sm text-neutral-400">
+          <div className="text-sm text-muted-foreground">
             Extra parameters (not applied yet):{' '}
             {Object.entries(extraParams)
               .map(([k, v]) => `${k}=${v}`)
@@ -148,97 +145,75 @@ export function ProfileForm(props: {
           </div>
         )}
       </div>
-      <input
-        className={field}
-        placeholder="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <input
-        className={field}
-        placeholder="Host"
-        value={host}
-        onChange={(e) => setHost(e.target.value)}
-      />
-      <input
-        className={field}
+      <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <Input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
+      <Input
         type="number"
         placeholder="Port"
         value={port}
         onChange={(e) => setPort(e.target.value)}
       />
-      <input
-        className={field}
+      <Input
         placeholder="Database"
         value={database}
         onChange={(e) => setDatabase(e.target.value)}
       />
-      <input
-        className={field}
-        placeholder="User"
-        value={user}
-        onChange={(e) => setUser(e.target.value)}
-      />
-      <input
-        className={field}
+      <Input placeholder="User" value={user} onChange={(e) => setUser(e.target.value)} />
+      <Input
         type="password"
         placeholder="Password"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
 
-      <label className="flex items-center gap-2 text-sm mt-2">
-        <input type="checkbox" checked={useSsl} onChange={(e) => setUseSsl(e.target.checked)} />
+      <Label className="mt-2">
+        <Checkbox checked={useSsl} onCheckedChange={(v) => setUseSsl(v === true)} />
         Use SSL
-      </label>
+      </Label>
       {useSsl && (
-        <label className="flex items-center gap-2 text-sm pl-6">
-          <input
-            type="checkbox"
-            checked={verifyCert}
-            onChange={(e) => setVerifyCert(e.target.checked)}
-          />
+        <Label className="pl-6">
+          <Checkbox checked={verifyCert} onCheckedChange={(v) => setVerifyCert(v === true)} />
           Verify server certificate
-        </label>
+        </Label>
       )}
 
-      <label className="flex items-center gap-2 text-sm mt-2">
-        <input type="checkbox" checked={useSsh} onChange={(e) => setUseSsh(e.target.checked)} />
+      <Label className="mt-2">
+        <Checkbox checked={useSsh} onCheckedChange={(v) => setUseSsh(v === true)} />
         Use SSH tunnel
-      </label>
+      </Label>
       {useSsh && (
-        <div className="flex flex-col gap-2 pl-6 border-l border-neutral-800">
-          <input
-            className={field}
+        <div className="flex flex-col gap-2 pl-6 border-l border-border">
+          <Input
             placeholder="SSH host"
             value={sshHost}
             onChange={(e) => setSshHost(e.target.value)}
           />
-          <input
-            className={field}
+          <Input
             type="number"
             placeholder="SSH port"
             value={sshPort}
             onChange={(e) => setSshPort(e.target.value)}
           />
-          <input
-            className={field}
+          <Input
             placeholder="SSH user"
             value={sshUser}
             onChange={(e) => setSshUser(e.target.value)}
           />
-          <select
-            className={field}
+          <Select
             value={authMethod}
-            onChange={(e) => setAuthMethod(e.target.value as SshOptions['authMethod'])}
+            onValueChange={(v) => setAuthMethod(v as SshOptions['authMethod'])}
           >
-            <option value="password">Password</option>
-            <option value="key">Private key</option>
-            <option value="agent">SSH agent</option>
-          </select>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="password">Password</SelectItem>
+              <SelectItem value="key">Private key</SelectItem>
+              <SelectItem value="agent">SSH agent</SelectItem>
+            </SelectContent>
+          </Select>
           {authMethod === 'password' && (
-            <input
-              className={field}
+            <Input
               type="password"
               placeholder="SSH password"
               value={sshPassword}
@@ -247,14 +222,12 @@ export function ProfileForm(props: {
           )}
           {authMethod === 'key' && (
             <>
-              <input
-                className={field}
+              <Input
                 placeholder="Private key path"
                 value={privateKeyPath}
                 onChange={(e) => setPrivateKeyPath(e.target.value)}
               />
-              <input
-                className={field}
+              <Input
                 type="password"
                 placeholder="Key passphrase (optional)"
                 value={sshPassphrase}
@@ -266,28 +239,17 @@ export function ProfileForm(props: {
       )}
 
       <div className="flex gap-2 mt-2">
-        <button
-          className="px-3 py-1 rounded bg-blue-700 text-white hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          onClick={() => void save()}
-        >
-          Save
-        </button>
-        <button
-          className="px-3 py-1 rounded border border-neutral-500 text-neutral-100 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          onClick={() => void test()}
-        >
+        <Button onClick={() => void save()}>Save</Button>
+        <Button variant="outline" onClick={() => void test()}>
           Test
-        </button>
-        <button
-          className="px-3 py-1 rounded border border-neutral-700 text-neutral-300 hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-blue-400"
-          onClick={props.onCancel}
-        >
+        </Button>
+        <Button variant="ghost" onClick={props.onCancel}>
           Cancel
-        </button>
+        </Button>
       </div>
       {testMsg && (
         <div
-          className={`text-sm ${testMsg === 'OK' ? 'text-green-400' : testMsg.startsWith('Error') ? 'text-red-400' : 'text-neutral-300'}`}
+          className={`text-sm ${testMsg === 'OK' ? 'text-primary' : testMsg.startsWith('Error') ? 'text-destructive' : 'text-muted-foreground'}`}
         >
           {testMsg}
         </div>
