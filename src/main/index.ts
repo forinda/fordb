@@ -1,5 +1,11 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain, utilityProcess, MessageChannelMain } from 'electron'
 import { join } from 'node:path'
+
+let dbHost: Electron.UtilityProcess | null = null
+
+function startDbHost(): void {
+  dbHost = utilityProcess.fork(join(__dirname, 'db-host.js'), [], { serviceName: 'fordb-db-host' })
+}
 
 function createWindow(): void {
   const win = new BrowserWindow({
@@ -19,5 +25,14 @@ function createWindow(): void {
   }
 }
 
-void app.whenReady().then(createWindow)
+ipcMain.handle('db-host:request-port', (event) => {
+  const { port1, port2 } = new MessageChannelMain()
+  dbHost?.postMessage({ type: 'new-client' }, [port1])
+  event.sender.postMessage('db-host:port', null, [port2])
+})
+
+void app.whenReady().then(() => {
+  startDbHost()
+  createWindow()
+})
 app.on('window-all-closed', () => app.quit())

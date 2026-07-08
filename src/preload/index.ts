@@ -1,7 +1,12 @@
-import { contextBridge } from 'electron'
+import { contextBridge, ipcRenderer } from 'electron'
 
-// Populated further in Task 3 (port plumbing). This exposeInMainWorld call is
-// a legitimate permanent placeholder proving the preload bridge loads and
-// executes real module-shaped code (contextBridge / ipcRenderer) under the
-// project's ESM preload output. The next task replaces the payload.
-contextBridge.exposeInMainWorld('fordbPing', { ok: true })
+contextBridge.exposeInMainWorld('fordb', {
+  getDbHostPort: (): Promise<MessagePort> =>
+    new Promise((resolve) => {
+      ipcRenderer.once('db-host:port', (event) => {
+        const port = event.ports[0]
+        if (port) resolve(port)
+      })
+      void ipcRenderer.invoke('db-host:request-port')
+    })
+})

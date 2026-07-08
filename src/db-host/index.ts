@@ -1,2 +1,10 @@
-// utilityProcess entry. Populated in Task 3.
-process.parentPort?.on('message', () => {})
+process.parentPort.on('message', (e) => {
+  const [port] = e.ports
+  if (!port) return
+  port.on('message', (msg) => {
+    if ((msg.data as { type?: string }).type === 'ping') {
+      port.postMessage({ type: 'pong' })
+    }
+  })
+  port.start()
+})
