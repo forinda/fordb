@@ -1,5 +1,5 @@
 import { useThemeStore } from '../store-theme'
-import type { ThemeMode } from '../../../shared/theme'
+import type { ThemeMode } from '@shared/theme'
 
 const ORDER: ThemeMode[] = ['light', 'dark', 'system']
 const LABEL: Record<ThemeMode, string> = { light: 'Light', dark: 'Dark', system: 'System' }

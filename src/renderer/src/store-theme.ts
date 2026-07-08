@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ThemeMode } from '../../shared/theme'
+import type { ThemeMode } from '@shared/theme'
 
 function applyClass(effective: 'light' | 'dark'): void {
   document.documentElement.classList.toggle('dark', effective === 'dark')

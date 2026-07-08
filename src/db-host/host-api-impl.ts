@@ -7,11 +7,11 @@ import type {
   Page,
   QueryResult,
   TableInfo
-} from '../shared/adapter/types'
-import type { ConnectionId, HostApi, TestResult } from '../shared/host/host-api'
+} from '@shared/adapter/types'
+import type { ConnectionId, HostApi, TestResult } from '@shared/host/host-api'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
-import type { DbAdapter } from '../shared/adapter/db-adapter'
+import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type { TunnelHandle } from './ssh-tunnel'
 import { PostgresAdapter } from './postgres/postgres-adapter'
 

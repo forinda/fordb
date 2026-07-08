@@ -3,8 +3,11 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { resolve } from 'node:path'
 
+const alias = { '@shared': resolve(__dirname, 'src/shared') }
+
 export default defineConfig({
   main: {
+    resolve: { alias },
     build: {
       rollupOptions: {
         input: {
@@ -24,6 +27,7 @@ export default defineConfig({
     }
   },
   preload: {
+    resolve: { alias },
     build: {
       rollupOptions: {
         input: { index: resolve(__dirname, 'src/preload/index.ts') }
@@ -39,6 +43,7 @@ export default defineConfig({
   },
   renderer: {
     root: 'src/renderer',
+    resolve: { alias },
     build: {
       rollupOptions: { input: { index: resolve(__dirname, 'src/renderer/index.html') } }
     },

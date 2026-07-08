@@ -7,12 +7,12 @@ import {
   MessageChannelMain
 } from 'electron'
 import { join } from 'node:path'
-import { createRpcClient } from '../shared/rpc/client'
-import type { PortLike } from '../shared/rpc/protocol'
-import type { HostApi } from '../shared/host/host-api'
+import { createRpcClient } from '@shared/rpc/client'
+import type { PortLike } from '@shared/rpc/protocol'
+import type { HostApi } from '@shared/host/host-api'
 import { registerIpc } from './ipc'
 import { SettingsStore } from './settings-store'
-import { resolveTheme, type ThemeMode } from '../shared/theme'
+import { resolveTheme, type ThemeMode } from '@shared/theme'
 
 let dbHost: Electron.UtilityProcess | null = null
 export let hostControl: HostApi | null = null

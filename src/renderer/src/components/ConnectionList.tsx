@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useConnStore } from '../store'
-import type { ConnectionProfile } from '../../../shared/adapter/types'
-import { connectionLabel } from '../../../shared/connection-label'
+import type { ConnectionProfile } from '@shared/adapter/types'
+import { connectionLabel } from '@shared/connection-label'
 import { Button } from './ui/button'
 
 export function ConnectionList(props: {

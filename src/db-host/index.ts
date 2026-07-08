@@ -1,5 +1,5 @@
-import { serveRpc } from '../shared/rpc/server'
-import type { PortLike } from '../shared/rpc/protocol'
+import { serveRpc } from '@shared/rpc/server'
+import type { PortLike } from '@shared/rpc/protocol'
 import { ConnectionRegistry } from './connection-registry'
 import { HostApiImpl } from './host-api-impl'
 import { PostgresAdapter } from './postgres/postgres-adapter'

@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { PortLike } from '../shared/rpc/protocol'
-import type { ConnectionProfile } from '../shared/adapter/types'
+import type { PortLike } from '@shared/rpc/protocol'
+import type { ConnectionProfile } from '@shared/adapter/types'
 
 // contextBridge clones plain values across the isolated-world/main-world
 // boundary but does not preserve MessagePort identity/methods (Electron
