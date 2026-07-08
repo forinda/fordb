@@ -1,10 +1,13 @@
+import { readFile } from 'node:fs/promises'
 import type { DbAdapter } from '../shared/adapter/db-adapter'
 import type { ConnectionProfile } from '../shared/adapter/types'
 import type { ConnectionId } from '../shared/host/host-api'
+import { openTunnel, type TunnelHandle } from './ssh-tunnel'
 
 interface Entry {
   adapter: DbAdapter
   profile: ConnectionProfile
+  tunnel?: TunnelHandle
 }
 
 export class ConnectionRegistry {
@@ -16,10 +19,32 @@ export class ConnectionRegistry {
   ) {}
 
   async open(profile: ConnectionProfile): Promise<ConnectionId> {
-    const adapter = this.makeAdapter()
-    await adapter.connect(profile)
+    let tunnel: TunnelHandle | undefined
+    let effective = profile
+    if (profile.ssh) {
+      const privateKey =
+        profile.ssh.authMethod === 'key' && profile.ssh.privateKeyPath
+          ? await readFile(profile.ssh.privateKeyPath)
+          : undefined
+      tunnel = await openTunnel(
+        profile,
+        profile.ssh.authMethod === 'password' ? profile.sshPassword : undefined,
+        privateKey
+      )
+      effective = { ...profile, host: '127.0.0.1', port: tunnel.localPort }
+    }
+    // makeAdapter() inside the guard too: if it throws after a tunnel was
+    // opened, the tunnel must still be torn down rather than leaked.
+    let adapter: DbAdapter
+    try {
+      adapter = this.makeAdapter()
+      await adapter.connect(effective)
+    } catch (err) {
+      await tunnel?.close()
+      throw err
+    }
     const id = this.nextId()
-    this.entries.set(id, { adapter, profile })
+    this.entries.set(id, { adapter, profile, tunnel })
     return id
   }
 
@@ -34,10 +59,10 @@ export class ConnectionRegistry {
     if (!entry) return
     this.entries.delete(id)
     await entry.adapter.disconnect()
+    await entry.tunnel?.close()
   }
 
   async closeAll(): Promise<void> {
-    const ids = [...this.entries.keys()]
-    await Promise.all(ids.map((id) => this.close(id)))
+    await Promise.all([...this.entries.keys()].map((id) => this.close(id)))
   }
 }
