@@ -1,12 +1,47 @@
-import { app, BrowserWindow, ipcMain, utilityProcess, MessageChannelMain } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  nativeTheme,
+  utilityProcess,
+  MessageChannelMain
+} from 'electron'
 import { join } from 'node:path'
 import { createRpcClient } from '../shared/rpc/client'
 import type { PortLike } from '../shared/rpc/protocol'
 import type { HostApi } from '../shared/host/host-api'
 import { registerIpc } from './ipc'
+import { SettingsStore } from './settings-store'
+import { resolveTheme, type ThemeMode } from '../shared/theme'
 
 let dbHost: Electron.UtilityProcess | null = null
 export let hostControl: HostApi | null = null
+
+// Constructed in whenReady (app.getPath is only reliable once the app is ready).
+let settings: SettingsStore | null = null
+let currentMode: ThemeMode = 'system'
+
+function effectiveTheme(): 'light' | 'dark' {
+  return resolveTheme(currentMode, nativeTheme.shouldUseDarkColors)
+}
+
+function broadcastTheme(): void {
+  const t = effectiveTheme()
+  for (const win of BrowserWindow.getAllWindows())
+    win.webContents.send('appearance:theme-changed', t)
+}
+
+// Sync read so preload can stamp the theme before the renderer's React mounts.
+ipcMain.on('appearance:get-initial', (e) => {
+  e.returnValue = effectiveTheme()
+})
+ipcMain.handle('appearance:get-mode', () => currentMode)
+ipcMain.handle('appearance:set-mode', async (_e, mode: ThemeMode) => {
+  currentMode = mode
+  await settings?.setTheme(mode)
+  broadcastTheme()
+})
+nativeTheme.on('updated', () => broadcastTheme())
 
 // Supervision backoff: an immediate-crash loop (bad build, missing binding)
 // must not become a tight fork bomb. Count restarts where the process died
@@ -77,7 +112,9 @@ ipcMain.handle('db-host:request-port', (event) => {
   event.sender.postMessage('db-host:port', null, [port2])
 })
 
-void app.whenReady().then(() => {
+void app.whenReady().then(async () => {
+  settings = new SettingsStore(join(app.getPath('userData'), 'settings.json'))
+  currentMode = await settings.getTheme()
   startDbHost()
   registerIpc(() => hostControl)
   createWindow()
