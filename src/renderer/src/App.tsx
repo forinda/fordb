@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CommandPalette } from './components/CommandPalette'
 import { ConnectionList } from './components/ConnectionList'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
@@ -14,6 +15,21 @@ type View =
 export function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ kind: 'welcome' })
   const setActive = useConnStore((s) => s.setActive)
+  const clearActive = useConnStore((s) => s.clearActive)
+  const activeConnectionId = useConnStore((s) => s.activeConnectionId)
+
+  const commands = [
+    { id: 'new', label: 'New connection', run: () => setView({ kind: 'form' }) },
+    {
+      id: 'disconnect',
+      label: 'Disconnect',
+      run: () => {
+        if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+        clearActive()
+        setView({ kind: 'welcome' })
+      }
+    }
+  ]
 
   return (
     <div className="flex h-screen text-neutral-100 bg-neutral-950">
@@ -38,6 +54,7 @@ export function App(): React.JSX.Element {
         )}
         {view.kind === 'connected' && <SchemaTree />}
       </div>
+      <CommandPalette commands={commands} />
     </div>
   )
 }
