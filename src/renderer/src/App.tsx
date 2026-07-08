@@ -4,8 +4,10 @@ import { ConnectionList } from './components/ConnectionList'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { ThemeToggle } from './components/ThemeToggle'
+import { QueryWorkbench } from './components/QueryWorkbench'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
+import { useQueryStore } from './store-query'
 import type { ConnectionProfile } from '@shared/adapter/types'
 // The global `Window.fordb` type is declared once in ./rpc.ts (imported for
 // its ambient `declare global` augmentation).
@@ -23,6 +25,7 @@ export function App(): React.JSX.Element {
 
   useEffect(() => {
     void useThemeStore.getState().init()
+    window.fordb.onDbHostRestarted(() => useQueryStore.getState().connectionLost())
   }, [])
 
   const commands = [
@@ -36,6 +39,23 @@ export function App(): React.JSX.Element {
         setView({ kind: 'welcome' })
       }
     },
+    {
+      id: 'run-query',
+      label: 'Run query',
+      run: () => {
+        const s = useQueryStore.getState()
+        if (s.activeTabId) void s.run(s.activeTabId)
+      }
+    },
+    {
+      id: 'cancel-query',
+      label: 'Cancel query',
+      run: () => {
+        const s = useQueryStore.getState()
+        if (s.activeTabId) void s.cancel(s.activeTabId)
+      }
+    },
+    { id: 'new-query-tab', label: 'New query tab', run: () => useQueryStore.getState().newTab() },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
     { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
@@ -67,7 +87,16 @@ export function App(): React.JSX.Element {
             onCancel={() => setView({ kind: 'welcome' })}
           />
         )}
-        {view.kind === 'connected' && <SchemaTree />}
+        {view.kind === 'connected' && (
+          <div className="flex h-full">
+            <div className="w-64 border-r border-border overflow-auto">
+              <SchemaTree />
+            </div>
+            <div className="flex-1 min-w-0">
+              <QueryWorkbench />
+            </div>
+          </div>
+        )}
       </div>
       <CommandPalette commands={commands} />
     </div>
