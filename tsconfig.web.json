@@ -18,6 +18,7 @@
     "src/shared/**/*",
     "src/preload/**/*",
     "tests/unit/query-store.test.ts",
-    "tests/unit/query-keys.test.ts"
+    "tests/unit/query-keys.test.ts",
+    "tests/unit/introspection-invalidate.test.ts"
   ]
 }
