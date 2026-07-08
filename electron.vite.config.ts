@@ -16,12 +16,14 @@ export default defineConfig({
   preload: {
     build: {
       rollupOptions: {
-        input: { index: resolve(__dirname, 'src/preload/index.ts') },
-        // Force CJS output: package.json has "type": "module", which makes
-        // electron-vite default the preload build to ESM (out/preload/index.mjs).
-        // Preload scripts are loaded via webPreferences.preload, and main/index.ts
-        // references the path as index.js, so pin the format explicitly.
-        output: { format: 'cjs', entryFileNames: '[name].js' }
+        input: { index: resolve(__dirname, 'src/preload/index.ts') }
+        // Root package.json has "type": "module", so electron-vite emits the
+        // preload build as ESM (out/preload/index.mjs). Electron (28+) loads
+        // ESM preload scripts fine as long as sandbox is disabled (see
+        // BrowserWindow webPreferences.sandbox: false in src/main/index.ts),
+        // so we let it default to .mjs instead of forcing CJS output, which
+        // would otherwise be misinterpreted as ESM under the root "type"
+        // field and throw at load time once the preload does real work.
       }
     }
   },
