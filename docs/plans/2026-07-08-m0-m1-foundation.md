@@ -6,7 +6,7 @@
 
 **Architecture:** Electron with three processes — renderer (React, no Node), main (windows only), and a `db-host` utilityProcess that owns all DB drivers. A transport-agnostic RPC layer (works over Node `MessageChannel` in tests and Electron `MessagePortMain` in production) exposes the same `DbAdapter` TypeScript interface on both sides of the process boundary. The contract test suite is engine-agnostic so SQLite (M6) and future engines must pass the identical tests.
 
-**Tech Stack:** pnpm, TypeScript (strict), electron-vite, Electron ~39, React 18, vitest, pg 8.x + pg-cursor, Docker (postgres:16-alpine) for contract tests.
+**Tech Stack:** pnpm, TypeScript (strict), electron-vite, Electron ~39, React 19, vitest, pg 8.x + pg-cursor, Docker (postgres:16-alpine) for contract tests. (React 19 decided 2026-07-08; fall back to 18 only if Glide/arborist peer conflicts appear in M3/M4.)
 
 ## Global Constraints
 
@@ -53,10 +53,12 @@ tests/
 ### Task 1: Repo scaffold + electron-vite three-process build
 
 **Files:**
+
 - Create: `package.json`, `electron.vite.config.ts`, `tsconfig.json`, `tsconfig.node.json`, `tsconfig.web.json`, `.gitignore`, `LICENSE`, `README.md`
 - Create: `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/index.html`, `src/renderer/src/main.tsx`, `src/renderer/src/App.tsx`, `src/db-host/index.ts`
 
 **Interfaces:**
+
 - Produces: `pnpm dev` (runs app), `pnpm build` (typecheck+bundle), `pnpm typecheck`. Directory conventions above — later tasks add files under `src/shared`, `src/db-host`.
 
 - [ ] **Step 1: Write package.json**
@@ -82,11 +84,13 @@ tests/
 - [ ] **Step 2: Install dependencies**
 
 Run:
+
 ```bash
 pnpm add -D electron@^39.0.0 electron-vite@^4.0.0 vite@^7.0.0 typescript@^5.8.0 @vitejs/plugin-react@^5.0.0
-pnpm add react@^18.3.0 react-dom@^18.3.0
-pnpm add -D @types/react@^18.3.0 @types/react-dom@^18.3.0 @types/node@^22.0.0
+pnpm add react@^19.0.0 react-dom@^19.0.0
+pnpm add -D @types/react@^19.0.0 @types/react-dom@^19.0.0 @types/node@^22.0.0
 ```
+
 Expected: lockfile created, no peer warnings that block install.
 
 - [ ] **Step 3: Write electron.vite.config.ts**
@@ -127,6 +131,7 @@ Note: db-host is bundled as a second entry of the main-process build — utility
 - [ ] **Step 4: Write tsconfigs**
 
 `tsconfig.json`:
+
 ```json
 {
   "files": [],
@@ -135,10 +140,12 @@ Note: db-host is bundled as a second entry of the main-process build — utility
 ```
 
 `tsconfig.node.json`:
+
 ```json
 {
   "compilerOptions": {
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.node.tsbuildinfo",
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -147,15 +154,24 @@ Note: db-host is bundled as a second entry of the main-process build — utility
     "skipLibCheck": true,
     "types": ["node"]
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/db-host/**/*", "src/shared/**/*", "tests/**/*", "electron.vite.config.ts"]
+  "include": [
+    "src/main/**/*",
+    "src/preload/**/*",
+    "src/db-host/**/*",
+    "src/shared/**/*",
+    "tests/**/*",
+    "electron.vite.config.ts"
+  ]
 }
 ```
 
 `tsconfig.web.json`:
+
 ```json
 {
   "compilerOptions": {
     "composite": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.web.tsbuildinfo",
     "target": "ES2023",
     "module": "ESNext",
     "moduleResolution": "bundler",
@@ -172,6 +188,7 @@ Note: db-host is bundled as a second entry of the main-process build — utility
 - [ ] **Step 5: Write minimal process entries**
 
 `src/main/index.ts`:
+
 ```ts
 import { app, BrowserWindow } from 'electron'
 import { join } from 'node:path'
@@ -199,18 +216,21 @@ app.on('window-all-closed', () => app.quit())
 ```
 
 `src/preload/index.ts`:
+
 ```ts
 // Populated in Task 3 (port plumbing). Must exist for the build.
 export {}
 ```
 
 `src/db-host/index.ts`:
+
 ```ts
 // utilityProcess entry. Populated in Task 3.
 process.parentPort?.on('message', () => {})
 ```
 
 `src/renderer/index.html`:
+
 ```html
 <!doctype html>
 <html>
@@ -226,6 +246,7 @@ process.parentPort?.on('message', () => {})
 ```
 
 `src/renderer/src/main.tsx`:
+
 ```tsx
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
@@ -234,6 +255,7 @@ createRoot(document.getElementById('root')!).render(<App />)
 ```
 
 `src/renderer/src/App.tsx`:
+
 ```tsx
 export function App(): React.JSX.Element {
   return <h1>fordb</h1>
@@ -243,6 +265,7 @@ export function App(): React.JSX.Element {
 - [ ] **Step 6: Write .gitignore, LICENSE (MIT, "Copyright (c) 2026 Forinda"), README.md**
 
 `.gitignore`:
+
 ```
 node_modules/
 out/
@@ -251,6 +274,7 @@ dist/
 ```
 
 `README.md`:
+
 ```markdown
 # fordb
 
@@ -277,10 +301,12 @@ git add -A && git commit -m "feat: electron-vite three-process scaffold"
 ### Task 2: Lint, format, unit-test tooling
 
 **Files:**
+
 - Create: `eslint.config.mjs`, `.prettierrc.json`, `vitest.config.ts`, `tests/unit/smoke.test.ts`
 - Modify: `package.json` (scripts)
 
 **Interfaces:**
+
 - Produces: `pnpm lint`, `pnpm test` commands used by CI (Task 4) and all later tasks.
 
 - [ ] **Step 1: Install**
@@ -330,6 +356,7 @@ Contract tests get their own config in Task 6 (they need Docker; keep `pnpm test
 - [ ] **Step 5: Write failing smoke test, watch it pass**
 
 `tests/unit/smoke.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest'
 
@@ -364,14 +391,17 @@ git add -A && git commit -m "chore: eslint, prettier, vitest tooling"
 ### Task 3: db-host utilityProcess wiring (ping-pong proof)
 
 **Files:**
+
 - Modify: `src/main/index.ts`, `src/preload/index.ts`, `src/db-host/index.ts`, `src/renderer/src/App.tsx`
 
 **Interfaces:**
+
 - Produces: renderer ↔ db-host MessagePort pipeline. Renderer obtains a `MessagePort` via `window.fordb.getDbHostPort(): Promise<MessagePort>`. Task 8 reuses this exact pipeline for the RPC client.
 
 - [ ] **Step 1: Spawn db-host from main and forward a port**
 
 Replace `src/main/index.ts`:
+
 ```ts
 import { app, BrowserWindow, ipcMain, utilityProcess, MessageChannelMain } from 'electron'
 import { join } from 'node:path'
@@ -416,6 +446,7 @@ app.on('window-all-closed', () => app.quit())
 - [ ] **Step 2: Preload bridge**
 
 Replace `src/preload/index.ts`:
+
 ```ts
 import { contextBridge, ipcRenderer } from 'electron'
 
@@ -434,6 +465,7 @@ contextBridge.exposeInMainWorld('fordb', {
 - [ ] **Step 3: db-host answers ping**
 
 Replace `src/db-host/index.ts`:
+
 ```ts
 process.parentPort.on('message', (e) => {
   const [port] = e.ports
@@ -450,6 +482,7 @@ process.parentPort.on('message', (e) => {
 - [ ] **Step 4: Renderer proves the pipeline**
 
 Replace `src/renderer/src/App.tsx`:
+
 ```tsx
 import { useEffect, useState } from 'react'
 
@@ -489,9 +522,11 @@ git add -A && git commit -m "feat: db-host utility process with renderer Message
 ### Task 4: CI workflow (lint + unit tests)
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Produces: CI job names `lint-test` (Task 10 adds the `contract` job to this same file).
 
 - [ ] **Step 1: Write workflow**
@@ -534,9 +569,11 @@ git add .github && git commit -m "ci: lint, typecheck, unit tests"
 ### Task 5: Shared adapter types + DbAdapter interface
 
 **Files:**
+
 - Create: `src/shared/adapter/types.ts`, `src/shared/adapter/db-adapter.ts`
 
 **Interfaces:**
+
 - Produces (used by every later task — exact shapes):
 
 - [ ] **Step 1: Write types.ts**
@@ -671,10 +708,12 @@ git add src/shared && git commit -m "feat: DbAdapter contract and shared types"
 ### Task 6: Contract test harness (Docker Postgres + fixture + suite skeleton)
 
 **Files:**
+
 - Create: `docker-compose.test.yml`, `tests/contract/fixture.sql`, `tests/contract/adapter-contract.ts`, `vitest.contract.config.ts`
 - Modify: `package.json` (scripts)
 
 **Interfaces:**
+
 - Consumes: `DbAdapter`, `ConnectionProfile` from Task 5.
 - Produces: `runAdapterContractTests(makeAdapter: () => DbAdapter, profile: ConnectionProfile): void` — Task 7/9 call this; M6's SQLite adapter reuses it. Script `pnpm test:contract`.
 
@@ -733,6 +772,7 @@ FROM generate_series(1, 5000) AS i;
 - [ ] **Step 3: Write the shared contract suite**
 
 `tests/contract/adapter-contract.ts`:
+
 ```ts
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { DbAdapter } from '../../src/shared/adapter/db-adapter'
@@ -786,7 +826,9 @@ export function runAdapterContractTests(
       expect(name?.nullable).toBe(true)
       const createdAt = cols.find((c) => c.name === 'created_at')
       expect(createdAt?.defaultValue).toBeTruthy()
-      expect(cols.map((c) => c.ordinal)).toEqual([...cols.map((c) => c.ordinal)].sort((a, b) => a - b))
+      expect(cols.map((c) => c.ordinal)).toEqual(
+        [...cols.map((c) => c.ordinal)].sort((a, b) => a - b)
+      )
     })
 
     it('reports primary, foreign, and unique keys', async () => {
@@ -872,6 +914,7 @@ export default defineConfig({
 - [ ] **Step 5: Add scripts**
 
 In `package.json`:
+
 ```json
 "db:up": "docker compose -f docker-compose.test.yml up -d --wait",
 "db:down": "docker compose -f docker-compose.test.yml down -v",
@@ -894,9 +937,11 @@ git add -A && git commit -m "test: engine-agnostic adapter contract suite and po
 ### Task 7: PostgresAdapter — connection + introspection
 
 **Files:**
+
 - Create: `src/db-host/postgres/postgres-adapter.ts`, `src/db-host/postgres/introspection-sql.ts`, `tests/contract/postgres.contract.test.ts`
 
 **Interfaces:**
+
 - Consumes: `DbAdapter` + all types (Task 5), contract suite + fixture (Task 6).
 - Produces: `class PostgresAdapter implements DbAdapter` with constructor `new PostgresAdapter()` — Task 9 registers it in db-host.
 
@@ -910,6 +955,7 @@ pnpm add -D @types/pg@^8.15.0 @types/pg-cursor@^2.7.0
 - [ ] **Step 2: Write the contract test file (it will fail — adapter missing)**
 
 `tests/contract/postgres.contract.test.ts`:
+
 ```ts
 import { runAdapterContractTests } from './adapter-contract'
 import { PostgresAdapter } from '../../src/db-host/postgres/postgres-adapter'
@@ -954,6 +1000,7 @@ Expected: FAIL — cannot resolve `postgres-adapter`.
 - [ ] **Step 4: Write introspection SQL constants**
 
 `src/db-host/postgres/introspection-sql.ts`:
+
 ```ts
 export const LIST_DATABASES = `
   SELECT datname FROM pg_database
@@ -1017,6 +1064,7 @@ export const GET_INDEXES = `
 - [ ] **Step 5: Write PostgresAdapter (connection + introspection + buffered query; streaming/cancel throw "not implemented" for now)**
 
 `src/db-host/postgres/postgres-adapter.ts`:
+
 ```ts
 import pg from 'pg'
 import Cursor from 'pg-cursor'
@@ -1166,14 +1214,17 @@ git add -A && git commit -m "feat: PostgresAdapter connection, introspection, bu
 ### Task 8: PostgresAdapter — cursor streaming + cancel
 
 **Files:**
+
 - Modify: `src/db-host/postgres/postgres-adapter.ts` (replace the four not-implemented methods)
 
 **Interfaces:**
+
 - Consumes: contract suite expectations from Task 6 (pages of `pageSize`, `done` flag, cancel rejects in-flight query with /cancel/i).
 
 - [ ] **Step 1: Implement openQuery/fetchPage/closeQuery**
 
 Replace the three stubs:
+
 ```ts
   async openQuery(sql: string, pageSize: number): Promise<OpenQueryResult> {
     const cursor = this.conn.query(new Cursor(sql, [], { rowMode: 'array' }))
@@ -1247,16 +1298,19 @@ git add -A && git commit -m "feat: PostgresAdapter cursor streaming and query ca
 ### Task 9: RPC layer (protocol, server, client) + db-host registration
 
 **Files:**
+
 - Create: `src/shared/rpc/protocol.ts`, `src/shared/rpc/server.ts`, `src/shared/rpc/client.ts`, `tests/unit/rpc.test.ts`
 - Modify: `src/db-host/index.ts`
 
 **Interfaces:**
+
 - Consumes: `DbAdapter` (Task 5), `PostgresAdapter` (Tasks 7-8), port pipeline (Task 3).
 - Produces: `createRpcClient<T>(port: PortLike): T`, `serveRpc(port: PortLike, target: object): void`, `PortLike { postMessage(msg: unknown): void; onMessage(cb: (msg: unknown) => void): void }`. Renderer M2+ code calls `createRpcClient<DbAdapter>(...)`.
 
 - [ ] **Step 1: Write failing unit tests**
 
 `tests/unit/rpc.test.ts`:
+
 ```ts
 import { describe, it, expect } from 'vitest'
 import { MessageChannel } from 'node:worker_threads'
@@ -1303,9 +1357,9 @@ describe('rpc', () => {
 
   it('rejects unknown methods', async () => {
     const { client, teardown } = setup()
-    await expect(
-      (client as unknown as { nope: () => Promise<void> }).nope()
-    ).rejects.toThrow(/unknown method/i)
+    await expect((client as unknown as { nope: () => Promise<void> }).nope()).rejects.toThrow(
+      /unknown method/i
+    )
     teardown()
   })
 
@@ -1362,7 +1416,12 @@ export function serveRpc(port: PortLike, target: object): void {
     const respond = (r: RpcResponse): void => port.postMessage(r)
     const fn = (target as Record<string, unknown>)[msg.method]
     if (typeof fn !== 'function') {
-      respond({ kind: 'rpc-response', id: msg.id, ok: false, error: `Unknown method: ${msg.method}` })
+      respond({
+        kind: 'rpc-response',
+        id: msg.id,
+        ok: false,
+        error: `Unknown method: ${msg.method}`
+      })
       return
     }
     void Promise.resolve()
@@ -1420,6 +1479,7 @@ Expected: all rpc tests PASS.
 - [ ] **Step 7: Register PostgresAdapter in db-host**
 
 Replace `src/db-host/index.ts`:
+
 ```ts
 import { serveRpc } from '../shared/rpc/server'
 import type { PortLike } from '../shared/rpc/protocol'
@@ -1444,6 +1504,7 @@ process.parentPort.on('message', (e) => {
 - [ ] **Step 8: Renderer smoke over the real pipeline**
 
 Replace the `useEffect` body in `src/renderer/src/App.tsx`:
+
 ```tsx
 import { useEffect, useState } from 'react'
 import { createRpcClient } from '../../shared/rpc/client'
@@ -1491,37 +1552,40 @@ git add -A && git commit -m "feat: transport-agnostic RPC layer wired renderer t
 ### Task 10: Contract tests in CI
 
 **Files:**
+
 - Modify: `.github/workflows/ci.yml`
 
 **Interfaces:**
+
 - Consumes: `pnpm test:contract` (Task 6), fixture + suite (Tasks 6-8).
 
 - [ ] **Step 1: Add contract job**
 
 Append to `.github/workflows/ci.yml`:
+
 ```yaml
-  contract:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: fordb
-          POSTGRES_PASSWORD: fordb
-          POSTGRES_DB: fordb_test
-        ports:
-          - 54329:5432
-        options: >-
-          --health-cmd "pg_isready -U fordb -d fordb_test"
-          --health-interval 2s --health-timeout 2s --health-retries 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 10 }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm test:contract
+contract:
+  runs-on: ubuntu-latest
+  services:
+    postgres:
+      image: postgres:16-alpine
+      env:
+        POSTGRES_USER: fordb
+        POSTGRES_PASSWORD: fordb
+        POSTGRES_DB: fordb_test
+      ports:
+        - 54329:5432
+      options: >-
+        --health-cmd "pg_isready -U fordb -d fordb_test"
+        --health-interval 2s --health-timeout 2s --health-retries 15
+  steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with: { version: 10 }
+    - uses: actions/setup-node@v4
+      with: { node-version: 22, cache: pnpm }
+    - run: pnpm install --frozen-lockfile
+    - run: pnpm test:contract
 ```
 
 - [ ] **Step 2: Verify locally (same command)**
@@ -1542,4 +1606,7 @@ git add .github && git commit -m "ci: run adapter contract tests against postgre
 1. **Spec coverage:** M0 exit criteria (dev window, three processes, lint/test, CI) → Tasks 1-4. M1 exit criteria (contract, RPC, PostgresAdapter, contract suite in Docker+CI) → Tasks 5-10. PRD adapter contract methods all present in Task 5 (listViews folded into `listTables().type` — documented in interface comment).
 2. **Placeholder scan:** streaming/cancel stubs in Task 7 are explicit TDD intermediate states completed in Task 8; no dangling TBDs.
 3. **Type consistency:** `PortLike`, `DbAdapter`, `ConnectionProfile`, `OpenQueryResult`, `Page` names identical across Tasks 5, 6, 7, 9. `dataType: string` in `FieldInfo` used consistently (dataTypeID stringified).
+
+```
+
 ```

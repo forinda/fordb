@@ -5,16 +5,19 @@ Question: what exists (DBeaver, TablePlus, Beekeeper Studio, DataGrip, Antares S
 ## Verified findings (2026-07)
 
 ### Beekeeper Studio — the closest reference
+
 - Stack: TypeScript (~59%) + Vue (~24%) + Electron; electron 39.x, electron-builder 26.x. ([repo](https://github.com/beekeeper-studio/beekeeper-studio), verified via GitHub API 2026-07-08)
 - Engines: 22 marked full-support in README (PostgreSQL, MySQL, SQLite, MongoDB, ClickHouse, DuckDB, Cassandra, Oracle, LibSQL…) via a multi-engine adapter architecture in a Node/Electron codebase. Their marketing says "20+"; "25+" figures are inflated.
 - **Licensing catch: community edition covers 11 engines; MongoDB, ClickHouse, DuckDB, Cassandra, Oracle, LibSQL are paid-edition-only** — though adapter code is source-available in the same repo (GPL-licensed; useful as architecture reference, check license before borrowing code).
 - Positioning: explicitly anti-"kitchen sink" — README: "If a new feature compromises this vision, we kill it." Same lean niche this project targets.
 
 ### Sqlectron — the lightweight incumbent
+
 - Self-positions as "a simple and lightweight SQL client with cross database and platform support". Electron + React, ~94% TypeScript. Actively maintained (v1.39.0 Dec 2025, push June 2026, ~4.8k stars). ([repo](https://github.com/sqlectron/sqlectron), verified via GitHub API 2026-07-08)
 - Historically slow release cadence and limited feature depth — that gap (depth + polish at the same weight class) is the opening.
 
 ### Others (from search phase; not adversarially verified)
+
 - DBeaver: Java/Eclipse RCP — powerful, heavy, dated UX. The "bulky" complaint personified.
 - DataGrip: JetBrains IDE platform — deep but paid + heavyweight (user's stated pain).
 - TablePlus: native (Swift/C++), lean and fast — but proprietary, paid, and macOS-first heritage.
@@ -33,5 +36,6 @@ The stack is validated twice over (Beekeeper, Sqlectron): TS + Electron + multi-
 5. Narrow scope discipline: connections, browse, query, edit rows, export. No ERD designers, no report builders (DBeaver kitchen-sink territory).
 
 ## Risks
+
 - Beekeeper could move paid engines to community edition at any time.
 - Tauri-side competitors (dbx) own the "tiny binary" story; our leanness must be runtime UX, not download size.

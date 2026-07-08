@@ -4,13 +4,13 @@ Question: drivers for PostgreSQL / SQLite / MongoDB in TypeScript, pluggable ada
 
 ## PostgreSQL — pick `pg` (node-postgres)
 
-| | `pg` 8.22 | `postgres` (postgres.js) 3.4.9 |
-|---|---|---|
-| Maturity | De facto standard; monorepo with pg-pool/pg-cursor/pg-query-stream | Alive but single-maintainer; open issues on error typing, occasional hangs ([#1132](https://github.com/porsager/postgres/issues/1132), [#1089](https://github.com/porsager/postgres/issues/1089)) |
-| API for arbitrary user SQL | `client.query(text, values)` — natural fit for a GUI | Tagged templates; arbitrary strings need `sql.unsafe()` escape hatch |
-| Streaming | pg-cursor `cursor.read(n)` + pg-query-stream (server-side cursor, low memory) | `.cursor(n, cb)` + async iteration |
-| Cancellation | No built-in — standard GUI pattern: capture `pg_backend_pid()` at connect, run `SELECT pg_cancel_backend($pid)` from a side connection (~30 lines) ([#773](https://github.com/brianc/node-postgres/issues/773)) | Built-in `query.cancel()` |
-| Performance | Comparable once prepared statements configured; not the bottleneck in a GUI (rendering is) | Faster out of box (caches prepared statements) |
+|                            | `pg` 8.22                                                                                                                                                                                                       | `postgres` (postgres.js) 3.4.9                                                                                                                                                                    |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Maturity                   | De facto standard; monorepo with pg-pool/pg-cursor/pg-query-stream                                                                                                                                              | Alive but single-maintainer; open issues on error typing, occasional hangs ([#1132](https://github.com/porsager/postgres/issues/1132), [#1089](https://github.com/porsager/postgres/issues/1089)) |
+| API for arbitrary user SQL | `client.query(text, values)` — natural fit for a GUI                                                                                                                                                            | Tagged templates; arbitrary strings need `sql.unsafe()` escape hatch                                                                                                                              |
+| Streaming                  | pg-cursor `cursor.read(n)` + pg-query-stream (server-side cursor, low memory)                                                                                                                                   | `.cursor(n, cb)` + async iteration                                                                                                                                                                |
+| Cancellation               | No built-in — standard GUI pattern: capture `pg_backend_pid()` at connect, run `SELECT pg_cancel_backend($pid)` from a side connection (~30 lines) ([#773](https://github.com/brianc/node-postgres/issues/773)) | Built-in `query.cancel()`                                                                                                                                                                         |
+| Performance                | Comparable once prepared statements configured; not the bottleneck in a GUI (rendering is)                                                                                                                      | Faster out of box (caches prepared statements)                                                                                                                                                    |
 
 Verdict: **`pg`** — string-query API, mature cursor ecosystem, used by both Beekeeper Studio and DbGate. Cancel workaround is well-trodden.
 
@@ -25,6 +25,7 @@ Verdict: **better-sqlite3 now; adapter interface async from day one so node:sqli
 ## MongoDB — official `mongodb` driver 7.5
 
 No decision needed. v7 (Nov 2025): min Node 20.19, pool idle-cleanup fixes, lazy cursor sessions. Everything a GUI needs:
+
 - `client.db().admin().listDatabases()` → database tree
 - `db.listCollections({}, { nameOnly: true })` → fast collection list
 - `find()` / `aggregate()` return batched cursors with async iteration → streaming story for the grid
@@ -37,7 +38,7 @@ Three verified reference implementations:
 1. **Beekeeper Studio** — the strongest reference for our stack:
    - `IBasicDatabaseClient` interface → abstract `BasicDatabaseClient` (shared logic) → engine subclasses (`PostgresClient`, …).
    - Drivers run in an **Electron utility process** ("acts like a server… has all native node modules within it"); each renderer window gets a `MessageChannel`; renderer-side `ElectronUtilityConnectionClient` implements the **same interface over IPC** — UI code doesn't know it's remote. ([Utility Process wiki](https://github.com/beekeeper-studio/beekeeper-studio/wiki/Utility-Process))
-2. **Sqlectron** (sqlectron-db-core) — simpler: `createServer(config)` → `createConnection(db)` → `db.executeQuery(sql)`; SSH tunnel config lives in *server* config, not the driver (good pattern). ([repo](https://github.com/sqlectron/sqlectron-db-core))
+2. **Sqlectron** (sqlectron-db-core) — simpler: `createServer(config)` → `createConnection(db)` → `db.executeQuery(sql)`; SSH tunnel config lives in _server_ config, not the driver (good pattern). ([repo](https://github.com/sqlectron/sqlectron-db-core))
 3. **DbGate** — most decoupled: each engine a standalone npm plugin (`dbgate-plugin-postgres`) split into frontend driver (connection-form fields) + backend driver (query) + `Analyser` (schema introspection). Copy this if third-party engine plugins ever become a goal. ([plugin docs](https://docs.dbgate.io/plugin-development/))
 
 Common interface shape across all three — our adapter contract:
@@ -54,6 +55,7 @@ Common interface shape across all three — our adapter contract:
 ## Where drivers live
 
 **Electron** (chosen shell, per doc 01):
+
 - Never the renderer (`nodeIntegration` off, contextBridge only).
 - Main process works but heavy queries jank window management.
 - **Recommended: dedicated `utilityProcess`** hosting all drivers + native modules — Beekeeper's production answer.
@@ -63,11 +65,11 @@ Common interface shape across all three — our adapter contract:
 
 ## Package shortlist
 
-| Purpose | Package | Version (2026-07-08) |
-|---|---|---|
+| Purpose    | Package                           | Version (2026-07-08)     |
+| ---------- | --------------------------------- | ------------------------ |
 | PostgreSQL | pg (+ pg-cursor, pg-query-stream) | 8.22.0 / 2.21.0 / 4.16.0 |
-| SQLite | better-sqlite3 | 12.11.1 |
-| MongoDB | mongodb | 7.5.0 |
-| SSH | ssh2 + tunnel-ssh | 1.17.0 / 5.2.0 |
+| SQLite     | better-sqlite3                    | 12.11.1                  |
+| MongoDB    | mongodb                           | 7.5.0                    |
+| SSH        | ssh2 + tunnel-ssh                 | 1.17.0 / 5.2.0           |
 
 Full source list in the research agent report (node-postgres docs, driver issues, Beekeeper wiki, DbGate plugin docs, Tauri plugin docs).
