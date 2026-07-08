@@ -191,13 +191,7 @@ export class PostgresAdapter implements DbAdapter {
     try {
       await side.query('SELECT pg_cancel_backend($1)', [this.backendPid])
     } finally {
-      // Don't await the disconnect: the caller only needs the cancel signal
-      // sent, and returning promptly here (instead of waiting out an extra
-      // round trip to close this side connection) leaves the caller free to
-      // start awaiting the interrupted query's rejection sooner, rather than
-      // racing it. Any close error is immaterial — the side connection is
-      // just a one-shot channel for the cancel signal.
-      side.end().catch(() => undefined)
+      await side.end()
     }
   }
 }

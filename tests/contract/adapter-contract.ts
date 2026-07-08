@@ -105,9 +105,18 @@ export function runAdapterContractTests(
 
     it('cancel interrupts a running statement', async () => {
       const slow = adapter.executeQuery('SELECT pg_sleep(30)')
+      // Register a rejection handler the instant the promise exists, so the
+      // cancellation error can never surface as an unhandled rejection in the
+      // window before expect(...).rejects attaches its own handler below.
+      const settled = slow.then(
+        () => new Error('query unexpectedly resolved'),
+        (err: unknown) => err
+      )
       await new Promise((r) => setTimeout(r, 300))
       await adapter.cancel()
-      await expect(slow).rejects.toThrow(/cancel/i)
+      const outcome = await settled
+      expect(outcome).toBeInstanceOf(Error)
+      expect((outcome as Error).message).toMatch(/cancel/i)
     }, 15000)
 
     it('rejects bad SQL with a useful error', async () => {
