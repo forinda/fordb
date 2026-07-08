@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import type { ConnectionProfile } from '../shared/adapter/types'
+import type { ConnectionProfile } from '@shared/adapter/types'
 
 export class ProfileStore {
   constructor(private readonly filePath: string) {}

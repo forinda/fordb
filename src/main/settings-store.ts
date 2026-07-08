@@ -1,6 +1,6 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
-import type { ThemeMode } from '../shared/theme'
+import type { ThemeMode } from '@shared/theme'
 
 const MODES: ReadonlySet<string> = new Set(['light', 'dark', 'system'])
 

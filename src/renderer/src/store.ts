@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { ConnectionProfile } from '../../shared/adapter/types'
+import type { ConnectionProfile } from '@shared/adapter/types'
 
 interface ConnState {
   profiles: ConnectionProfile[]

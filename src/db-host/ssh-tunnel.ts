@@ -1,5 +1,5 @@
 import { createTunnel } from 'tunnel-ssh'
-import type { ConnectionProfile } from '../shared/adapter/types'
+import type { ConnectionProfile } from '@shared/adapter/types'
 
 export interface TunnelConfig {
   ssh: {

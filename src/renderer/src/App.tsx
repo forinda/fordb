@@ -6,7 +6,7 @@ import { SchemaTree } from './components/SchemaTree'
 import { ThemeToggle } from './components/ThemeToggle'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
-import type { ConnectionProfile } from '../../shared/adapter/types'
+import type { ConnectionProfile } from '@shared/adapter/types'
 // The global `Window.fordb` type is declared once in ./rpc.ts (imported for
 // its ambient `declare global` augmentation).
 import './rpc'

@@ -1,6 +1,6 @@
 import pg from 'pg'
 import Cursor from 'pg-cursor'
-import type { DbAdapter } from '../../shared/adapter/db-adapter'
+import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -10,7 +10,7 @@ import type {
   Page,
   QueryResult,
   TableInfo
-} from '../../shared/adapter/types'
+} from '@shared/adapter/types'
 import * as SQL from './introspection-sql'
 
 // pg's built-in type parsers don't cover `name[]` (OID 1003) — the array type

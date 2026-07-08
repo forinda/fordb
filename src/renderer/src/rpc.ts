@@ -1,14 +1,14 @@
-import { createRpcClient } from '../../shared/rpc/client'
-import type { HostApi } from '../../shared/host/host-api'
+import { createRpcClient } from '@shared/rpc/client'
+import type { HostApi } from '@shared/host/host-api'
 
 declare global {
   interface Window {
     fordb: {
-      getDbHostPort: () => Promise<import('../../shared/rpc/protocol').PortLike>
+      getDbHostPort: () => Promise<import('@shared/rpc/protocol').PortLike>
       profiles: {
-        list: () => Promise<import('../../shared/adapter/types').ConnectionProfile[]>
+        list: () => Promise<import('@shared/adapter/types').ConnectionProfile[]>
         save: (
-          p: import('../../shared/adapter/types').ConnectionProfile,
+          p: import('@shared/adapter/types').ConnectionProfile,
           secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }
         ) => Promise<void>
         delete: (id: string) => Promise<void>

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises'
-import type { DbAdapter } from '../shared/adapter/db-adapter'
-import type { ConnectionProfile } from '../shared/adapter/types'
+import type { DbAdapter } from '@shared/adapter/db-adapter'
+import type { ConnectionProfile } from '@shared/adapter/types'
 import { openTunnel, type TunnelHandle } from './ssh-tunnel'
 
 export interface ConnectedAdapter {
