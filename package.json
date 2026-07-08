@@ -44,8 +44,10 @@
   },
   "dependencies": {
     "@radix-ui/colors": "^3.0.0",
+    "@radix-ui/react-dialog": "^1.1.19",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cmdk": "^1.1.1",
     "pg": "^8.22.0",
     "pg-cursor": "^2.21.0",
     "react": "^19.2.7",
