@@ -1,4 +1,14 @@
-import { isRpcResponse, type PortLike, type RpcRequest } from './protocol'
+import { isRpcResponse, type PortLike, type RpcError, type RpcRequest } from './protocol'
+
+function toError(rpcError: RpcError): Error {
+  const err = new Error(rpcError.message)
+  if (rpcError.code !== undefined) Object.assign(err, { code: rpcError.code })
+  if (rpcError.detail !== undefined) Object.assign(err, { detail: rpcError.detail })
+  if (rpcError.hint !== undefined) Object.assign(err, { hint: rpcError.hint })
+  if (rpcError.position !== undefined) Object.assign(err, { position: rpcError.position })
+  if (rpcError.stack !== undefined) err.stack = rpcError.stack
+  return err
+}
 
 export function createRpcClient<T extends object>(port: PortLike): T {
   let nextId = 1
@@ -10,7 +20,14 @@ export function createRpcClient<T extends object>(port: PortLike): T {
     if (!entry) return
     pending.delete(msg.id)
     if (msg.ok) entry.resolve(msg.value)
-    else entry.reject(new Error(msg.error))
+    else entry.reject(toError(msg.error))
+  })
+
+  port.onClose?.(() => {
+    for (const entry of pending.values()) {
+      entry.reject(new Error('RPC port closed'))
+    }
+    pending.clear()
   })
 
   return new Proxy({} as T, {
