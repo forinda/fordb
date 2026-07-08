@@ -3,8 +3,11 @@ import { CommandPalette } from './components/CommandPalette'
 import { ConnectionList } from './components/ConnectionList'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
+import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
+import { queryClient } from './query/client'
+import { invalidateIntrospection } from './query/introspection'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
@@ -56,6 +59,13 @@ export function App(): React.JSX.Element {
       }
     },
     { id: 'new-query-tab', label: 'New query tab', run: () => useQueryStore.getState().newTab() },
+    {
+      id: 'refresh-schema',
+      label: 'Refresh schema',
+      run: () => {
+        if (activeConnectionId) void invalidateIntrospection(queryClient, activeConnectionId)
+      }
+    },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
     { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
@@ -75,8 +85,13 @@ export function App(): React.JSX.Element {
           }}
         />
         {view.kind === 'connected' && (
-          <div className="flex-1 min-h-0 overflow-auto border-t border-border">
-            <SchemaTree />
+          <div className="flex-1 min-h-0 flex flex-col border-t border-border">
+            <div className="flex justify-end px-2 py-1 border-b border-border">
+              <RefreshSchemaButton />
+            </div>
+            <div className="flex-1 min-h-0 overflow-auto">
+              <SchemaTree />
+            </div>
           </div>
         )}
         <div className="p-2 border-t border-border">
