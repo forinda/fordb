@@ -21,6 +21,15 @@ export class ProfileStore {
     void _sp
     void _pp
     const list = await this.list()
+    // Keep display names distinguishable: if another profile already uses this
+    // name, append " (2)", " (3)", … Duplicates are only confusing, not invalid,
+    // so we disambiguate rather than reject.
+    const taken = new Set(list.filter((p) => p.id !== safe.id).map((p) => p.name))
+    if (taken.has(safe.name)) {
+      let n = 2
+      while (taken.has(`${safe.name} (${n})`)) n += 1
+      safe.name = `${safe.name} (${n})`
+    }
     const idx = list.findIndex((p) => p.id === profile.id)
     if (idx >= 0) list[idx] = safe
     else list.push(safe)

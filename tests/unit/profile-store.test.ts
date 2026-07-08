@@ -49,4 +49,18 @@ describe('ProfileStore', () => {
     expect(await store.list()).toEqual([])
     rmSync(dir, { recursive: true, force: true })
   })
+  it('auto-suffixes a duplicate name from a different profile', async () => {
+    await store.save({ ...base, id: 'a', name: 'db' })
+    await store.save({ ...base, id: 'b', name: 'db' })
+    await store.save({ ...base, id: 'c', name: 'db' })
+    const names = (await store.list()).map((p) => p.name).sort()
+    expect(names).toEqual(['db', 'db (2)', 'db (3)'])
+  })
+  it('editing a profile keeps its own name (no self-collision suffix)', async () => {
+    await store.save({ ...base, id: 'a', name: 'db' })
+    await store.save({ ...base, id: 'a', name: 'db', host: 'changed' })
+    const list = await store.list()
+    expect(list).toHaveLength(1)
+    expect(list[0]?.name).toBe('db')
+  })
 })
