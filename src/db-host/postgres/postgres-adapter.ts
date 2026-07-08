@@ -31,6 +31,10 @@ interface OpenCursor {
   cursor: Cursor
   fields: { name: string; dataType: string }[]
   pageSize: number
+  // First page of rows, fetched eagerly in openQuery to read field metadata
+  // off the pg-cursor result (see openQuery for why `read(0, ...)` can't be
+  // used for that purpose). Consumed by the first fetchPage call.
+  pending?: unknown[][]
 }
 
 export class PostgresAdapter implements DbAdapter {
@@ -126,19 +130,74 @@ export class PostgresAdapter implements DbAdapter {
     }
   }
 
-  async openQuery(_sql: string, _pageSize: number): Promise<OpenQueryResult> {
-    throw new Error('not implemented')
+  async openQuery(sql: string, pageSize: number): Promise<OpenQueryResult> {
+    const cursor = this.conn.query(new Cursor(sql, [], { rowMode: 'array' }))
+    // Note: `cursor.read(0, ...)` cannot be used to "prime" the cursor for
+    // field metadata without consuming rows — in the Postgres extended query
+    // protocol an Execute message's maxRows of 0 means "no limit", so it
+    // would eagerly fetch the *entire* result set instead of zero rows.
+    // Instead, fetch the first page eagerly here (reading fields off the
+    // pg-cursor result callback, which is the public/stable surface — no
+    // reliance on the `_result` private field) and stash it for the first
+    // fetchPage call to consume.
+    const { rows, fields } = await new Promise<{
+      rows: unknown[][]
+      fields: { name: string; dataType: string }[]
+    }>((resolve, reject) =>
+      cursor.read(pageSize, (err, r, result) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        resolve({
+          rows: r as unknown[][],
+          fields: result.fields.map((f) => ({ name: f.name, dataType: String(f.dataTypeID) }))
+        })
+      })
+    )
+    const queryId = `q${this.nextCursorId++}`
+    this.cursors.set(queryId, { cursor, fields, pageSize, pending: rows })
+    return { queryId, fields }
   }
 
-  async fetchPage(_queryId: string): Promise<Page> {
-    throw new Error('not implemented')
+  async fetchPage(queryId: string): Promise<Page> {
+    const open = this.cursors.get(queryId)
+    if (!open) throw new Error(`Unknown queryId: ${queryId}`)
+    let rows: unknown[][]
+    if (open.pending) {
+      rows = open.pending
+      open.pending = undefined
+    } else {
+      rows = await new Promise<unknown[][]>((resolve, reject) =>
+        open.cursor.read(open.pageSize, (err, r) => (err ? reject(err) : resolve(r as unknown[][])))
+      )
+    }
+    const done = rows.length < open.pageSize
+    if (done) await this.closeQuery(queryId)
+    return { rows, done }
   }
 
-  async closeQuery(_queryId: string): Promise<void> {
-    throw new Error('not implemented')
+  async closeQuery(queryId: string): Promise<void> {
+    const open = this.cursors.get(queryId)
+    if (!open) return
+    this.cursors.delete(queryId)
+    await new Promise<void>((resolve) => open.cursor.close(() => resolve()))
   }
 
   async cancel(): Promise<void> {
-    throw new Error('not implemented')
+    if (!this.profile || this.backendPid === null) throw new Error('Not connected')
+    const side = new pg.Client(PostgresAdapter.clientConfig(this.profile))
+    await side.connect()
+    try {
+      await side.query('SELECT pg_cancel_backend($1)', [this.backendPid])
+    } finally {
+      // Don't await the disconnect: the caller only needs the cancel signal
+      // sent, and returning promptly here (instead of waiting out an extra
+      // round trip to close this side connection) leaves the caller free to
+      // start awaiting the interrupted query's rejection sooner, rather than
+      // racing it. Any close error is immaterial — the side connection is
+      // just a one-shot channel for the cancel signal.
+      side.end().catch(() => undefined)
+    }
   }
 }
