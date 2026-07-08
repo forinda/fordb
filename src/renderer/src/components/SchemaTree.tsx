@@ -17,6 +17,10 @@ export function SchemaTree(): React.JSX.Element {
 
   useEffect(() => {
     if (!connId) return
+    // Reset per-connection state so a prior failure or a previous connection's
+    // schemas can't linger when switching connections.
+    setError('')
+    setNodes([])
     let cancelled = false
     void (async () => {
       try {
