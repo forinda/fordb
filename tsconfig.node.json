@@ -21,5 +21,6 @@
     "electron.vite.config.ts",
     "vitest.config.ts",
     "vitest.contract.config.ts"
-  ]
+  ],
+  "exclude": ["tests/unit/query-store.test.ts"]
 }

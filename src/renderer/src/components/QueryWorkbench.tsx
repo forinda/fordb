@@ -87,7 +87,10 @@ export function QueryWorkbench(): React.JSX.Element {
         </span>
       </div>
       <div className="h-1/2 min-h-40">
+        {/* key by tab so switching tabs remounts the editor with that tab's
+            text (the editor is uncontrolled — value is the initial doc). */}
         <SqlEditor
+          key={tab.id}
           value={tab.sql}
           onChange={(v) => setSql(tab.id, v)}
           onRun={() => void run(tab.id)}
