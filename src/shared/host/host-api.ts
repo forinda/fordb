@@ -1,4 +1,13 @@
-import type { ColumnInfo, ConnectionProfile, IndexInfo, KeyInfo, TableInfo } from '../adapter/types'
+import type {
+  ColumnInfo,
+  ConnectionProfile,
+  IndexInfo,
+  KeyInfo,
+  OpenQueryResult,
+  Page,
+  QueryResult,
+  TableInfo
+} from '../adapter/types'
 
 export type ConnectionId = string
 
@@ -21,4 +30,10 @@ export interface HostApi {
   getColumns(id: ConnectionId, schema: string, table: string): Promise<ColumnInfo[]>
   getKeys(id: ConnectionId, schema: string, table: string): Promise<KeyInfo[]>
   getIndexes(id: ConnectionId, schema: string, table: string): Promise<IndexInfo[]>
+
+  executeQuery(id: ConnectionId, sql: string): Promise<QueryResult>
+  openQuery(id: ConnectionId, sql: string, pageSize: number): Promise<OpenQueryResult>
+  fetchPage(id: ConnectionId, queryId: string): Promise<Page>
+  closeQuery(id: ConnectionId, queryId: string): Promise<void>
+  cancel(id: ConnectionId): Promise<void>
 }
