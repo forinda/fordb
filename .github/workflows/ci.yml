@@ -17,3 +17,25 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
+  contract:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fordb
+          POSTGRES_PASSWORD: fordb
+          POSTGRES_DB: fordb_test
+        ports:
+          - 54329:5432
+        options: >-
+          --health-cmd "pg_isready -U fordb -d fordb_test"
+          --health-interval 2s --health-timeout 2s --health-retries 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test:contract
