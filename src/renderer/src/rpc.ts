@@ -18,6 +18,12 @@ declare global {
         open: (profileId: string) => Promise<string>
         close: (connectionId: string) => Promise<void>
       }
+      appearance: {
+        initialTheme: 'light' | 'dark'
+        getMode: () => Promise<'light' | 'dark' | 'system'>
+        setMode: (mode: 'light' | 'dark' | 'system') => Promise<void>
+        onThemeChanged: (cb: (t: 'light' | 'dark') => void) => void
+      }
     }
   }
 }
