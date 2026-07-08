@@ -21,7 +21,7 @@ export function ConnectionList(props: {
   }
 
   return (
-    <div className="flex flex-col gap-1 p-2 w-64 border-r border-border h-full">
+    <div className="flex flex-col gap-1 p-2 max-h-64 overflow-auto shrink-0">
       <Button className="text-left mb-2" onClick={props.onNew}>
         + New connection
       </Button>
