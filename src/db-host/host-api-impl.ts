@@ -3,6 +3,9 @@ import type {
   ConnectionProfile,
   IndexInfo,
   KeyInfo,
+  OpenQueryResult,
+  Page,
+  QueryResult,
   TableInfo
 } from '../shared/adapter/types'
 import type { ConnectionId, HostApi, TestResult } from '../shared/host/host-api'
@@ -63,5 +66,21 @@ export class HostApiImpl implements HostApi {
   }
   getIndexes(id: ConnectionId, schema: string, table: string): Promise<IndexInfo[]> {
     return this.registry.get(id).getIndexes(schema, table)
+  }
+
+  executeQuery(id: ConnectionId, sql: string): Promise<QueryResult> {
+    return this.registry.get(id).executeQuery(sql)
+  }
+  openQuery(id: ConnectionId, sql: string, pageSize: number): Promise<OpenQueryResult> {
+    return this.registry.get(id).openQuery(sql, pageSize)
+  }
+  fetchPage(id: ConnectionId, queryId: string): Promise<Page> {
+    return this.registry.get(id).fetchPage(queryId)
+  }
+  closeQuery(id: ConnectionId, queryId: string): Promise<void> {
+    return this.registry.get(id).closeQuery(queryId)
+  }
+  cancel(id: ConnectionId): Promise<void> {
+    return this.registry.get(id).cancel()
   }
 }
