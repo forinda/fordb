@@ -29,10 +29,18 @@ declare global {
   }
 }
 
+// A generous finite timeout so a call to a hung-but-alive db-host (which emits
+// no 'exit' event, so no connection-lost broadcast) rejects instead of hanging
+// forever. User cancel remains the primary stop for long queries; this is the
+// safety net.
+const RPC_TIMEOUT_MS = 120_000
+
 let clientPromise: Promise<HostApi> | null = null
 export function hostApi(): Promise<HostApi> {
   if (!clientPromise) {
-    clientPromise = window.fordb.getDbHostPort().then((port) => createRpcClient<HostApi>(port))
+    clientPromise = window.fordb
+      .getDbHostPort()
+      .then((port) => createRpcClient<HostApi>(port, { timeoutMs: RPC_TIMEOUT_MS }))
   }
   return clientPromise
 }
