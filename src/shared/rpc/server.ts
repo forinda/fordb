@@ -1,4 +1,18 @@
-import { isRpcRequest, type PortLike, type RpcResponse } from './protocol'
+import { isRpcRequest, type PortLike, type RpcError, type RpcResponse } from './protocol'
+
+function toRpcError(err: unknown): RpcError {
+  if (!(err instanceof Error)) {
+    return { message: String(err) }
+  }
+  const rpcError: RpcError = { message: err.message }
+  const props = err as unknown as Record<string, unknown>
+  if (typeof props.code === 'string') rpcError.code = props.code
+  if (typeof props.detail === 'string') rpcError.detail = props.detail
+  if (typeof props.hint === 'string') rpcError.hint = props.hint
+  if (typeof props.position === 'string') rpcError.position = props.position
+  if (typeof err.stack === 'string') rpcError.stack = err.stack
+  return rpcError
+}
 
 export function serveRpc(port: PortLike, target: object): void {
   port.onMessage((msg) => {
@@ -10,7 +24,7 @@ export function serveRpc(port: PortLike, target: object): void {
         kind: 'rpc-response',
         id: msg.id,
         ok: false,
-        error: `Unknown method: ${msg.method}`
+        error: { message: `Unknown method: ${msg.method}` }
       })
       return
     }
@@ -22,7 +36,7 @@ export function serveRpc(port: PortLike, target: object): void {
           kind: 'rpc-response',
           id: msg.id,
           ok: false,
-          error: err instanceof Error ? err.message : String(err)
+          error: toRpcError(err)
         })
       )
   })

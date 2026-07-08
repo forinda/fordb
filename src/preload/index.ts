@@ -20,6 +20,14 @@ contextBridge.exposeInMainWorld('fordb', {
           postMessage: (msg) => port.postMessage(msg),
           // Assigning `onmessage` implicitly starts the MessagePort.
           onMessage: (cb) => (port.onmessage = (e): void => cb(e.data))
+          // No onClose: the standard browser MessagePort has no 'close'
+          // event (that only exists on Node's worker_threads MessagePort
+          // and Electron's MessagePortMain). We deliberately leave onClose
+          // undefined here rather than fabricate a close signal — the
+          // renderer client simply won't get pending-call rejection on
+          // teardown via this transport. If a real signal is needed later
+          // (e.g. the host process exiting), it should be layered on top
+          // via an explicit IPC message, not invented here.
         }
         resolve(portLike)
       })
