@@ -82,7 +82,7 @@ Wraps better-sqlite3 (synchronous) behind the async contract. Schema = attached-
 - `closeQuery(queryId)` — drop the iterator (calling its `.return?.()`), delete from the map.
 - `cancel()` — no-op resolve. better-sqlite3 is synchronous and local; a running statement blocks the db-host thread and completes before `cancel` could be delivered. Documented limitation (matches the reality; the M-ServerStats deferral list already notes cancel is engine-specific).
 
-Column/table identifiers are interpolated into PRAGMA/`sqlite_master` queries where bind parameters aren't accepted; they are quoted (`"…"`) and, for defense, validated against SQLite's own catalog (only names returned by `listSchemas`/`listTables` are ever passed by the app). PRAGMA functions (`table_info`, `foreign_key_list`, `index_list`, `index_info`) accept the name as a function argument.
+Column/table identifiers are interpolated into PRAGMA/`sqlite_master` queries where bind parameters aren't accepted; they are quoted (`"…"`) **with embedded double-quotes doubled** (the standard SQL identifier escape), so a hostile object name from an untrusted `.sqlite` file (e.g. a table literally called `foo"bar`) can't break out of the quotes or inject SQL — important for `listTables`, which is a full `SELECT`, not a restricted PRAGMA grammar. PRAGMA functions (`table_info`, `foreign_key_list`, `index_list`, `index_info`) accept the name as a function argument.
 
 ## 4. serverStats degradation (renderer)
 
