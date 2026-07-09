@@ -81,6 +81,9 @@ export function buildDdl(change: DdlChange, dialect: Dialect): string[] {
       return [`CREATE DATABASE ${qi(change.name)}`]
     case 'dropDatabase':
       return [`DROP DATABASE ${qi(change.name)}`]
+    default:
+      // renameColumn/dropColumn/alterColumn land in Tasks 2/3.
+      throw new Error(`Unsupported DDL change: ${(change as DdlChange).kind}`)
   }
 }
 

@@ -33,7 +33,12 @@ export const GET_KEYS = `
            JOIN pg_attribute a ON a.attrelid = con.conrelid AND a.attnum = k.attnum
            ORDER BY k.ord
          ) AS columns,
-         confrel.relname AS "referencedTable"
+         confrel.relname AS "referencedTable",
+         ARRAY(
+           SELECT a.attname FROM unnest(con.confkey) WITH ORDINALITY AS k(attnum, ord)
+           JOIN pg_attribute a ON a.attrelid = con.confrelid AND a.attnum = k.attnum
+           ORDER BY k.ord
+         ) AS "referencedColumns"
   FROM pg_constraint con
   JOIN pg_class rel ON rel.oid = con.conrelid
   JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace

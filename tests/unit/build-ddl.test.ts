@@ -128,7 +128,15 @@ describe('reconstructDdl', () => {
         { name: 'id', dataType: 'integer', nullable: false, defaultValue: null, ordinal: 1 },
         { name: 'email', dataType: 'text', nullable: false, defaultValue: null, ordinal: 2 }
       ],
-      [{ name: 'primary', kind: 'primary', columns: ['id'], referencedTable: null }],
+      [
+        {
+          name: 'primary',
+          kind: 'primary',
+          columns: ['id'],
+          referencedTable: null,
+          referencedColumns: null
+        }
+      ],
       [{ name: 'users_email_idx', columns: ['email'], unique: true }],
       'app',
       'users',
