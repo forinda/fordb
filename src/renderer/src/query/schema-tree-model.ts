@@ -3,9 +3,9 @@
 // node's direct children, resolve the full nested tree; and map an invalidated
 // introspection query key back to the tree node whose children it feeds.
 //
-// Hierarchy: schema → category folder (Tables/Views/Functions/Triggers) →
-// objects. Table objects expand to columns; view/function/trigger objects are
-// leaves (click opens a definition tab).
+// Hierarchy: schema → table nodes (directly) + category folders (Views/Functions/
+// Triggers). Tables expand to columns; view/function/trigger objects are leaves
+// (click opens a definition tab).
 
 import type { ObjectKind } from '@shared/adapter/object-types'
 
@@ -55,7 +55,8 @@ export function buildTree(schemas: string[], childrenById: Record<string, TreeNo
  *   ['conn', id, 'columns', schema, table]   → the table node
  */
 export function invalidatedNodeId(key: readonly unknown[]): string | null {
-  if (key[2] === 'tables' && typeof key[3] === 'string') return `cat:${key[3]}.table`
+  // Tables live directly under the schema node; object kinds under a category.
+  if (key[2] === 'tables' && typeof key[3] === 'string') return `s:${key[3]}`
   if (key[2] === 'objects' && typeof key[3] === 'string' && typeof key[4] === 'string')
     return `cat:${key[3]}.${key[4]}`
   if (key[2] === 'columns' && typeof key[3] === 'string' && typeof key[4] === 'string')

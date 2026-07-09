@@ -6,6 +6,7 @@ import { ResultsGrid } from './ResultsGrid'
 import { TableDataGrid } from './TableDataGrid'
 import { StructureView } from './StructureView'
 import { ExplainView } from './ExplainView'
+import { ObjectDefinitionView } from './ObjectDefinitionView'
 import { QueryTabs } from './QueryTabs'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
@@ -91,6 +92,17 @@ export function QueryWorkbench(): React.JSX.Element {
         <QueryTabs />
         <div className="min-h-0 flex-1">
           <ExplainView key={tab.id} tab={tab} />
+        </div>
+      </div>
+    )
+  }
+
+  if (tab.kind === 'object') {
+    return (
+      <div className="flex flex-col h-full">
+        <QueryTabs />
+        <div className="min-h-0 flex-1">
+          <ObjectDefinitionView key={tab.id} tab={tab} />
         </div>
       </div>
     )
