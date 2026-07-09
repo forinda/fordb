@@ -12,3 +12,16 @@ services:
       interval: 2s
       timeout: 2s
       retries: 15
+  libsql:
+    image: ghcr.io/tursodatabase/libsql-server:latest
+    ports:
+      - '8080:8080'
+    environment:
+      SQLD_NODE: primary
+    healthcheck:
+      # The image ships no wget/curl — only bash. A /dev/tcp probe confirms the
+      # HTTP port is accepting connections (sqld serves immediately on listen).
+      test: ['CMD', 'bash', '-c', 'echo > /dev/tcp/localhost/8080']
+      interval: 2s
+      timeout: 2s
+      retries: 20
