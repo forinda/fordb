@@ -20,7 +20,7 @@ declare global {
       }
       connection: {
         test: (profileId: string) => Promise<{ ok: boolean; error?: string }>
-        open: (profileId: string) => Promise<string>
+        open: (profileId: string, database?: string) => Promise<string>
         close: (connectionId: string) => Promise<void>
       }
       appearance: {

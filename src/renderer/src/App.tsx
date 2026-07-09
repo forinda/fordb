@@ -4,6 +4,7 @@ import { ConnectionList } from './components/ConnectionList'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
+import { DatabaseSwitcher } from './components/DatabaseSwitcher'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
 import { ServerDashboard } from './components/ServerDashboard'
@@ -89,13 +90,14 @@ export function App(): React.JSX.Element {
           <ConnectionList
             onNew={() => setView({ kind: 'form' })}
             onEdit={(profile) => setView({ kind: 'form', profile })}
-            onConnect={(connectionId, profileId) => {
-              setActive(connectionId, profileId)
+            onConnect={(connectionId, profileId, database) => {
+              setActive(connectionId, profileId, database)
               setView({ kind: 'connected' })
             }}
           />
           {view.kind === 'connected' && (
             <div className="flex-1 min-h-0 flex flex-col border-t border-border">
+              <DatabaseSwitcher />
               <div className="flex justify-end px-2 py-1 border-b border-border">
                 <RefreshSchemaButton />
               </div>

@@ -73,10 +73,17 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     if (!host) throw new Error('db-host unavailable')
     return host.testConnection(await hydrate(profileId))
   })
-  ipcMain.handle('connection:open', async (_e, profileId: string) => {
+  ipcMain.handle('connection:open', async (_e, profileId: string, overrideDatabase?: string) => {
     const host = getHostControl()
     if (!host) throw new Error('db-host unavailable')
-    return host.openConnection(await hydrate(profileId))
+    const profile = await hydrate(profileId)
+    // Switching databases on the same Postgres server = reopen the profile
+    // against a different `database` (a live pg connection can't change db).
+    const eff =
+      overrideDatabase && profile.engine === 'postgres'
+        ? { ...profile, database: overrideDatabase }
+        : profile
+    return host.openConnection(eff)
   })
   ipcMain.handle('connection:close', async (_e, connectionId: string) => {
     const host = getHostControl()
