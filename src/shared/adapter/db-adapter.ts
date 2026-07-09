@@ -8,6 +8,7 @@ import type {
   QueryResult,
   TableInfo
 } from './types'
+import type { ServerStatsProvider } from './stats-types'
 
 /**
  * Contract implemented by every engine adapter (db-host side) and by the
@@ -36,4 +37,7 @@ export interface DbAdapter {
 
   /** Cancel the currently running statement on this connection. */
   cancel(): Promise<void>
+
+  /** Optional read-only server-monitoring capability (Postgres implements it). */
+  readonly serverStats?: ServerStatsProvider
 }
