@@ -226,7 +226,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           onVisibleRegionChanged={onVisibleRegionChanged}
           gridSelection={selection}
           onGridSelectionChange={setSelection}
-          rowMarkers="checkbox-visible"
+          rowMarkers="both"
           smoothScrollX
           smoothScrollY
           width="100%"
