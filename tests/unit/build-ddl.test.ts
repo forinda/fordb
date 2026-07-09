@@ -119,6 +119,123 @@ describe('buildDdl', () => {
       `DROP TABLE "a""b"."t""x"`
     ])
   })
+
+  it('pg renameColumn / dropColumn', () => {
+    expect(
+      buildDdl({ kind: 'renameColumn', schema: 'app', table: 't', from: 'a', to: 'b' }, 'pg')
+    ).toEqual([`ALTER TABLE "app"."t" RENAME COLUMN "a" TO "b"`])
+    expect(buildDdl({ kind: 'dropColumn', schema: 'app', table: 't', column: 'a' }, 'pg')).toEqual([
+      `ALTER TABLE "app"."t" DROP COLUMN "a"`
+    ])
+  })
+  it('pg alterColumn: one statement per changed field, stable order', () => {
+    expect(
+      buildDdl(
+        {
+          kind: 'alterColumn',
+          schema: 'app',
+          table: 't',
+          column: 'a',
+          type: 'text',
+          default: `'x'`,
+          notNull: true
+        },
+        'pg'
+      )
+    ).toEqual([
+      `ALTER TABLE "app"."t" ALTER COLUMN "a" TYPE text`,
+      `ALTER TABLE "app"."t" ALTER COLUMN "a" SET DEFAULT 'x'`,
+      `ALTER TABLE "app"."t" ALTER COLUMN "a" SET NOT NULL`
+    ])
+  })
+  it('pg alterColumn: DROP DEFAULT / DROP NOT NULL', () => {
+    expect(
+      buildDdl(
+        {
+          kind: 'alterColumn',
+          schema: 'app',
+          table: 't',
+          column: 'a',
+          default: null,
+          notNull: false
+        },
+        'pg'
+      )
+    ).toEqual([
+      `ALTER TABLE "app"."t" ALTER COLUMN "a" DROP DEFAULT`,
+      `ALTER TABLE "app"."t" ALTER COLUMN "a" DROP NOT NULL`
+    ])
+  })
+
+  const struct = {
+    columns: [
+      { name: 'id', dataType: 'INTEGER', nullable: false, defaultValue: null, ordinal: 1 },
+      { name: 'user_id', dataType: 'INTEGER', nullable: true, defaultValue: null, ordinal: 2 },
+      { name: 'amt', dataType: 'REAL', nullable: true, defaultValue: null, ordinal: 3 }
+    ],
+    keys: [
+      {
+        name: 'primary',
+        kind: 'primary' as const,
+        columns: ['id'],
+        referencedTable: null,
+        referencedColumns: null
+      },
+      {
+        name: 'fk_0',
+        kind: 'foreign' as const,
+        columns: ['user_id'],
+        referencedTable: 'users',
+        referencedColumns: ['id']
+      }
+    ],
+    indexes: [{ name: 'orders_uid', columns: ['user_id'], unique: false }]
+  }
+  it('sqlite alterColumn rebuild: preserves columns/FK/index, changes the type', () => {
+    const stmts = buildDdl(
+      { kind: 'alterColumn', schema: 'main', table: 'orders', column: 'amt', type: 'NUMERIC' },
+      'sqlite',
+      struct
+    )
+    expect(stmts[0]).toBe('PRAGMA defer_foreign_keys=ON')
+    const create = stmts.find((s) => s.startsWith('CREATE TABLE'))!
+    expect(create).toContain('"amt" NUMERIC')
+    expect(create).toContain('FOREIGN KEY ("user_id") REFERENCES "users" ("id")')
+    expect(
+      stmts.some((s) => s.startsWith('INSERT INTO') && s.includes('"id", "user_id", "amt"'))
+    ).toBe(true)
+    expect(stmts).toContain('DROP TABLE "main"."orders"')
+    expect(stmts.some((s) => s.includes('RENAME TO "orders"'))).toBe(true)
+    expect(stmts.some((s) => s.startsWith('CREATE INDEX') && s.includes('"orders_uid"'))).toBe(true)
+  })
+  it('sqlite addForeignKey rebuild adds the constraint', () => {
+    const stmts = buildDdl(
+      {
+        kind: 'addForeignKey',
+        spec: {
+          schema: 'main',
+          table: 'orders',
+          name: 'fk_new',
+          columns: ['user_id'],
+          refSchema: 'main',
+          refTable: 'users',
+          refColumns: ['id']
+        }
+      },
+      'sqlite',
+      struct
+    )
+    // Existing FK + the new one both present (both reference users(id)).
+    expect(stmts.find((s) => s.startsWith('CREATE TABLE'))!.match(/FOREIGN KEY/g)?.length).toBe(2)
+  })
+  it('sqlite rebuild op without context throws', () => {
+    expect(() =>
+      buildDdl(
+        { kind: 'alterColumn', schema: 'main', table: 'orders', column: 'amt', type: 'NUMERIC' },
+        'sqlite'
+      )
+    ).toThrow(/context/i)
+  })
 })
 
 describe('reconstructDdl', () => {
