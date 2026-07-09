@@ -8,6 +8,7 @@ import IconEye from '~icons/lucide/eye'
 import IconColumn from '~icons/lucide/circle'
 import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
+import { TableInfoDialog } from './TableInfoDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns } from '../query/introspection'
 import { buildTree, invalidatedNodeId, type TreeNode } from '../query/schema-tree-model'
@@ -24,6 +25,15 @@ export function SchemaTree(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
   const { data: schemas, isLoading, error } = useSchemas(connId)
   const [childrenById, setChildrenById] = useState<Record<string, TreeNode[]>>({})
+  // Right-click context menu + read-only table-info dialog.
+  const [menu, setMenu] = useState<{
+    x: number
+    y: number
+    schema: string
+    table: string
+    toggle: () => void
+  } | null>(null)
+  const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
 
   // Reset loaded children synchronously when the connection changes, so a prior
   // connection's tables/columns can never pair with a new connection's schemas
@@ -133,6 +143,17 @@ export function SchemaTree(): React.JSX.Element {
                   void useQueryStore.getState().openTable(node.data.schema, node.data.name)
                 else if (!isColumn) node.toggle()
               }}
+              onContextMenu={(e) => {
+                if (!isTable) return
+                e.preventDefault()
+                setMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  schema: node.data.schema,
+                  table: node.data.name,
+                  toggle: () => node.toggle()
+                })
+              }}
               className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
             >
               <span
@@ -158,6 +179,50 @@ export function SchemaTree(): React.JSX.Element {
           )
         }}
       </Tree>
+
+      {menu && (
+        <>
+          {/* Click-away backdrop. */}
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div
+            className="fixed z-50 min-w-40 rounded border border-border bg-background py-1 text-sm shadow-md"
+            style={{ left: menu.x, top: menu.y }}
+          >
+            {(
+              [
+                {
+                  label: 'Open data',
+                  run: () => void useQueryStore.getState().openTable(menu.schema, menu.table)
+                },
+                { label: 'Show columns', run: () => menu.toggle() },
+                {
+                  label: 'Table info',
+                  run: () => setInfo({ schema: menu.schema, table: menu.table })
+                },
+                {
+                  label: 'Copy name',
+                  run: () => void navigator.clipboard.writeText(`"${menu.schema}"."${menu.table}"`)
+                }
+              ] as const
+            ).map((item) => (
+              <button
+                key={item.label}
+                className="block w-full px-3 py-1 text-left text-foreground hover:bg-muted"
+                onClick={() => {
+                  item.run()
+                  setMenu(null)
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {info && (
+        <TableInfoDialog schema={info.schema} table={info.table} onClose={() => setInfo(null)} />
+      )}
     </div>
   )
 }

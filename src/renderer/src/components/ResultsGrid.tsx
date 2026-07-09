@@ -42,6 +42,7 @@ export function ResultsGrid(props: { source: QueryResultSource }): React.JSX.Ele
       rows={rowCount}
       getCellContent={getCellContent}
       onVisibleRegionChanged={onVisibleRegionChanged}
+      rowMarkers="number"
       smoothScrollX
       smoothScrollY
       getCellsForSelection
