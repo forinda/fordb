@@ -13,8 +13,10 @@ import type {
   TableInfo
 } from '@shared/adapter/types'
 import type { ServerStatsProvider } from '@shared/adapter/stats-types'
+import type { DataMutator } from '@shared/adapter/mutation-types'
 import * as SQL from './introspection-sql'
 import { PgServerStats } from './postgres-stats'
+import { PgDataMutator } from './postgres-mutator'
 
 // pg's built-in type parsers don't cover `name[]` (OID 1003) — the array type
 // Postgres reports for `ARRAY(SELECT a.attname ...)` in the key/index
@@ -47,6 +49,7 @@ export class PostgresAdapter implements DbAdapter {
   private cursors = new Map<string, OpenCursor>()
   private nextCursorId = 1
   readonly serverStats: ServerStatsProvider = new PgServerStats(() => this.conn)
+  readonly dataMutator: DataMutator = new PgDataMutator(() => this.conn)
 
   private get conn(): pg.Client {
     if (!this.client) throw new Error('Not connected')
