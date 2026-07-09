@@ -20,7 +20,7 @@ export class PgServerStats implements ServerStatsProvider {
       c.query(SQL.SNAPSHOT),
       c.query(SQL.ACTIVITY_BY_STATE)
     ])
-    const r = snap.rows[0] ?? {}
+    const r = (snap.rows[0] ?? {}) as Record<string, unknown>
     const by = { active: 0, idle: 0, idleInTransaction: 0, idleInTransactionAborted: 0, other: 0 }
     for (const row of states.rows as { state: string | null; n: number }[]) {
       if (row.state === 'active') by.active += row.n

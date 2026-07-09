@@ -42,4 +42,6 @@ SELECT
 FROM pg_stat_activity a
 JOIN LATERAL unnest(pg_blocking_pids(a.pid)) AS blocking(pid) ON true
 JOIN pg_stat_activity bl ON bl.pid = blocking.pid
-WHERE cardinality(pg_blocking_pids(a.pid)) > 0`
+WHERE cardinality(pg_blocking_pids(a.pid)) > 0
+  AND a.datname = current_database()
+  AND bl.datname = current_database()`
