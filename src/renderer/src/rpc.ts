@@ -1,5 +1,6 @@
 import { createRpcClient } from '@shared/rpc/client'
 import type { HostApi } from '@shared/host/host-api'
+import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 
 declare global {
   interface Window {
@@ -17,6 +18,13 @@ declare global {
           }
         ) => Promise<void>
         delete: (id: string) => Promise<void>
+      }
+      queries: {
+        historyList: (profileId: string) => Promise<HistoryEntry[]>
+        historyAdd: (profileId: string, sql: string) => Promise<void>
+        savedList: (profileId: string) => Promise<SavedQuery[]>
+        save: (profileId: string, name: string, sql: string) => Promise<SavedQuery>
+        deleteSaved: (profileId: string, id: string) => Promise<void>
       }
       connection: {
         test: (profileId: string) => Promise<{ ok: boolean; error?: string }>
