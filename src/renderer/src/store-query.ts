@@ -5,6 +5,7 @@ import { isSelectLike } from '@shared/sql/classify'
 import { QueryResultSource } from '@shared/query/result-source'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
+import type { RowEdit } from '@shared/adapter/mutation-types'
 
 const PAGE_SIZE = 1000
 
@@ -16,6 +17,9 @@ export interface QueryTab {
   source?: QueryResultSource
   message?: string // rowCount/command summary or error text
   elapsedMs?: number
+  kind: 'query' | 'data'
+  /** Present on data tabs — the table being browsed/edited. */
+  data?: { schema: string; table: string; pkColumns: string[] }
 }
 
 let seq = 0
@@ -35,6 +39,8 @@ interface QueryState {
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
   setMainView: (v: 'query' | 'dashboard') => void
+  openTable: (schema: string, table: string) => Promise<void>
+  applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
 }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
@@ -47,8 +53,31 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   mainView: 'query',
   setMainView: (v) => set({ mainView: v }),
   newTab: () => {
-    const t: QueryTab = { id: tabId(), sql: '', status: 'idle' }
+    const t: QueryTab = { id: tabId(), sql: '', status: 'idle', kind: 'query' }
     set((s) => ({ tabs: [...s.tabs, t], activeTabId: t.id }))
+  },
+  openTable: async (schema, table) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    const api = await hostApi()
+    const keys = await api.getKeys(connId, schema, table)
+    const pk = keys.find((k) => k.kind === 'primary') ?? keys.find((k) => k.kind === 'unique')
+    const id = tabId()
+    const tab: QueryTab = {
+      id,
+      sql: `SELECT * FROM "${schema}"."${table}"`,
+      status: 'idle',
+      kind: 'data',
+      data: { schema, table, pkColumns: pk?.columns ?? [] }
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+    await get().run(id) // reuse the SELECT streaming path
+  },
+  applyEdits: async (tabId, edits) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    await (await hostApi()).applyEdits(connId, edits)
+    await get().run(tabId) // refresh the data view
   },
   closeTab: (id) => {
     const tab = get().tabs.find((t) => t.id === id)
