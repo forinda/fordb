@@ -15,6 +15,7 @@ import { useServerStatsSupported } from './query/stats'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
+import { useDialect } from './query/use-dialect'
 import type { ConnectionProfile } from '@shared/adapter/types'
 // The global `Window.fordb` type is declared once in ./rpc.ts (imported for
 // its ambient `declare global` augmentation).
@@ -31,6 +32,7 @@ export function App(): React.JSX.Element {
   const setMode = useThemeStore((s) => s.setMode)
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
+  const { sqlLang } = useDialect()
   // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
 
@@ -75,6 +77,11 @@ export function App(): React.JSX.Element {
       run: () => {
         if (activeConnectionId) void invalidateIntrospection(queryClient, activeConnectionId)
       }
+    },
+    {
+      id: 'format-sql',
+      label: 'Format SQL',
+      run: () => useQueryStore.getState().formatActive(sqlLang)
     },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },

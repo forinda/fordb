@@ -58,6 +58,7 @@ interface QueryState {
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
   applyDdl: (statements: string[]) => Promise<void>
+  formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
 }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
@@ -143,6 +144,19 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       structure: { schema, table }
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+  },
+  formatActive: (sqlLang) => {
+    const s = get()
+    const tab = s.tabs.find((t) => t.id === s.activeTabId)
+    if (!tab || tab.kind !== 'query' || !tab.sql.trim()) return
+    // Lazy import keeps sql-formatter off the initial bundle path.
+    void import('sql-formatter').then(({ format }) => {
+      try {
+        get().setSql(tab.id, format(tab.sql, { language: sqlLang }))
+      } catch {
+        // A formatter parse error leaves the SQL untouched (best-effort prettify).
+      }
+    })
   },
   applyDdl: async (statements) => {
     const connId = useConnStore.getState().activeConnectionId
