@@ -124,13 +124,6 @@ export function App(): React.JSX.Element {
             {view.kind === 'connected' && (
               <div className="flex h-full flex-col">
                 <div className="flex gap-1 border-b border-border p-1">
-                  <button
-                    aria-pressed={mainView === 'query'}
-                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setMainView('query')}
-                  >
-                    Query
-                  </button>
                   {statsSupported && (
                     <button
                       aria-pressed={mainView === 'dashboard'}
@@ -140,6 +133,13 @@ export function App(): React.JSX.Element {
                       Dashboard
                     </button>
                   )}
+                  <button
+                    aria-pressed={mainView === 'query'}
+                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                    onClick={() => setMainView('query')}
+                  >
+                    Query
+                  </button>
                 </div>
                 <div className="min-h-0 flex-1">
                   {mainView === 'dashboard' && statsSupported ? (
