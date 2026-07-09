@@ -1,3 +1,4 @@
+import IconRefresh from '~icons/lucide/refresh-cw'
 import { useConnStore } from '../store'
 import { queryClient } from '../query/client'
 import { invalidateIntrospection } from '../query/introspection'
@@ -14,7 +15,10 @@ export function RefreshSchemaButton(): React.JSX.Element {
         if (connId) void invalidateIntrospection(queryClient, connId)
       }}
     >
-      Refresh schema
+      <span className="flex items-center gap-1">
+        <IconRefresh className="h-3.5 w-3.5" />
+        Refresh schema
+      </span>
     </Button>
   )
 }

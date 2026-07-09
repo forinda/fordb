@@ -1,5 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
+import IconChevronRight from '~icons/lucide/chevron-right'
+import IconChevronDown from '~icons/lucide/chevron-down'
+import IconDatabase from '~icons/lucide/database'
+import IconTable from '~icons/lucide/table'
+import IconEye from '~icons/lucide/eye'
+import IconColumn from '~icons/lucide/circle'
 import { useConnStore } from '../store'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns } from '../query/introspection'
@@ -104,7 +110,16 @@ export function SchemaTree(): React.JSX.Element {
         onToggle={onToggle}
       >
         {({ node, style, dragHandle }) => {
-          const isColumn = node.data.kind === 'column'
+          const kind = node.data.kind
+          const isColumn = kind === 'column'
+          const TypeIcon =
+            kind === 'schema'
+              ? IconDatabase
+              : kind === 'view'
+                ? IconEye
+                : isColumn
+                  ? IconColumn
+                  : IconTable
           return (
             <div
               style={style}
@@ -117,9 +132,15 @@ export function SchemaTree(): React.JSX.Element {
               }}
               className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
             >
-              <span className="text-muted-foreground">
-                {node.data.kind === 'view' ? '◇' : isColumn ? '·' : node.isOpen ? '▾' : '▸'}
+              <span className="w-3.5 shrink-0 text-muted-foreground">
+                {!isColumn &&
+                  (node.isOpen ? (
+                    <IconChevronDown className="h-3.5 w-3.5" />
+                  ) : (
+                    <IconChevronRight className="h-3.5 w-3.5" />
+                  ))}
               </span>
+              <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
               <span className="text-foreground">{node.data.name}</span>
             </div>
           )
