@@ -139,6 +139,34 @@ export function runAdapterContractTests(
       expect(inj).toHaveLength(0)
     })
 
+    // Uses its own throwaway table (dropped at the end) so it never touches the
+    // shared fixture rows the mutator test depends on.
+    it('schema editor: create/add-column/index/fk then drop — introspection reflects each', async () => {
+      if (!adapter.schemaEditor) return
+      const s = expected.schema
+      const q = (id: string): string => `"${id.replace(/"/g, '""')}"`
+      const ddl = (stmts: string[]): Promise<void> => adapter.schemaEditor!.applyDdl(stmts)
+
+      await ddl([`CREATE TABLE ${q(s)}.${q('ma3_t')} ("id" integer NOT NULL, PRIMARY KEY ("id"))`])
+      expect((await adapter.listTables(s)).some((t) => t.name === 'ma3_t')).toBe(true)
+
+      await ddl([`ALTER TABLE ${q(s)}.${q('ma3_t')} ADD COLUMN ${q('label')} text`])
+      expect((await adapter.getColumns(s, 'ma3_t')).some((c) => c.name === 'label')).toBe(true)
+
+      await ddl([`CREATE INDEX ${q('ma3_idx')} ON ${q(s)}.${q('ma3_t')} (${q('label')})`])
+      expect((await adapter.getIndexes(s, 'ma3_t')).some((i) => i.name === 'ma3_idx')).toBe(true)
+
+      if (adapter.schemaEditor.ops.addForeignKey) {
+        await ddl([
+          `ALTER TABLE ${q(s)}.${q('ma3_t')} ADD CONSTRAINT ${q('ma3_fk')} FOREIGN KEY (${q('id')}) REFERENCES ${q(s)}.${q('users')} (${q('id')})`
+        ])
+        expect((await adapter.getKeys(s, 'ma3_t')).some((k) => k.kind === 'foreign')).toBe(true)
+      }
+
+      await ddl([`DROP TABLE ${q(s)}.${q('ma3_t')}`])
+      expect((await adapter.listTables(s)).some((t) => t.name === 'ma3_t')).toBe(false)
+    })
+
     it('executes a buffered query with fields and rows', async () => {
       const r = await adapter.executeQuery(
         `SELECT id, email FROM ${expected.schema}.users ORDER BY id LIMIT 3`
