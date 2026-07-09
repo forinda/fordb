@@ -11,15 +11,31 @@ import {
 import '@glideapps/glide-data-grid/dist/index.css'
 import { buildEdits, previewEdits, type PendingEdits } from '@shared/mutation/build-edits'
 import type { Cell } from '@shared/adapter/mutation-types'
+import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
 import { useQueryStore, type QueryTab } from '../store-query'
 
 type Val = string | null
+
+const OPS: { v: FilterOp; label: string }[] = [
+  { v: 'eq', label: '=' },
+  { v: 'ne', label: '≠' },
+  { v: 'lt', label: '<' },
+  { v: 'gt', label: '>' },
+  { v: 'le', label: '≤' },
+  { v: 'ge', label: '≥' },
+  { v: 'contains', label: 'contains' },
+  { v: 'isNull', label: 'is null' },
+  { v: 'isNotNull', label: 'is not null' }
+]
+const isNullOp = (op: FilterOp): boolean => op === 'isNull' || op === 'isNotNull'
 
 export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   const { tab } = props
   const source = tab.source
   const data = tab.data
   const applyEdits = useQueryStore((s) => s.applyEdits)
+  const setBrowse = useQueryStore((s) => s.setBrowse)
+  const openFkTarget = useQueryStore((s) => s.openFkTarget)
 
   // Pending change set (component-local; cleared on apply/discard).
   const [edits, setEdits] = useState<Record<string, Val>>({}) // `${row}:${colName}` → new value
@@ -37,6 +53,18 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     setLoadedCount(source?.loadedRowCount() ?? 0)
   }, [source])
 
+  // Filter-bar draft rows (local; committed to the store on Apply).
+  const [filterRows, setFilterRows] = useState<{ column: string; op: FilterOp; value: string }[]>(
+    () =>
+      data?.browse.filters.length
+        ? data.browse.filters.map((f) => ({
+            column: f.column,
+            op: f.op,
+            value: f.value == null ? '' : String(f.value)
+          }))
+        : [{ column: '', op: 'eq', value: '' }]
+  )
+
   const editable = !!data && data.editable
   const fields = source?.fields ?? []
   const colName = (col: number): string => fields[col]?.name ?? ''
@@ -47,7 +75,17 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     inserts.filter((r) => Object.keys(r).length > 0).length +
     deletes.size
 
-  const columns = fields.map((f) => ({ title: f.name, id: f.name, width: 160 }))
+  const fkColumns = data?.fkColumns ?? {}
+  const sortFor = (name: string): Sort | undefined =>
+    data?.browse.sort.find((s) => s.column === name)
+  const columns = fields.map((f) => {
+    const s = sortFor(f.name)
+    return {
+      title: f.name + (s ? (s.dir === 'asc' ? ' ↑' : ' ↓') : ''),
+      id: f.name,
+      width: 160
+    }
+  })
 
   const getCellContent = useCallback(
     (cell: Item): GridCell => {
@@ -70,15 +108,20 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
         touched = true
       }
       const text = value === null ? '∅' : value
+      const isFk = name in fkColumns && value !== null
+      const theme = {
+        ...(touched ? { bgCell: '#3b3b1f' } : {}),
+        ...(isFk ? { textDark: '#6ea8fe', textLight: '#0a58ca' } : {})
+      }
       return {
         kind: GridCellKind.Text,
         data: value ?? '',
         displayData: text,
         allowOverlay: editable,
-        ...(touched ? { themeOverride: { bgCell: '#3b3b1f' } } : {})
+        ...(Object.keys(theme).length ? { themeOverride: theme } : {})
       }
     },
-    [source, baseRows, edits, inserts, deletes, editable]
+    [source, baseRows, edits, inserts, deletes, editable, fkColumns]
   )
 
   const onCellEdited = useCallback(
@@ -102,6 +145,54 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     },
     [source]
   )
+
+  function discard(): void {
+    setEdits({})
+    setInserts([])
+    setDeletes(new Set())
+    setError(null)
+  }
+
+  // Any browse change (filter/sort/FK-nav re-run) throws away in-flight edits —
+  // confirm first, then clear pending so they don't reapply against new rows.
+  function guardedSetBrowse(browse: { filters: Filter[]; sort: Sort[] }): void {
+    if (dirty > 0) {
+      if (!window.confirm(`Discard ${dirty} pending changes?`)) return
+      discard()
+    }
+    setBrowse(tab.id, browse)
+  }
+
+  function applyFilters(): void {
+    if (!data) return
+    const filters: Filter[] = filterRows
+      .filter((r) => r.column && (isNullOp(r.op) || r.value !== ''))
+      .map((r) => (isNullOp(r.op) ? { column: r.column, op: r.op } : r))
+    guardedSetBrowse({ filters, sort: data.browse.sort })
+  }
+
+  function onHeaderClicked(col: number): void {
+    if (!data) return
+    const name = colName(col)
+    const cur = data.browse.sort.find((s) => s.column === name)
+    // Cycle the clicked column asc → desc → unsorted (single-column sort in v1).
+    const sort: Sort[] = !cur
+      ? [{ column: name, dir: 'asc' }]
+      : cur.dir === 'asc'
+        ? [{ column: name, dir: 'desc' }]
+        : []
+    guardedSetBrowse({ filters: data.browse.filters, sort })
+  }
+
+  function onCellClicked(cell: Item): void {
+    const [col, row] = cell
+    if (!data || row >= baseRows) return
+    const refTable = data.fkColumns[colName(col)]
+    if (!refTable) return
+    const raw = source?.getRow(row)?.[col]
+    if (raw === null || raw === undefined) return
+    void openFkTarget(data.schema, refTable, raw)
+  }
 
   function setNull(): void {
     const c = selection.current?.cell
@@ -169,13 +260,6 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     }
   }
 
-  function discard(): void {
-    setEdits({})
-    setInserts([])
-    setDeletes(new Set())
-    setError(null)
-  }
-
   if (!source || columns.length === 0)
     return <div className="p-4 text-muted-foreground">No data.</div>
 
@@ -216,6 +300,85 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           <span className="text-muted-foreground">No primary key — read only</span>
         )}
       </div>
+      <div className="flex flex-wrap items-center gap-1 border-b border-border p-1 text-xs">
+        {filterRows.map((r, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <select
+              aria-label="filter-column"
+              className="rounded border border-border bg-background px-1 py-0.5"
+              value={r.column}
+              onChange={(e) =>
+                setFilterRows((rows) =>
+                  rows.map((x, j) => (j === i ? { ...x, column: e.target.value } : x))
+                )
+              }
+            >
+              <option value="">column…</option>
+              {fields.map((f) => (
+                <option key={f.name} value={f.name}>
+                  {f.name}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="filter-op"
+              className="rounded border border-border bg-background px-1 py-0.5"
+              value={r.op}
+              onChange={(e) =>
+                setFilterRows((rows) =>
+                  rows.map((x, j) => (j === i ? { ...x, op: e.target.value as FilterOp } : x))
+                )
+              }
+            >
+              {OPS.map((o) => (
+                <option key={o.v} value={o.v}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <input
+              aria-label="filter-value"
+              className="w-28 rounded border border-border bg-background px-1 py-0.5 disabled:opacity-40"
+              disabled={isNullOp(r.op)}
+              value={r.value}
+              onChange={(e) =>
+                setFilterRows((rows) =>
+                  rows.map((x, j) => (j === i ? { ...x, value: e.target.value } : x))
+                )
+              }
+              onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
+            />
+            <button
+              className="rounded px-1 hover:bg-muted"
+              aria-label="remove-filter"
+              onClick={() =>
+                setFilterRows((rows) =>
+                  rows.length > 1
+                    ? rows.filter((_, j) => j !== i)
+                    : [{ column: '', op: 'eq', value: '' }]
+                )
+              }
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+        <button
+          className="rounded px-2 py-0.5 hover:bg-muted"
+          onClick={() => setFilterRows((rows) => [...rows, { column: '', op: 'eq', value: '' }])}
+        >
+          + filter
+        </button>
+        <button
+          className="rounded bg-primary px-2 py-0.5 text-primary-foreground"
+          onClick={applyFilters}
+        >
+          Apply
+        </button>
+        <span className="ml-2 text-muted-foreground">
+          click a header to sort · click a linked value to follow the FK
+        </span>
+      </div>
       {error && <div className="p-1 text-sm text-destructive">{error}</div>}
       <div className="min-h-0 flex-1">
         <DataEditor
@@ -223,6 +386,8 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           rows={totalRows}
           getCellContent={getCellContent}
           onCellEdited={onCellEdited}
+          onHeaderClicked={onHeaderClicked}
+          onCellClicked={onCellClicked}
           onVisibleRegionChanged={onVisibleRegionChanged}
           gridSelection={selection}
           onGridSelectionChange={setSelection}
