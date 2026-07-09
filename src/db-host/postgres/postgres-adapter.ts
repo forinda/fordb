@@ -14,9 +14,11 @@ import type {
 } from '@shared/adapter/types'
 import type { ServerStatsProvider } from '@shared/adapter/stats-types'
 import type { DataMutator } from '@shared/adapter/mutation-types'
+import type { DataBrowser } from '@shared/adapter/browse-types'
 import * as SQL from './introspection-sql'
 import { PgServerStats } from './postgres-stats'
 import { PgDataMutator } from './postgres-mutator'
+import { PgDataBrowser } from './postgres-browser'
 
 // pg's built-in type parsers don't cover `name[]` (OID 1003) — the array type
 // Postgres reports for `ARRAY(SELECT a.attname ...)` in the key/index
@@ -53,6 +55,9 @@ export class PostgresAdapter implements DbAdapter {
     if (!this.profile) throw new Error('Not connected')
     return new pg.Client(PostgresAdapter.clientConfig(this.profile))
   })
+  readonly dataBrowser: DataBrowser = new PgDataBrowser((sql, params, ps) =>
+    this.openCursor(sql, params, ps)
+  )
 
   private get conn(): pg.Client {
     if (!this.client) throw new Error('Not connected')
@@ -143,7 +148,17 @@ export class PostgresAdapter implements DbAdapter {
   }
 
   async openQuery(sql: string, pageSize: number): Promise<OpenQueryResult> {
-    const cursor = this.conn.query(new Cursor(sql, [], { rowMode: 'array' }))
+    return this.openCursor(sql, [], pageSize)
+  }
+
+  // Shared cursor-open used by openQuery (no params) and the DataBrowser
+  // (parameterized). Values in `params` are bound by pg-cursor.
+  private async openCursor(
+    sql: string,
+    params: unknown[],
+    pageSize: number
+  ): Promise<OpenQueryResult> {
+    const cursor = this.conn.query(new Cursor(sql, params, { rowMode: 'array' }))
     // Note: `cursor.read(0, ...)` cannot be used to "prime" the cursor for
     // field metadata without consuming rows — in the Postgres extended query
     // protocol an Execute message's maxRows of 0 means "no limit", so it
