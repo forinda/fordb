@@ -37,6 +37,7 @@ export function QueryWorkbench(): React.JSX.Element {
   const cancel = useQueryStore((s) => s.cancel)
   const formatActive = useQueryStore((s) => s.formatActive)
   const openExplain = useQueryStore((s) => s.openExplain)
+  const setPicker = useQueryStore((s) => s.setPicker)
   const { dialect, sqlLang } = useDialect()
   const tab = tabs.find((t) => t.id === activeId)
 
@@ -131,6 +132,15 @@ export function QueryWorkbench(): React.JSX.Element {
             Explain analyze
           </Button>
         )}
+        <Button variant="ghost" onClick={() => setPicker('save')} disabled={!tab.sql.trim()}>
+          Save
+        </Button>
+        <Button variant="ghost" onClick={() => setPicker('saved')}>
+          Saved
+        </Button>
+        <Button variant="ghost" onClick={() => setPicker('history')}>
+          History
+        </Button>
         <Button variant="ghost" onClick={() => void exportData('csv')} disabled={!tab.source}>
           Export CSV
         </Button>
