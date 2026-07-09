@@ -31,16 +31,21 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
 
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<null | 'column' | 'index' | 'fk'>(null)
+  // Which column's inline Alter form is open (by name).
+  const [editCol, setEditCol] = useState<string | null>(null)
 
   // Preview the generated SQL, confirm, apply. Any browse/tree cache refresh is
-  // handled by the store's applyDdl (it invalidates introspection).
+  // handled by the store's applyDdl (it invalidates introspection). The current
+  // structure is always passed as context — harmless for PG/native ops, required
+  // for the SQLite table-rebuild (alterColumn / FK add-drop).
   async function run(change: DdlChange): Promise<void> {
     setError(null)
-    const statements = buildDdl(change, dialect)
+    const statements = buildDdl(change, dialect, { columns: cols, keys, indexes })
     if (!window.confirm(`Apply this DDL?\n\n${statements.join(';\n')}`)) return
     try {
       await applyDdl(statements)
       setForm(null)
+      setEditCol(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -74,14 +79,55 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
         }
       >
         {cols.map((c) => (
-          <Row key={c.name}>
-            <span className="font-mono">{c.name}</span>
-            <span className="text-muted-foreground">{c.dataType}</span>
-            <span className="text-muted-foreground">{c.nullable ? 'null' : 'not null'}</span>
-            {c.defaultValue != null && (
-              <span className="text-muted-foreground">default {c.defaultValue}</span>
+          <div key={c.name}>
+            <Row>
+              <span className="font-mono">{c.name}</span>
+              <span className="text-muted-foreground">{c.dataType}</span>
+              <span className="text-muted-foreground">{c.nullable ? 'null' : 'not null'}</span>
+              {c.defaultValue != null && (
+                <span className="text-muted-foreground">default {c.defaultValue}</span>
+              )}
+              <span className="ml-auto flex gap-1">
+                {ops?.renameColumn && (
+                  <button
+                    className="rounded px-1 text-xs hover:bg-muted"
+                    onClick={() => {
+                      const to = window.prompt(`Rename "${c.name}" to`, c.name)?.trim()
+                      if (to && to !== c.name)
+                        void run({ kind: 'renameColumn', schema, table, from: c.name, to })
+                    }}
+                  >
+                    rename
+                  </button>
+                )}
+                {ops?.alterColumn && (
+                  <button
+                    className="rounded px-1 text-xs hover:bg-muted"
+                    onClick={() => setEditCol(editCol === c.name ? null : c.name)}
+                  >
+                    alter
+                  </button>
+                )}
+                {ops?.dropColumn && (
+                  <button
+                    className="rounded px-1 text-xs text-destructive hover:bg-muted"
+                    onClick={() => void run({ kind: 'dropColumn', schema, table, column: c.name })}
+                  >
+                    drop
+                  </button>
+                )}
+              </span>
+            </Row>
+            {editCol === c.name && (
+              <AlterColumnForm
+                column={c.name}
+                currentType={c.dataType}
+                currentNotNull={!c.nullable}
+                onCancel={() => setEditCol(null)}
+                onSubmit={(change) => void run({ kind: 'alterColumn', schema, table, ...change })}
+              />
             )}
-          </Row>
+          </div>
         ))}
         {form === 'column' && (
           <ColumnForm
@@ -193,6 +239,71 @@ function Row(props: { children: React.ReactNode }): React.JSX.Element {
 }
 
 const input = 'rounded border border-border bg-background px-1 py-0.5'
+
+// Emits an alterColumn change carrying ONLY the fields the user actually changed
+// (untouched fields stay undefined so PG emits minimal ALTERs and the SQLite
+// rebuild is unambiguous).
+function AlterColumnForm(props: {
+  column: string
+  currentType: string
+  currentNotNull: boolean
+  onSubmit: (change: {
+    column: string
+    type?: string
+    default?: string | null
+    notNull?: boolean
+  }) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [type, setType] = useState(props.currentType)
+  const [notNull, setNotNull] = useState(props.currentNotNull)
+  const [def, setDef] = useState('')
+  const [dropDef, setDropDef] = useState(false)
+  return (
+    <Row>
+      <span className="text-muted-foreground">alter {props.column}:</span>
+      <input
+        aria-label="ddl-alter-type"
+        className={input}
+        placeholder="type"
+        value={type}
+        onChange={(e) => setType(e.target.value)}
+      />
+      <label className="flex items-center gap-1">
+        <input type="checkbox" checked={notNull} onChange={(e) => setNotNull(e.target.checked)} />
+        not null
+      </label>
+      <input
+        aria-label="ddl-alter-default"
+        className={input}
+        placeholder="default expr"
+        value={def}
+        disabled={dropDef}
+        onChange={(e) => setDef(e.target.value)}
+      />
+      <label className="flex items-center gap-1">
+        <input type="checkbox" checked={dropDef} onChange={(e) => setDropDef(e.target.checked)} />
+        drop default
+      </label>
+      <button
+        className="rounded bg-primary px-2 py-0.5 text-primary-foreground"
+        onClick={() =>
+          props.onSubmit({
+            column: props.column,
+            ...(type !== props.currentType ? { type } : {}),
+            ...(notNull !== props.currentNotNull ? { notNull } : {}),
+            ...(dropDef ? { default: null } : def !== '' ? { default: def } : {})
+          })
+        }
+      >
+        Apply
+      </button>
+      <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
+        Cancel
+      </button>
+    </Row>
+  )
+}
 
 function ColumnForm(props: {
   onSubmit: (column: { name: string; type: string; notNull?: boolean }) => void
