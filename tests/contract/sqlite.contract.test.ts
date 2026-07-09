@@ -12,7 +12,13 @@ import type { SqliteProfile } from '../../src/shared/adapter/types'
 // beforeAll below, which runs BEFORE the contract's own beforeAll (which does
 // adapter.connect(profile)) because root-suite hooks run before child-suite
 // hooks.
-const profile: SqliteProfile = { id: 's', name: 'sqlite-contract', engine: 'sqlite', file: '' }
+const profile: SqliteProfile = {
+  id: 's',
+  name: 'sqlite-contract',
+  engine: 'sqlite',
+  kind: 'local',
+  file: ''
+}
 
 beforeAll(async () => {
   profile.file = await buildSqliteFixture()
