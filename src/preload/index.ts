@@ -54,7 +54,8 @@ contextBridge.exposeInMainWorld('fordb', {
   connection: {
     test: (profileId: string): Promise<{ ok: boolean; error?: string }> =>
       ipcRenderer.invoke('connection:test', profileId),
-    open: (profileId: string): Promise<string> => ipcRenderer.invoke('connection:open', profileId),
+    open: (profileId: string, database?: string): Promise<string> =>
+      ipcRenderer.invoke('connection:open', profileId, database),
     close: (connectionId: string): Promise<void> =>
       ipcRenderer.invoke('connection:close', connectionId)
   },
