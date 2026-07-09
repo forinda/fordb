@@ -109,4 +109,20 @@ describe('HostApi over RPC', () => {
     expect(r.rows[0]?.[0]).toBe('Via HostApi')
     await client.closeConnection(id)
   })
+
+  it('exposes data browse over the HostApi', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.browseSupported(id)).toBe(true)
+    const open = await client.openBrowse(id, {
+      schema: 'app',
+      table: 'users',
+      filters: [{ column: 'id', op: 'eq', value: 1 }],
+      sort: [],
+      pageSize: 1000
+    })
+    const page = await client.fetchPage(id, open.queryId)
+    await client.closeQuery(id, open.queryId)
+    expect(page.rows).toHaveLength(1)
+    await client.closeConnection(id)
+  })
 })
