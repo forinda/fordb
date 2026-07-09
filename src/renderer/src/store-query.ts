@@ -124,6 +124,10 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   },
   connectionLost: () => {
     for (const t of get().tabs) void t.source?.dispose()
+    // Clear the active connection so connection-scoped polling (the server-stats
+    // dashboard's refetchInterval hooks are enabled-gated on connId) stops
+    // instead of looping forever against the now-dead db-host connection.
+    useConnStore.getState().clearActive()
     set((s) => ({
       tabs: s.tabs.map((t) => ({
         ...t,
