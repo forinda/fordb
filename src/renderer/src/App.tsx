@@ -10,6 +10,7 @@ import { ServerDashboard } from './components/ServerDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
+import { useServerStatsSupported } from './query/stats'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
@@ -29,6 +30,8 @@ export function App(): React.JSX.Element {
   const setMode = useThemeStore((s) => s.setMode)
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
+  // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
+  const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
 
   useEffect(() => {
     void useThemeStore.getState().init()
@@ -128,16 +131,22 @@ export function App(): React.JSX.Element {
                   >
                     Query
                   </button>
-                  <button
-                    aria-pressed={mainView === 'dashboard'}
-                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setMainView('dashboard')}
-                  >
-                    Dashboard
-                  </button>
+                  {statsSupported && (
+                    <button
+                      aria-pressed={mainView === 'dashboard'}
+                      className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                      onClick={() => setMainView('dashboard')}
+                    >
+                      Dashboard
+                    </button>
+                  )}
                 </div>
                 <div className="min-h-0 flex-1">
-                  {mainView === 'query' ? <QueryWorkbench /> : <ServerDashboard />}
+                  {mainView === 'dashboard' && statsSupported ? (
+                    <ServerDashboard />
+                  ) : (
+                    <QueryWorkbench />
+                  )}
                 </div>
               </div>
             )}
