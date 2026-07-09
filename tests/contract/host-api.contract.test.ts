@@ -125,4 +125,18 @@ describe('HostApi over RPC', () => {
     expect(page.rows).toHaveLength(1)
     await client.closeConnection(id)
   })
+
+  it('applies DDL over the HostApi (create + drop a temp table)', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.schemaEditSupported(id)).toBe(true)
+    const ops = await client.schemaOps(id)
+    expect(ops.createTable).toBe(true)
+    await client.applyDdl(id, [`DROP TABLE app.ma3_hostapi`]).catch(() => {})
+    await client.applyDdl(id, [
+      `CREATE TABLE app.ma3_hostapi ("id" integer NOT NULL, PRIMARY KEY ("id"))`
+    ])
+    expect((await client.listTables(id, 'app')).some((t) => t.name === 'ma3_hostapi')).toBe(true)
+    await client.applyDdl(id, [`DROP TABLE app.ma3_hostapi`])
+    await client.closeConnection(id)
+  })
 })

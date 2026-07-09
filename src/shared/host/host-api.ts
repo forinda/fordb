@@ -11,6 +11,7 @@ import type {
 import type { ServerSnapshot, SessionRow, LockRow } from '../adapter/stats-types'
 import type { RowEdit } from '../adapter/mutation-types'
 import type { BrowseOptions } from '../adapter/browse-types'
+import type { SchemaOps } from '../adapter/schema-types'
 
 export type ConnectionId = string
 
@@ -50,4 +51,8 @@ export interface HostApi {
 
   browseSupported(id: ConnectionId): Promise<boolean>
   openBrowse(id: ConnectionId, opts: BrowseOptions): Promise<OpenQueryResult>
+
+  schemaEditSupported(id: ConnectionId): Promise<boolean>
+  schemaOps(id: ConnectionId): Promise<SchemaOps>
+  applyDdl(id: ConnectionId, statements: string[]): Promise<void>
 }
