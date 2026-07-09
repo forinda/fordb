@@ -6,6 +6,7 @@ import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
+import { ServerDashboard } from './components/ServerDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
@@ -26,6 +27,8 @@ export function App(): React.JSX.Element {
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
   const setMode = useThemeStore((s) => s.setMode)
+  const mainView = useQueryStore((s) => s.mainView)
+  const setMainView = useQueryStore((s) => s.setMainView)
 
   useEffect(() => {
     void useThemeStore.getState().init()
@@ -60,6 +63,8 @@ export function App(): React.JSX.Element {
       }
     },
     { id: 'new-query-tab', label: 'New query tab', run: () => useQueryStore.getState().newTab() },
+    { id: 'show-dashboard', label: 'Show dashboard', run: () => setMainView('dashboard') },
+    { id: 'show-query', label: 'Show query', run: () => setMainView('query') },
     {
       id: 'refresh-schema',
       label: 'Refresh schema',
@@ -114,8 +119,24 @@ export function App(): React.JSX.Element {
               />
             )}
             {view.kind === 'connected' && (
-              <div className="h-full">
-                <QueryWorkbench />
+              <div className="flex h-full flex-col">
+                <div className="flex gap-1 border-b border-border p-1">
+                  <button
+                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                    onClick={() => setMainView('query')}
+                  >
+                    Query
+                  </button>
+                  <button
+                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                    onClick={() => setMainView('dashboard')}
+                  >
+                    Dashboard
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1">
+                  {mainView === 'query' ? <QueryWorkbench /> : <ServerDashboard />}
+                </div>
               </div>
             )}
           </div>

@@ -1,0 +1,79 @@
+import { useMemo, useState } from 'react'
+import { useConnStore } from '../store'
+import { useServerSnapshot, useSessions, useLocks } from '../query/stats'
+import { useRateHistory } from '../query/use-rate-history'
+import { TimeSeriesChart } from './charts/TimeSeriesChart'
+import { Gauges } from './dashboard/Gauges'
+import { SessionsTable } from './dashboard/SessionsTable'
+import { LocksPanel } from './dashboard/LocksPanel'
+import { ControlsBar } from './dashboard/ControlsBar'
+
+export function ServerDashboard(): React.JSX.Element {
+  const connId = useConnStore((s) => s.activeConnectionId)
+  const [intervalMs, setIntervalMs] = useState(2000)
+  const [paused, setPaused] = useState(false)
+  const opts = { intervalMs, enabled: !paused }
+
+  const snapshotQ = useServerSnapshot(connId, opts)
+  const sessionsQ = useSessions(connId, opts)
+  const locksQ = useLocks(connId, opts)
+  const { rates, connections } = useRateHistory(connId, snapshotQ.data)
+
+  const t = useMemo(() => rates.map((r) => r.tMs / 1000), [rates])
+  const tpsData = useMemo(() => [t, rates.map((r) => r.tps)], [t, rates])
+  const cacheData = useMemo(() => [t, rates.map((r) => r.cacheHitRatio * 100)], [t, rates])
+  const tupleData = useMemo(() => [t, rates.map((r) => r.tuplesPerSec)], [t, rates])
+  const connT = useMemo(() => connections.map((c) => c.tMs / 1000), [connections])
+  const connData = useMemo(
+    () => [
+      connT,
+      connections.map((c) => c.active),
+      connections.map((c) => c.idle),
+      connections.map((c) => c.idleInTransaction)
+    ],
+    [connT, connections]
+  )
+
+  if (snapshotQ.isError)
+    return (
+      <div className="p-4 text-destructive">
+        Stats failed: {snapshotQ.error instanceof Error ? snapshotQ.error.message : 'error'}
+      </div>
+    )
+
+  return (
+    <div className="flex h-full flex-col overflow-auto">
+      <ControlsBar
+        intervalMs={intervalMs}
+        onIntervalChange={setIntervalMs}
+        paused={paused}
+        onTogglePause={() => setPaused((p) => !p)}
+        fullVisibility={snapshotQ.data?.fullVisibility ?? true}
+      />
+      {snapshotQ.data && <Gauges snapshot={snapshotQ.data} />}
+      <div className="grid grid-cols-1 gap-2 p-2 lg:grid-cols-2">
+        <TimeSeriesChart title="Transactions/s" labels={['tps']} data={tpsData} />
+        <TimeSeriesChart
+          title="Cache hit %"
+          labels={['cache %']}
+          data={cacheData}
+          format={(v) => `${v.toFixed(0)}%`}
+        />
+        <TimeSeriesChart title="Tuples/s" labels={['tuples/s']} data={tupleData} />
+        <TimeSeriesChart
+          title="Connections"
+          labels={['active', 'idle', 'idle in txn']}
+          data={connData}
+        />
+      </div>
+      <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
+        Sessions
+      </div>
+      {sessionsQ.data && <SessionsTable rows={sessionsQ.data} />}
+      <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
+        Locks
+      </div>
+      {locksQ.data && <LocksPanel rows={locksQ.data} />}
+    </div>
+  )
+}

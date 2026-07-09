@@ -26,6 +26,7 @@ function tabId(): string {
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
+  mainView: 'query' | 'dashboard'
   newTab: () => void
   closeTab: (id: string) => void
   setSql: (id: string, sql: string) => void
@@ -33,6 +34,7 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
+  setMainView: (v: 'query' | 'dashboard') => void
 }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
@@ -42,6 +44,8 @@ function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[
 export const useQueryStore = create<QueryState>((set, get) => ({
   tabs: [],
   activeTabId: null,
+  mainView: 'query',
+  setMainView: (v) => set({ mainView: v }),
   newTab: () => {
     const t: QueryTab = { id: tabId(), sql: '', status: 'idle' }
     set((s) => ({ tabs: [...s.tabs, t], activeTabId: t.id }))
