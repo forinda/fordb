@@ -172,7 +172,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   },
   openExplain: async (dialect, analyze) => {
     const src = get().tabs.find((t) => t.id === get().activeTabId)
-    if (!src || !src.sql.trim()) return
+    // Only explain a real editor's SQL — a data/structure/explain tab's `sql` is
+    // an internal placeholder ("browse s.t", "structure s.t") that isn't runnable.
+    if (!src || src.kind !== 'query' || !src.sql.trim()) return
     const id = tabId()
     const tab: QueryTab = {
       id,
@@ -187,14 +189,13 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const s = get()
     const tab = s.tabs.find((t) => t.id === s.activeTabId)
     if (!tab || tab.kind !== 'query' || !tab.sql.trim()) return
-    // Lazy import keeps sql-formatter off the initial bundle path.
-    void import('sql-formatter').then(({ format }) => {
-      try {
+    // Lazy import keeps sql-formatter off the initial bundle path. A parse error
+    // OR a chunk-load failure leaves the SQL untouched (best-effort prettify).
+    void import('sql-formatter')
+      .then(({ format }) => {
         get().setSql(tab.id, format(tab.sql, { language: sqlLang, keywordCase: 'upper' }))
-      } catch {
-        // A formatter parse error leaves the SQL untouched (best-effort prettify).
-      }
-    })
+      })
+      .catch(() => {})
   },
   applyDdl: async (statements) => {
     const connId = useConnStore.getState().activeConnectionId
@@ -301,7 +302,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       }
       // Record the successful run in the per-profile history (fire-and-forget).
       const profileId = useConnStore.getState().activeProfileId
-      if (profileId) void window.fordb.queries.historyAdd(profileId, tab.sql)
+      if (profileId) void window.fordb.queries.historyAdd(profileId, tab.sql).catch(() => {})
     } catch (err) {
       const cur = get().tabs.find((t) => t.id === id)?.source
       void cur?.dispose()
