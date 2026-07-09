@@ -10,6 +10,18 @@ export const qk = {
     table: string
   ): readonly ['conn', string, 'columns', string, string] =>
     ['conn', connId, 'columns', schema, table] as const,
+  keys: (
+    connId: string,
+    schema: string,
+    table: string
+  ): readonly ['conn', string, 'keys', string, string] =>
+    ['conn', connId, 'keys', schema, table] as const,
+  indexes: (
+    connId: string,
+    schema: string,
+    table: string
+  ): readonly ['conn', string, 'indexes', string, string] =>
+    ['conn', connId, 'indexes', schema, table] as const,
   serverSnapshot: (connId: string): readonly ['conn', string, 'serverSnapshot'] =>
     ['conn', connId, 'serverSnapshot'] as const,
   sessions: (connId: string): readonly ['conn', string, 'sessions'] =>

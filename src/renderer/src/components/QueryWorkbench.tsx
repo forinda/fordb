@@ -4,6 +4,7 @@ import { useQueryStore } from '../store-query'
 import { SqlEditor } from './SqlEditor'
 import { ResultsGrid } from './ResultsGrid'
 import { TableDataGrid } from './TableDataGrid'
+import { StructureView } from './StructureView'
 import { QueryTabs } from './QueryTabs'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
@@ -65,6 +66,17 @@ export function QueryWorkbench(): React.JSX.Element {
         <QueryTabs />
         <div className="min-h-0 flex-1">
           <TableDataGrid key={tab.id} tab={tab} />
+        </div>
+      </div>
+    )
+  }
+
+  if (tab.kind === 'structure') {
+    return (
+      <div className="flex flex-col h-full">
+        <QueryTabs />
+        <div className="min-h-0 flex-1">
+          <StructureView key={tab.id} tab={tab} />
         </div>
       </div>
     )
