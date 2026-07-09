@@ -1,4 +1,4 @@
-import { ipcMain, safeStorage, app } from 'electron'
+import { ipcMain, safeStorage, app, dialog } from 'electron'
 import { join } from 'node:path'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
@@ -65,5 +65,17 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     const host = getHostControl()
     if (!host) throw new Error('db-host unavailable')
     return host.closeConnection(connectionId)
+  })
+
+  // Native open-file dialog for picking a SQLite database file.
+  ipcMain.handle('dialog:open-file', async () => {
+    const r = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'SQLite', extensions: ['sqlite', 'db', 'sqlite3'] },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
   })
 }

@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld('fordb', {
       ipcRenderer.on('appearance:theme-changed', (_e, t: 'light' | 'dark') => cb(t))
     }
   },
+  dialog: {
+    openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:open-file')
+  },
   onDbHostRestarted: (cb: () => void): void => {
     ipcRenderer.on('db-host:restarted', () => cb())
   }
