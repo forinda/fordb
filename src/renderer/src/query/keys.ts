@@ -22,6 +22,12 @@ export const qk = {
     table: string
   ): readonly ['conn', string, 'indexes', string, string] =>
     ['conn', connId, 'indexes', schema, table] as const,
+  objects: (
+    connId: string,
+    schema: string,
+    kind: string
+  ): readonly ['conn', string, 'objects', string, string] =>
+    ['conn', connId, 'objects', schema, kind] as const,
   serverSnapshot: (connId: string): readonly ['conn', string, 'serverSnapshot'] =>
     ['conn', connId, 'serverSnapshot'] as const,
   sessions: (connId: string): readonly ['conn', string, 'sessions'] =>

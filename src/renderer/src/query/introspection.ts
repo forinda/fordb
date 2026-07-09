@@ -1,5 +1,6 @@
 import { useQuery, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
 import type { ColumnInfo, IndexInfo, KeyInfo, TableInfo } from '@shared/adapter/types'
+import type { ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import { hostApi } from '../rpc'
 import { qk } from './keys'
 
@@ -89,6 +90,18 @@ export function fetchTables(qc: QueryClient, connId: string, schema: string): Pr
   return qc.fetchQuery({
     queryKey: qk.tables(connId, schema),
     queryFn: async () => (await hostApi()).listTables(connId, schema)
+  })
+}
+
+export function fetchObjects(
+  qc: QueryClient,
+  connId: string,
+  schema: string,
+  kind: ObjectKind
+): Promise<ObjectSummary[]> {
+  return qc.fetchQuery({
+    queryKey: qk.objects(connId, schema, kind),
+    queryFn: async () => (await hostApi()).listObjects(connId, schema, kind)
   })
 }
 
