@@ -42,8 +42,18 @@ export class SqliteAdapter implements DbAdapter {
   async connect(profile: ConnectionProfile): Promise<void> {
     if (profile.engine !== 'sqlite') throw new Error('SqliteAdapter requires a sqlite profile')
     const client = this.makeClient(configFor(profile))
-    // Embedded replicas pull the remote snapshot down once on connect.
-    if (profile.kind === 'replica') await client.sync()
+    // Embedded replicas pull the remote snapshot down once on connect. If the
+    // sync fails (bad token, unreachable syncUrl, network blip), close the
+    // just-opened client before rethrowing — otherwise it leaks a file handle
+    // and socket (the adapter reference is dropped on a connect throw).
+    if (profile.kind === 'replica') {
+      try {
+        await client.sync()
+      } catch (err) {
+        client.close()
+        throw err
+      }
+    }
     this.client = client
   }
   async disconnect(): Promise<void> {

@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mkdtempSync, rmSync } from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { ProfileStore } from '../../src/main/profile-store'
@@ -36,6 +37,29 @@ describe('ProfileStore', () => {
     expect(secrets.password).toBeUndefined()
     expect(secrets.sshPassword).toBeUndefined()
     expect(secrets.sshPassphrase).toBeUndefined()
+  })
+  it('strips the SQLite auth token before persisting (remote)', async () => {
+    await store.save({
+      id: 's1',
+      name: 'remote',
+      engine: 'sqlite',
+      kind: 'remote',
+      url: 'libsql://x',
+      authToken: 'secret-token'
+    })
+    const [p] = await store.list()
+    expect((p as { authToken?: string }).authToken).toBeUndefined()
+    expect((p as { url?: string }).url).toBe('libsql://x')
+  })
+  it('normalizes a legacy kind-less SQLite profile to local on read', async () => {
+    // Simulate a profile saved before the local/remote/replica split.
+    await writeFile(
+      join(dir, 'profiles.json'),
+      JSON.stringify([{ id: 'legacy', name: 'old', engine: 'sqlite', file: '/tmp/a.db' }]),
+      'utf8'
+    )
+    const [p] = await store.list()
+    expect(p).toMatchObject({ id: 'legacy', engine: 'sqlite', kind: 'local', file: '/tmp/a.db' })
   })
   it('save upserts by id', async () => {
     await store.save(base)
