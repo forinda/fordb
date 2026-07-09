@@ -1,7 +1,7 @@
 import { ipcMain, safeStorage, app, dialog } from 'electron'
 import { join } from 'node:path'
 import { writeFile, readFile } from 'node:fs/promises'
-import { gzipSync } from 'node:zlib'
+import { gzipSync, gunzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
 import { QueryLibraryStore } from './query-library-store'
@@ -132,7 +132,10 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     })
     const path = r.filePaths[0]
     if (r.canceled || !path) return null
-    return { name: path, text: await readFile(path, 'utf8') }
+    // Transparently gunzip a .gz file (round-trips the "Export (SQL, gzip)" output).
+    const buf = await readFile(path)
+    const text = path.endsWith('.gz') ? gunzipSync(buf).toString('utf8') : buf.toString('utf8')
+    return { name: path, text }
   })
 
   // Save an exported SQL dump to a user-chosen path (gzip in main).

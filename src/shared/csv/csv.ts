@@ -42,7 +42,9 @@ export function parseCsv(text: string): string[][] {
       continue
     }
     if (c === '\r') {
-      i++
+      // \r\n → one row break; a lone \r (old Mac) is also a row break.
+      pushRow()
+      i += text[i + 1] === '\n' ? 2 : 1
       continue
     }
     if (c === '\n') {

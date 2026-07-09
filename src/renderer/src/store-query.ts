@@ -75,8 +75,9 @@ interface QueryState {
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
   exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<void>
   importSqlFile: () => Promise<void>
-  importError: string | null
-  clearImportError: () => void
+  /** Last export/import failure, shown in a global banner. */
+  ioError: string | null
+  clearIoError: () => void
   csvImport: { schema: string; table: string; headers: string[]; rows: string[][] } | null
   beginCsvImport: (schema: string, table: string) => Promise<void>
   cancelCsvImport: () => void
@@ -94,16 +95,22 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   mainView: 'query',
-  importError: null,
-  clearImportError: () => set({ importError: null }),
+  ioError: null,
+  clearIoError: () => set({ ioError: null }),
   csvImport: null,
   beginCsvImport: async (schema, table) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    if (!(await (await hostApi()).mutationSupported(connId))) {
+      set({ ioError: 'This engine/table does not support inserting rows.' })
+      return
+    }
     const picked = await window.fordb.dialog.openTextFile(['csv'])
     if (!picked) return
     const rows = parseCsv(picked.text).filter((r) => r.length > 0)
     if (rows.length === 0) return
     const [headers, ...data] = rows
-    set({ csvImport: { schema, table, headers: headers ?? [], rows: data }, importError: null })
+    set({ csvImport: { schema, table, headers: headers ?? [], rows: data }, ioError: null })
   },
   cancelCsvImport: () => set({ csvImport: null }),
   applyCsvImport: async (mapping) => {
@@ -122,7 +129,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       void invalidateIntrospection(queryClient, connId)
       set({ csvImport: null })
     } catch (err) {
-      set({ importError: err instanceof Error ? err.message : String(err) })
+      set({ ioError: err instanceof Error ? err.message : String(err) })
     }
   },
   picker: null,
@@ -235,49 +242,67 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   exportSql: async (scope, gzip, dialect) => {
     const connId = useConnStore.getState().activeConnectionId
     if (!connId) return
+    set({ ioError: null })
     const api = await hostApi()
-    const tables =
-      scope.kind === 'table'
-        ? [scope.table]
-        : (await api.listTables(connId, scope.schema))
-            .filter((t) => t.type === 'table')
-            .map((t) => t.name)
-    const parts: string[] = ['-- fordb dump\n\n']
-    for (const table of tables) {
-      const [cols, keys, indexes] = await Promise.all([
-        api.getColumns(connId, scope.schema, table),
-        api.getKeys(connId, scope.schema, table),
-        api.getIndexes(connId, scope.schema, table)
-      ])
-      parts.push(reconstructDdl(cols, keys, indexes, scope.schema, table, dialect) + '\n')
-      const colNames = cols.map((c) => c.name)
-      const open = await api.openQuery(
-        connId,
-        `SELECT * FROM ${quoteIdent(scope.schema)}.${quoteIdent(table)}`,
-        1000
-      )
-      for (;;) {
-        const page = await api.fetchPage(connId, open.queryId)
-        for (const row of page.rows)
-          parts.push(buildInsert(scope.schema, table, colNames, row, dialect) + ';\n')
-        if (page.done) break
+    try {
+      const tables =
+        scope.kind === 'table'
+          ? [scope.table]
+          : (await api.listTables(connId, scope.schema))
+              .filter((t) => t.type === 'table')
+              .map((t) => t.name)
+      const parts: string[] = ['-- fordb dump\n\n']
+      for (const table of tables) {
+        const [cols, keys, indexes] = await Promise.all([
+          api.getColumns(connId, scope.schema, table),
+          api.getKeys(connId, scope.schema, table),
+          api.getIndexes(connId, scope.schema, table)
+        ])
+        parts.push(reconstructDdl(cols, keys, indexes, scope.schema, table, dialect) + '\n')
+        const colNames = cols.map((c) => c.name)
+        const open = await api.openQuery(
+          connId,
+          `SELECT * FROM ${quoteIdent(scope.schema)}.${quoteIdent(table)}`,
+          1000
+        )
+        try {
+          for (;;) {
+            const page = await api.fetchPage(connId, open.queryId)
+            for (const row of page.rows)
+              parts.push(buildInsert(scope.schema, table, colNames, row, dialect) + ';\n')
+            if (page.done) break
+          }
+        } catch (err) {
+          // Close the cursor on a mid-dump failure (it self-closes only on `done`).
+          await api.closeQuery(connId, open.queryId).catch(() => {})
+          throw err
+        }
+        parts.push('\n')
       }
-      parts.push('\n')
+      const name = scope.kind === 'table' ? `${scope.table}.sql` : `${scope.schema}.sql`
+      await window.fordb.exportFile.save(name, parts.join(''), gzip)
+    } catch (err) {
+      set({ ioError: err instanceof Error ? err.message : String(err) })
     }
-    const name = scope.kind === 'table' ? `${scope.table}.sql` : `${scope.schema}.sql`
-    await window.fordb.exportFile.save(name, parts.join(''), gzip)
   },
   importSqlFile: async () => {
     const connId = useConnStore.getState().activeConnectionId
     if (!connId) return
-    const picked = await window.fordb.dialog.openTextFile(['sql'])
+    // Accept .sql and .sql.gz (main gunzips transparently).
+    const picked = await window.fordb.dialog.openTextFile(['sql', 'gz'])
     if (!picked) return
-    set({ importError: null })
+    set({ ioError: null })
     try {
-      await (await hostApi()).executeScript(connId, splitStatements(picked.text))
+      // Drop the script's own transaction control — executeScript wraps the whole
+      // batch in one transaction, and a nested BEGIN/COMMIT (pg_dump, sqlite .dump)
+      // would break that (SQLite errors, PG silently auto-commits mid-script).
+      const statements = splitStatements(picked.text).filter(
+        (s) => !/^\s*(BEGIN|COMMIT|END|ROLLBACK|START\s+TRANSACTION)\b/i.test(s)
+      )
+      await (await hostApi()).executeScript(connId, statements)
       void invalidateIntrospection(queryClient, connId)
     } catch (err) {
-      set({ importError: err instanceof Error ? err.message : String(err) })
+      set({ ioError: err instanceof Error ? err.message : String(err) })
     }
   },
   formatActive: (sqlLang) => {

@@ -89,6 +89,8 @@ Command palette + toolbar/menu entries: **Export table (SQL)**, **Export databas
 - `renderSqlLiteral` covers null/number/bool/bytea/string/JSON; exotic engine types are stringified+quoted (may need a manual tweak on restore).
 - `splitStatements` is a pragmatic splitter (no PG dollar-quoting); adequate for fordb dumps and simple scripts.
 - CSV import inserts strings and relies on engine coercion; no per-column type parsing in v1.
+- `timestamp without time zone` round-trip: the `Date` branch renders via `toISOString()` (UTC); on a db-host whose local TZ is not UTC this can shift a tz-naive timestamp by the offset. Type-aware rendering would fix it — deferred.
+- Export/import of **views** is not offered (a view would be frozen into a mislabeled static table); whole-database export already skips views.
 
 ## Testing
 
