@@ -39,6 +39,13 @@ export function ServerDashboard(): React.JSX.Element {
   const panelError = (q: { isError: boolean; error: unknown }): string | null =>
     q.isError ? `Failed: ${q.error instanceof Error ? q.error.message : 'error'}` : null
 
+  // On a db-host restart the connection is cleared (polling stops via the
+  // enabled gate); show a lost state rather than an empty, dead dashboard.
+  if (!connId)
+    return (
+      <div className="p-4 text-muted-foreground">Connection lost — reconnect from the sidebar.</div>
+    )
+
   return (
     <div className="flex h-full flex-col overflow-auto">
       <ControlsBar
