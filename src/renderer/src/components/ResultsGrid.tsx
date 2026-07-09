@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { DataEditor, GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import type { QueryResultSource } from '@shared/query/result-source'
 
 export function ResultsGrid(props: { source: QueryResultSource }): React.JSX.Element {
   const { source } = props
-  const [rowCount, setRowCount] = useState(source.loadedRowCount())
-
-  useEffect(() => {
-    setRowCount(source.loadedRowCount())
-  }, [source])
+  // Read the loaded count LIVE each render — run() sets the source on the tab
+  // before the first page resolves, so a cached count would freeze at 0 until a
+  // remount. `tick` only forces a re-render when background paging adds rows.
+  const [, setTick] = useState(0)
+  const rowCount = source.loadedRowCount()
 
   const columns = source.fields.map((f) => ({ title: f.name, id: f.name, width: 160 }))
 
@@ -29,7 +29,7 @@ export function ResultsGrid(props: { source: QueryResultSource }): React.JSX.Ele
     (range: { y: number; height: number }): void => {
       const need = range.y + range.height + 200
       if (!source.done() && need >= source.loadedRowCount()) {
-        void source.ensureLoaded(need).then(() => setRowCount(source.loadedRowCount()))
+        void source.ensureLoaded(need).then(() => setTick((t) => t + 1))
       }
     },
     [source]
