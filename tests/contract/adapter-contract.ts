@@ -73,6 +73,72 @@ export function runAdapterContractTests(
       expect(byName?.unique).toBe(false)
     })
 
+    // Runs among the reads (before the last-in-file mutator test) so it sees the
+    // unmutated fixture.
+    it('data browser: filters (bound), contains, isNull, sort — no injection', async () => {
+      if (!adapter.dataBrowser) return
+      const s = expected.schema
+      const page = async (
+        o: Parameters<NonNullable<typeof adapter.dataBrowser>['openBrowse']>[0]
+      ): Promise<unknown[][]> => {
+        const open = await adapter.dataBrowser!.openBrowse(o)
+        const p = await adapter.fetchPage(open.queryId)
+        await adapter.closeQuery(open.queryId)
+        return p.rows
+      }
+      const eq = await page({
+        schema: s,
+        table: 'users',
+        filters: [{ column: 'id', op: 'eq', value: 1 }],
+        sort: [],
+        pageSize: 1000
+      })
+      expect(eq).toHaveLength(1)
+
+      const like = await page({
+        schema: s,
+        table: 'users',
+        filters: [{ column: 'email', op: 'contains', value: 'user5@example.com' }],
+        sort: [],
+        pageSize: 1000
+      })
+      expect(like).toHaveLength(1)
+
+      const nul = await page({
+        schema: s,
+        table: 'users',
+        filters: [{ column: 'email', op: 'isNull' }],
+        sort: [],
+        pageSize: 1000
+      })
+      expect(nul).toHaveLength(0)
+
+      const desc = await page({
+        schema: s,
+        table: 'users',
+        filters: [],
+        sort: [{ column: 'id', dir: 'desc' }],
+        pageSize: 5
+      })
+      const asc = await page({
+        schema: s,
+        table: 'users',
+        filters: [],
+        sort: [{ column: 'id', dir: 'asc' }],
+        pageSize: 5
+      })
+      expect(Number(desc[0]?.[0])).toBeGreaterThan(Number(asc[0]?.[0]))
+
+      const inj = await page({
+        schema: s,
+        table: 'users',
+        filters: [{ column: 'email', op: 'eq', value: "x' OR '1'='1" }],
+        sort: [],
+        pageSize: 1000
+      })
+      expect(inj).toHaveLength(0)
+    })
+
     it('executes a buffered query with fields and rows', async () => {
       const r = await adapter.executeQuery(
         `SELECT id, email FROM ${expected.schema}.users ORDER BY id LIMIT 3`
