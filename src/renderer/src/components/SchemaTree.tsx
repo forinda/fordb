@@ -83,6 +83,20 @@ export function SchemaTree(): React.JSX.Element {
         { label: 'Show columns', run: () => m.toggle() },
         { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
         {
+          label: 'Export (SQL)',
+          run: () =>
+            void useQueryStore
+              .getState()
+              .exportSql({ kind: 'table', schema: m.schema, table: m.table }, false, dialect)
+        },
+        {
+          label: 'Export (SQL, gzip)',
+          run: () =>
+            void useQueryStore
+              .getState()
+              .exportSql({ kind: 'table', schema: m.schema, table: m.table }, true, dialect)
+        },
+        {
           label: 'Copy name',
           run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
         }
@@ -140,6 +154,13 @@ export function SchemaTree(): React.JSX.Element {
             onSubmit: (name) => void runDdl({ kind: 'dropDatabase', name })
           })
       })
+    items.push({
+      label: 'Export database (SQL)',
+      run: () =>
+        void useQueryStore
+          .getState()
+          .exportSql({ kind: 'database', schema: m.schema }, false, dialect)
+    })
     return items
   }
 
