@@ -103,24 +103,27 @@ export function SchemaTree(): React.JSX.Element {
         rowHeight={24}
         onToggle={onToggle}
       >
-        {({ node, style, dragHandle }) => (
-          <div
-            style={style}
-            ref={dragHandle}
-            className="flex items-center gap-1 text-sm cursor-default"
-          >
-            <span className="text-muted-foreground">
-              {node.data.kind === 'schema'
-                ? '▸'
-                : node.data.kind === 'view'
-                  ? '◇'
-                  : node.data.kind === 'column'
-                    ? '·'
-                    : '▪'}
-            </span>
-            <span className="text-foreground">{node.data.name}</span>
-          </div>
-        )}
+        {({ node, style, dragHandle }) => {
+          const isColumn = node.data.kind === 'column'
+          return (
+            <div
+              style={style}
+              ref={dragHandle}
+              // react-arborist doesn't toggle on row click by default; wire it
+              // so clicking a schema/table row expands or collapses it. Columns
+              // are leaves.
+              onClick={() => {
+                if (!isColumn) node.toggle()
+              }}
+              className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
+            >
+              <span className="text-muted-foreground">
+                {node.data.kind === 'view' ? '◇' : isColumn ? '·' : node.isOpen ? '▾' : '▸'}
+              </span>
+              <span className="text-foreground">{node.data.name}</span>
+            </div>
+          )
+        }}
       </Tree>
     </div>
   )
