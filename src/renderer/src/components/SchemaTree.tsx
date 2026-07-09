@@ -32,7 +32,15 @@ export function SchemaTree(): React.JSX.Element {
   const [childrenById, setChildrenById] = useState<Record<string, TreeNode[]>>({})
   // Right-click context menu (table or schema node) + read-only table-info dialog.
   const [menu, setMenu] = useState<
-    | { kind: 'table'; x: number; y: number; schema: string; table: string; toggle: () => void }
+    | {
+        kind: 'table'
+        x: number
+        y: number
+        schema: string
+        table: string
+        isView: boolean
+        toggle: () => void
+      }
     | { kind: 'schema'; x: number; y: number; schema: string }
     | null
   >(null)
@@ -82,24 +90,30 @@ export function SchemaTree(): React.JSX.Element {
         },
         { label: 'Show columns', run: () => m.toggle() },
         { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
-        {
-          label: 'Export (SQL)',
-          run: () =>
-            void useQueryStore
-              .getState()
-              .exportSql({ kind: 'table', schema: m.schema, table: m.table }, false, dialect)
-        },
-        {
-          label: 'Export (SQL, gzip)',
-          run: () =>
-            void useQueryStore
-              .getState()
-              .exportSql({ kind: 'table', schema: m.schema, table: m.table }, true, dialect)
-        },
-        {
-          label: 'Import CSV…',
-          run: () => void useQueryStore.getState().beginCsvImport(m.schema, m.table)
-        },
+        // Export/CSV-import reconstruct a CREATE TABLE + rows — only meaningful for
+        // real tables, not views.
+        ...(m.isView
+          ? []
+          : [
+              {
+                label: 'Export (SQL)',
+                run: () =>
+                  void useQueryStore
+                    .getState()
+                    .exportSql({ kind: 'table', schema: m.schema, table: m.table }, false, dialect)
+              },
+              {
+                label: 'Export (SQL, gzip)',
+                run: () =>
+                  void useQueryStore
+                    .getState()
+                    .exportSql({ kind: 'table', schema: m.schema, table: m.table }, true, dialect)
+              },
+              {
+                label: 'Import CSV…',
+                run: () => void useQueryStore.getState().beginCsvImport(m.schema, m.table)
+              }
+            ]),
         {
           label: 'Copy name',
           run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
@@ -294,6 +308,7 @@ export function SchemaTree(): React.JSX.Element {
                     y: e.clientY,
                     schema: node.data.schema,
                     table: node.data.name,
+                    isView: kind === 'view',
                     toggle: () => node.toggle()
                   })
                 } else if (kind === 'schema') {

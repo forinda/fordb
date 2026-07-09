@@ -15,11 +15,14 @@ export function CsvImportDialog(): React.JSX.Element | null {
   const [mapping, setMapping] = useState<(string | null)[]>([])
 
   // Auto-map CSV headers to same-named target columns when the job/columns load.
+  // Depend on a stable string of column names, not the array identity (useColumns
+  // returns a fresh [] each render while loading — an array dep would loop).
+  const colKey = cols.map((c) => c.name).join(',')
   useEffect(() => {
     if (!job) return
-    const names = new Set(cols.map((c) => c.name))
+    const names = new Set(colKey ? colKey.split(',') : [])
     setMapping(job.headers.map((h) => (names.has(h) ? h : null)))
-  }, [job, cols])
+  }, [job, colKey])
 
   if (!job) return null
 

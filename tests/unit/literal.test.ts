@@ -24,4 +24,15 @@ describe('renderSqlLiteral', () => {
   it('objects JSON-stringified then quoted', () => {
     expect(renderSqlLiteral({ a: 1 }, 'pg')).toBe(`'{"a":1}'`)
   })
+  it('NaN/Infinity: pg quoted+cast, sqlite NULL', () => {
+    expect(renderSqlLiteral(NaN, 'pg')).toBe(`'NaN'::float8`)
+    expect(renderSqlLiteral(Infinity, 'pg')).toBe(`'Infinity'::float8`)
+    expect(renderSqlLiteral(-Infinity, 'pg')).toBe(`'-Infinity'::float8`)
+    expect(renderSqlLiteral(NaN, 'sqlite')).toBe('NULL')
+  })
+  it('pg arrays → ARRAY[...] literal (recursive, empty → {})', () => {
+    expect(renderSqlLiteral([1, 2, 3], 'pg')).toBe('ARRAY[1, 2, 3]')
+    expect(renderSqlLiteral(['a', "b'c"], 'pg')).toBe(`ARRAY['a', 'b''c']`)
+    expect(renderSqlLiteral([], 'pg')).toBe(`'{}'`)
+  })
 })

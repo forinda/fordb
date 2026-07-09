@@ -8,6 +8,13 @@ describe('csv', () => {
       ['x,y', 'he said "hi"\nz']
     ])
   })
+  it('treats \\r\\n and a lone \\r as row breaks', () => {
+    expect(parseCsv('a,b\r\n1,2\r3,4')).toEqual([
+      ['a', 'b'],
+      ['1', '2'],
+      ['3', '4']
+    ])
+  })
   it('round-trips through stringify', () => {
     const rows = [
       ['id', 'note'],
