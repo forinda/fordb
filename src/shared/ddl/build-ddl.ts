@@ -95,6 +95,12 @@ function buildSqliteRebuild(
   const colDefs = mutate.columns.map(columnClause)
   const pk = ctx.keys.find((k) => k.kind === 'primary')
   if (pk && pk.columns.length) colDefs.push(`PRIMARY KEY (${pk.columns.map(qi).join(', ')})`)
+  // Re-declare UNIQUE constraints as table constraints. SQLite backs each with an
+  // internal `sqlite_autoindex_*` index whose name is reserved — it CANNOT be
+  // recreated via CREATE INDEX, so it is skipped below and the constraint is
+  // carried here instead (which recreates the same enforcement + auto-index).
+  for (const u of ctx.keys.filter((k) => k.kind === 'unique'))
+    colDefs.push(`UNIQUE (${u.columns.map(qi).join(', ')})`)
   for (const fk of mutate.fks)
     colDefs.push(
       `FOREIGN KEY (${fk.columns.map(qi).join(', ')}) REFERENCES ${qi(fk.refTable)} (${fk.refColumns
@@ -108,7 +114,9 @@ function buildSqliteRebuild(
     .map((c) => qi(c.name))
     .join(', ')
   const idxLines = ctx.indexes
-    .filter((i) => !(pk && i.columns.join(',') === pk.columns.join(',') && i.unique))
+    // Skip SQLite's auto-created constraint indexes (PK/UNIQUE) — reserved names,
+    // recreated implicitly by the PRIMARY KEY / UNIQUE clauses above.
+    .filter((i) => !i.name.startsWith('sqlite_autoindex_'))
     .map((i) =>
       createIndex({ schema, table, name: i.name, columns: i.columns, unique: i.unique }, 'sqlite')
     )
