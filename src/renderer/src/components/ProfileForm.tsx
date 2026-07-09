@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useInvalidateProfiles } from '../query/profiles'
-import type { ConnectionProfile, SshOptions } from '@shared/adapter/types'
+import type { ConnectionProfile, SqliteProfile, SshOptions } from '@shared/adapter/types'
 import { parseConnectionUrl } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
 import { Button } from './ui/button'
@@ -19,9 +19,10 @@ export function ProfileForm(props: {
   onCancel: () => void
 }): React.JSX.Element {
   const p = props.profile
-  // Postgres-only view of the edited profile. The engine selector + SQLite
-  // fields arrive in a later task; today the form edits Postgres profiles.
+  // Postgres-only view of the edited profile, used to seed the PG field state.
   const pg = p?.engine === 'postgres' ? p : undefined
+  const [engine, setEngine] = useState<'postgres' | 'sqlite'>(p?.engine ?? 'postgres')
+  const [file, setFile] = useState(p?.engine === 'sqlite' ? p.file : '')
   const [name, setName] = useState(p?.name ?? '')
   const [host, setHost] = useState(pg?.host ?? 'localhost')
   const [port, setPort] = useState(String(pg?.port ?? 5432))
@@ -79,6 +80,10 @@ export function ProfileForm(props: {
   }
 
   function build(): ConnectionProfile {
+    if (engine === 'sqlite') {
+      const base: SqliteProfile = { id: p?.id ?? newId(), name, engine: 'sqlite', file }
+      return { ...base, name: name.trim() || connectionLabel(base) }
+    }
     const parsedPort = Number(port)
     const parsedSshPort = Number(sshPort)
     const base: ConnectionProfile = {
@@ -127,122 +132,155 @@ export function ProfileForm(props: {
 
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
-      <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-border">
-        <Label htmlFor="conn-url">Paste connection URL</Label>
+      <Label>
+        Engine
+        <Select value={engine} onValueChange={(v) => setEngine(v as 'postgres' | 'sqlite')}>
+          <SelectTrigger aria-label="Database engine">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="postgres">PostgreSQL</SelectItem>
+            <SelectItem value="sqlite">SQLite</SelectItem>
+          </SelectContent>
+        </Select>
+      </Label>
+      <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      {engine === 'sqlite' && (
         <div className="flex gap-2">
           <Input
-            id="conn-url"
             className="flex-1"
-            placeholder="postgres://user:pass@host:5432/db?sslmode=require"
-            value={connUrl}
-            onChange={(e) => setConnUrl(e.target.value)}
-            onBlur={fillFromUrl}
+            placeholder="File"
+            value={file}
+            onChange={(e) => setFile(e.target.value)}
           />
-          <Button type="button" variant="outline" onClick={fillFromUrl}>
-            Fill from URL
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void window.fordb.dialog.openFile().then((f) => f && setFile(f))}
+          >
+            Browse…
           </Button>
         </div>
-        {urlError && <div className="text-sm text-destructive">{urlError}</div>}
-        {Object.keys(extraParams).length > 0 && (
-          <div className="text-sm text-muted-foreground">
-            Extra parameters (not applied yet):{' '}
-            {Object.entries(extraParams)
-              .map(([k, v]) => `${k}=${v}`)
-              .join(', ')}
-          </div>
-        )}
-      </div>
-      <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-      <Input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
-      <Input
-        type="number"
-        placeholder="Port"
-        value={port}
-        onChange={(e) => setPort(e.target.value)}
-      />
-      <Input
-        placeholder="Database"
-        value={database}
-        onChange={(e) => setDatabase(e.target.value)}
-      />
-      <Input placeholder="User" value={user} onChange={(e) => setUser(e.target.value)} />
-      <Input
-        type="password"
-        placeholder="Password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
-      <Label className="mt-2">
-        <Checkbox checked={useSsl} onCheckedChange={(v) => setUseSsl(v === true)} />
-        Use SSL
-      </Label>
-      {useSsl && (
-        <Label className="pl-6">
-          <Checkbox checked={verifyCert} onCheckedChange={(v) => setVerifyCert(v === true)} />
-          Verify server certificate
-        </Label>
       )}
-
-      <Label className="mt-2">
-        <Checkbox checked={useSsh} onCheckedChange={(v) => setUseSsh(v === true)} />
-        Use SSH tunnel
-      </Label>
-      {useSsh && (
-        <div className="flex flex-col gap-2 pl-6 border-l border-border">
-          <Input
-            placeholder="SSH host"
-            value={sshHost}
-            onChange={(e) => setSshHost(e.target.value)}
-          />
+      {engine === 'postgres' && (
+        <>
+          <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-border">
+            <Label htmlFor="conn-url">Paste connection URL</Label>
+            <div className="flex gap-2">
+              <Input
+                id="conn-url"
+                className="flex-1"
+                placeholder="postgres://user:pass@host:5432/db?sslmode=require"
+                value={connUrl}
+                onChange={(e) => setConnUrl(e.target.value)}
+                onBlur={fillFromUrl}
+              />
+              <Button type="button" variant="outline" onClick={fillFromUrl}>
+                Fill from URL
+              </Button>
+            </div>
+            {urlError && <div className="text-sm text-destructive">{urlError}</div>}
+            {Object.keys(extraParams).length > 0 && (
+              <div className="text-sm text-muted-foreground">
+                Extra parameters (not applied yet):{' '}
+                {Object.entries(extraParams)
+                  .map(([k, v]) => `${k}=${v}`)
+                  .join(', ')}
+              </div>
+            )}
+          </div>
+          <Input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
           <Input
             type="number"
-            placeholder="SSH port"
-            value={sshPort}
-            onChange={(e) => setSshPort(e.target.value)}
+            placeholder="Port"
+            value={port}
+            onChange={(e) => setPort(e.target.value)}
           />
           <Input
-            placeholder="SSH user"
-            value={sshUser}
-            onChange={(e) => setSshUser(e.target.value)}
+            placeholder="Database"
+            value={database}
+            onChange={(e) => setDatabase(e.target.value)}
           />
-          <Select
-            value={authMethod}
-            onValueChange={(v) => setAuthMethod(v as SshOptions['authMethod'])}
-          >
-            <SelectTrigger aria-label="SSH authentication method">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="password">Password</SelectItem>
-              <SelectItem value="key">Private key</SelectItem>
-              <SelectItem value="agent">SSH agent</SelectItem>
-            </SelectContent>
-          </Select>
-          {authMethod === 'password' && (
-            <Input
-              type="password"
-              placeholder="SSH password"
-              value={sshPassword}
-              onChange={(e) => setSshPassword(e.target.value)}
-            />
+          <Input placeholder="User" value={user} onChange={(e) => setUser(e.target.value)} />
+          <Input
+            type="password"
+            placeholder="Password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+
+          <Label className="mt-2">
+            <Checkbox checked={useSsl} onCheckedChange={(v) => setUseSsl(v === true)} />
+            Use SSL
+          </Label>
+          {useSsl && (
+            <Label className="pl-6">
+              <Checkbox checked={verifyCert} onCheckedChange={(v) => setVerifyCert(v === true)} />
+              Verify server certificate
+            </Label>
           )}
-          {authMethod === 'key' && (
-            <>
+
+          <Label className="mt-2">
+            <Checkbox checked={useSsh} onCheckedChange={(v) => setUseSsh(v === true)} />
+            Use SSH tunnel
+          </Label>
+          {useSsh && (
+            <div className="flex flex-col gap-2 pl-6 border-l border-border">
               <Input
-                placeholder="Private key path"
-                value={privateKeyPath}
-                onChange={(e) => setPrivateKeyPath(e.target.value)}
+                placeholder="SSH host"
+                value={sshHost}
+                onChange={(e) => setSshHost(e.target.value)}
               />
               <Input
-                type="password"
-                placeholder="Key passphrase (optional)"
-                value={sshPassphrase}
-                onChange={(e) => setSshPassphrase(e.target.value)}
+                type="number"
+                placeholder="SSH port"
+                value={sshPort}
+                onChange={(e) => setSshPort(e.target.value)}
               />
-            </>
+              <Input
+                placeholder="SSH user"
+                value={sshUser}
+                onChange={(e) => setSshUser(e.target.value)}
+              />
+              <Select
+                value={authMethod}
+                onValueChange={(v) => setAuthMethod(v as SshOptions['authMethod'])}
+              >
+                <SelectTrigger aria-label="SSH authentication method">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="password">Password</SelectItem>
+                  <SelectItem value="key">Private key</SelectItem>
+                  <SelectItem value="agent">SSH agent</SelectItem>
+                </SelectContent>
+              </Select>
+              {authMethod === 'password' && (
+                <Input
+                  type="password"
+                  placeholder="SSH password"
+                  value={sshPassword}
+                  onChange={(e) => setSshPassword(e.target.value)}
+                />
+              )}
+              {authMethod === 'key' && (
+                <>
+                  <Input
+                    placeholder="Private key path"
+                    value={privateKeyPath}
+                    onChange={(e) => setPrivateKeyPath(e.target.value)}
+                  />
+                  <Input
+                    type="password"
+                    placeholder="Key passphrase (optional)"
+                    value={sshPassphrase}
+                    onChange={(e) => setSshPassphrase(e.target.value)}
+                  />
+                </>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <div className="flex gap-2 mt-2">
