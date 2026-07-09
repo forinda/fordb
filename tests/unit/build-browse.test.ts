@@ -30,9 +30,17 @@ describe('buildBrowseSql', () => {
       'pg'
     )
     expect(r.sql).toBe(
-      `SELECT * FROM "app"."users" WHERE "id" >= $1 AND "email" LIKE $2 AND "name" IS NULL`
+      `SELECT * FROM "app"."users" WHERE "id" >= $1 AND "email" LIKE $2 ESCAPE '\\' AND "name" IS NULL`
     )
     expect(r.params).toEqual([5, '%x%'])
+  })
+  it('contains escapes LIKE metacharacters so % and _ match literally', () => {
+    const r = buildBrowseSql(
+      opts({ filters: [{ column: 'code', op: 'contains', value: '10%_x' }] }),
+      'pg'
+    )
+    expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "code" LIKE $1 ESCAPE '\\'`)
+    expect(r.params).toEqual(['%10\\%\\_x%'])
   })
   it('sqlite: placeholders are ?', () => {
     const r = buildBrowseSql(opts({ filters: [{ column: 'id', op: 'eq', value: 3 }] }), 'sqlite')
