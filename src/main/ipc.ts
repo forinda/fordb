@@ -2,6 +2,7 @@ import { ipcMain, safeStorage, app, dialog } from 'electron'
 import { join } from 'node:path'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
+import { QueryLibraryStore } from './query-library-store'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HostApi } from '@shared/host/host-api'
 
@@ -11,6 +12,21 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
   const secrets = new SecretStore(
     join(dir, 'secrets.json'),
     safeStorage as unknown as SafeStorageLike
+  )
+  const queryLibrary = new QueryLibraryStore(join(dir, 'query-library.json'))
+
+  ipcMain.handle('queries:history-list', (_e, profileId: string) =>
+    queryLibrary.listHistory(profileId)
+  )
+  ipcMain.handle('queries:history-add', (_e, profileId: string, sql: string) =>
+    queryLibrary.addHistory(profileId, sql)
+  )
+  ipcMain.handle('queries:saved-list', (_e, profileId: string) => queryLibrary.listSaved(profileId))
+  ipcMain.handle('queries:save', (_e, profileId: string, name: string, sql: string) =>
+    queryLibrary.saveQuery(profileId, name, sql)
+  )
+  ipcMain.handle('queries:saved-delete', (_e, profileId: string, id: string) =>
+    queryLibrary.deleteSaved(profileId, id)
   )
 
   ipcMain.handle('profiles:list', () => profiles.list())
