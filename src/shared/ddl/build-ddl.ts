@@ -4,7 +4,8 @@ import type {
   DdlChange,
   ForeignKeySpec,
   IndexSpec,
-  TableSpec
+  TableSpec,
+  TableStructure
 } from '../adapter/schema-types'
 import { quoteIdent } from '../mutation/build-edits'
 
@@ -52,7 +53,93 @@ function addForeignKey(spec: ForeignKeySpec): string {
   )
 }
 
-export function buildDdl(change: DdlChange, dialect: Dialect): string[] {
+// Postgres alters a column in place: one statement per changed field, in a
+// stable order (type → default → notNull).
+function pgAlterColumn(change: Extract<DdlChange, { kind: 'alterColumn' }>): string[] {
+  const t = qtable(change.schema, change.table)
+  const col = qi(change.column)
+  const out: string[] = []
+  if (change.type !== undefined)
+    out.push(`ALTER TABLE ${t} ALTER COLUMN ${col} TYPE ${change.type}`)
+  if (change.default !== undefined)
+    out.push(
+      change.default === null
+        ? `ALTER TABLE ${t} ALTER COLUMN ${col} DROP DEFAULT`
+        : `ALTER TABLE ${t} ALTER COLUMN ${col} SET DEFAULT ${change.default}`
+    )
+  if (change.notNull !== undefined)
+    out.push(
+      change.notNull
+        ? `ALTER TABLE ${t} ALTER COLUMN ${col} SET NOT NULL`
+        : `ALTER TABLE ${t} ALTER COLUMN ${col} DROP NOT NULL`
+    )
+  return out
+}
+
+interface Fk {
+  name: string
+  columns: string[]
+  refTable: string
+  refColumns: string[]
+}
+
+// The SQLite 12-step table rebuild (SQLite can't alter a column in place).
+// Verified atomic inside batch('write') with defer_foreign_keys first.
+function buildSqliteRebuild(
+  ctx: TableStructure,
+  schema: string,
+  table: string,
+  mutate: { columns: ColumnSpec[]; fks: Fk[] }
+): string[] {
+  const tmp = `${table}__fordb_rebuild`
+  const colDefs = mutate.columns.map(columnClause)
+  const pk = ctx.keys.find((k) => k.kind === 'primary')
+  if (pk && pk.columns.length) colDefs.push(`PRIMARY KEY (${pk.columns.map(qi).join(', ')})`)
+  for (const fk of mutate.fks)
+    colDefs.push(
+      `FOREIGN KEY (${fk.columns.map(qi).join(', ')}) REFERENCES ${qi(fk.refTable)} (${fk.refColumns
+        .map(qi)
+        .join(', ')})`
+    )
+  // Carried columns = new columns that also exist in the old table.
+  const oldNames = new Set(ctx.columns.map((c) => c.name))
+  const carried = mutate.columns
+    .filter((c) => oldNames.has(c.name))
+    .map((c) => qi(c.name))
+    .join(', ')
+  const idxLines = ctx.indexes
+    .filter((i) => !(pk && i.columns.join(',') === pk.columns.join(',') && i.unique))
+    .map((i) =>
+      createIndex({ schema, table, name: i.name, columns: i.columns, unique: i.unique }, 'sqlite')
+    )
+  return [
+    `PRAGMA defer_foreign_keys=ON`,
+    `CREATE TABLE ${qtable(schema, tmp)} (\n  ${colDefs.join(',\n  ')}\n)`,
+    `INSERT INTO ${qtable(schema, tmp)} (${carried}) SELECT ${carried} FROM ${qtable(schema, table)}`,
+    `DROP TABLE ${qtable(schema, table)}`,
+    `ALTER TABLE ${qtable(schema, tmp)} RENAME TO ${qi(table)}`,
+    ...idxLines
+  ]
+}
+
+function currentColumns(ctx: TableStructure): ColumnSpec[] {
+  return ctx.columns
+    .slice()
+    .sort((a, b) => a.ordinal - b.ordinal)
+    .map((c) => ({ name: c.name, type: c.dataType, notNull: !c.nullable, default: c.defaultValue }))
+}
+function currentFks(ctx: TableStructure): Fk[] {
+  return ctx.keys
+    .filter((k) => k.kind === 'foreign' && k.referencedTable && k.referencedColumns)
+    .map((k) => ({
+      name: k.name,
+      columns: k.columns,
+      refTable: k.referencedTable!,
+      refColumns: k.referencedColumns!
+    }))
+}
+
+export function buildDdl(change: DdlChange, dialect: Dialect, context?: TableStructure): string[] {
   switch (change.kind) {
     case 'createTable':
       return [createTable(change.spec)]
@@ -60,17 +147,63 @@ export function buildDdl(change: DdlChange, dialect: Dialect): string[] {
       return [
         `ALTER TABLE ${qtable(change.schema, change.table)} ADD COLUMN ${columnClause(change.column)}`
       ]
+    case 'renameColumn':
+      // Native on both engines.
+      return [
+        `ALTER TABLE ${qtable(change.schema, change.table)} RENAME COLUMN ${qi(change.from)} TO ${qi(change.to)}`
+      ]
+    case 'dropColumn':
+      // Native on both engines (SQLite >= 3.35 / libsql).
+      return [`ALTER TABLE ${qtable(change.schema, change.table)} DROP COLUMN ${qi(change.column)}`]
+    case 'alterColumn': {
+      if (dialect === 'pg') return pgAlterColumn(change)
+      if (!context) throw new Error('SQLite alterColumn requires a TableStructure context')
+      const columns = currentColumns(context).map((c) =>
+        c.name === change.column
+          ? {
+              ...c,
+              ...(change.type !== undefined ? { type: change.type } : {}),
+              ...(change.notNull !== undefined ? { notNull: change.notNull } : {}),
+              ...(change.default !== undefined ? { default: change.default } : {})
+            }
+          : c
+      )
+      return buildSqliteRebuild(context, change.schema, change.table, {
+        columns,
+        fks: currentFks(context)
+      })
+    }
     case 'createIndex':
       return [createIndex(change.spec, dialect)]
     case 'dropIndex':
       // Both engines accept a schema-qualified index name here.
       return [`DROP INDEX ${qtable(change.schema, change.name)}`]
     case 'addForeignKey':
-      return [addForeignKey(change.spec)]
+      if (dialect === 'pg') return [addForeignKey(change.spec)]
+      if (!context) throw new Error('SQLite addForeignKey requires a TableStructure context')
+      return buildSqliteRebuild(context, change.spec.schema, change.spec.table, {
+        columns: currentColumns(context),
+        fks: [
+          ...currentFks(context),
+          {
+            name: change.spec.name,
+            columns: change.spec.columns,
+            refTable: change.spec.refTable,
+            refColumns: change.spec.refColumns
+          }
+        ]
+      })
     case 'dropForeignKey':
-      return [
-        `ALTER TABLE ${qtable(change.schema, change.table)} DROP CONSTRAINT ${qi(change.name)}`
-      ]
+      if (dialect === 'pg')
+        return [
+          `ALTER TABLE ${qtable(change.schema, change.table)} DROP CONSTRAINT ${qi(change.name)}`
+        ]
+      // change.name is the synthetic FK name from getKeys (fk_N).
+      if (!context) throw new Error('SQLite dropForeignKey requires a TableStructure context')
+      return buildSqliteRebuild(context, change.schema, change.table, {
+        columns: currentColumns(context),
+        fks: currentFks(context).filter((f) => f.name !== change.name)
+      })
     case 'dropTable':
       return [`DROP TABLE ${qtable(change.schema, change.table)}`]
     case 'createSchema':
@@ -81,9 +214,6 @@ export function buildDdl(change: DdlChange, dialect: Dialect): string[] {
       return [`CREATE DATABASE ${qi(change.name)}`]
     case 'dropDatabase':
       return [`DROP DATABASE ${qi(change.name)}`]
-    default:
-      // renameColumn/dropColumn/alterColumn land in Tasks 2/3.
-      throw new Error(`Unsupported DDL change: ${(change as DdlChange).kind}`)
   }
 }
 
