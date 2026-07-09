@@ -114,23 +114,36 @@ export class SqliteAdapter implements DbAdapter {
       .sort((a, b) => Number(a.pk) - Number(b.pk))
       .map((c) => String(c.name))
     if (pk.length)
-      keys.push({ name: 'primary', kind: 'primary', columns: pk, referencedTable: null })
+      keys.push({
+        name: 'primary',
+        kind: 'primary',
+        columns: pk,
+        referencedTable: null,
+        referencedColumns: null
+      })
 
-    const byId = new Map<number, { columns: string[]; ref: string }>()
+    const byId = new Map<number, { columns: string[]; refCols: string[]; ref: string }>()
     for (const r of await this.rows(SQL.foreignKeyList(schema, table))) {
       const id = Number(r.id)
-      const e = byId.get(id) ?? { columns: [], ref: String(r.table) }
+      const e = byId.get(id) ?? { columns: [], refCols: [], ref: String(r.table) }
       e.columns.push(String(r.from))
+      e.refCols.push(String(r.to))
       byId.set(id, e)
     }
     for (const [id, e] of byId)
-      keys.push({ name: `fk_${id}`, kind: 'foreign', columns: e.columns, referencedTable: e.ref })
+      keys.push({
+        name: `fk_${id}`,
+        kind: 'foreign',
+        columns: e.columns,
+        referencedTable: e.ref,
+        referencedColumns: e.refCols
+      })
 
     for (const idx of await this.rows(SQL.indexList(schema, table))) {
       if (Number(idx.unique) !== 1 || idx.origin !== 'u') continue
       const name = String(idx.name)
       const columns = (await this.rows(SQL.indexInfo(schema, name))).map((r) => String(r.name))
-      keys.push({ name, kind: 'unique', columns, referencedTable: null })
+      keys.push({ name, kind: 'unique', columns, referencedTable: null, referencedColumns: null })
     }
     return keys
   }

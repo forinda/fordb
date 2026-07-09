@@ -1,11 +1,16 @@
 import type { Client } from '@libsql/client'
 import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 
-// SQLite can do these without a table rebuild. FK/schema/database ops and
-// in-place column changes need a rebuild → deferred to MA3b, advertised false.
+// createSchema/database stay false (no CREATE SCHEMA in SQLite). Rename/drop
+// column are native; alterColumn and FK add/drop go through the table-rebuild
+// (Task 3/5). The FK flags flip to true in Task 5 (they also drive the
+// contract's dialect detection, so they move together with that change).
 const SQLITE_OPS: SchemaOps = {
   createTable: true,
   addColumn: true,
+  renameColumn: true,
+  dropColumn: true,
+  alterColumn: true,
   createIndex: true,
   dropIndex: true,
   dropTable: true,
