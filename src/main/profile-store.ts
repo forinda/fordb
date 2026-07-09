@@ -8,7 +8,15 @@ export class ProfileStore {
   async list(): Promise<ConnectionProfile[]> {
     try {
       const raw = await readFile(this.filePath, 'utf8')
-      return JSON.parse(raw) as ConnectionProfile[]
+      const list = JSON.parse(raw) as ConnectionProfile[]
+      // Legacy SQLite profiles (pre local/remote/replica) have no `kind` → local.
+      // The runtime data can lack `kind` even though every current SqliteProfile
+      // variant declares it, so the check narrows to `never` — cast to spread.
+      return list.map((p) =>
+        p.engine === 'sqlite' && !('kind' in p)
+          ? ({ ...(p as Record<string, unknown>), kind: 'local' } as ConnectionProfile)
+          : p
+      )
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code === 'ENOENT') return []
       throw err

@@ -36,6 +36,8 @@ export class SqliteAdapter implements DbAdapter {
 
   async connect(profile: ConnectionProfile): Promise<void> {
     if (profile.engine !== 'sqlite') throw new Error('SqliteAdapter requires a sqlite profile')
+    // Task 4 wires remote/replica via configFor + injectable factory.
+    if (profile.kind !== 'local') throw new Error('remote/replica sqlite not wired yet')
     this.client = createClient({ url: `file:${profile.file}` })
   }
   async disconnect(): Promise<void> {
