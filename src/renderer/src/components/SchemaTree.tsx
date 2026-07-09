@@ -121,24 +121,30 @@ export function SchemaTree(): React.JSX.Element {
                 : isColumn
                   ? IconColumn
                   : IconTable
+          const isTable = kind === 'table' || kind === 'view'
           return (
             <div
               style={style}
               ref={dragHandle}
-              // react-arborist doesn't toggle on row click by default; wire it
-              // so clicking a schema/table row expands or collapses it. Columns
-              // are leaves.
+              // Primary click: a table/view opens its data tab; a schema toggles
+              // its children. Expanding a table's columns is on the chevron.
               onClick={() => {
-                if (!isColumn) node.toggle()
-              }}
-              // Double-click a table/view → open its data in an editable tab.
-              onDoubleClick={() => {
-                if (kind === 'table' || kind === 'view')
+                if (isTable)
                   void useQueryStore.getState().openTable(node.data.schema, node.data.name)
+                else if (!isColumn) node.toggle()
               }}
               className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
             >
-              <span className="w-3.5 shrink-0 text-muted-foreground">
+              <span
+                className="w-3.5 shrink-0 text-muted-foreground"
+                // Chevron toggles expand/collapse (columns for a table) without
+                // triggering the row's open-data action.
+                onClick={(e) => {
+                  if (isColumn) return
+                  e.stopPropagation()
+                  node.toggle()
+                }}
+              >
                 {!isColumn &&
                   (node.isOpen ? (
                     <IconChevronDown className="h-3.5 w-3.5" />
