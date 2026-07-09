@@ -7,8 +7,7 @@ const COMPARE: Record<string, string> = {
   lt: '<',
   gt: '>',
   le: '<=',
-  ge: '>=',
-  contains: 'LIKE'
+  ge: '>='
 }
 
 /** Build a parameterized SELECT for a browse. Values are BOUND ($n / ?); only
@@ -26,8 +25,15 @@ export function buildBrowseSql(
     const col = quoteIdent(f.column)
     if (f.op === 'isNull') return `${col} IS NULL`
     if (f.op === 'isNotNull') return `${col} IS NOT NULL`
-    const bound = f.op === 'contains' ? ph(`%${String(f.value)}%`) : ph(f.value)
-    return `${col} ${COMPARE[f.op]} ${bound}`
+    if (f.op === 'contains') {
+      // Escape LIKE metacharacters (\ % _) so a search for "10%" or "user_1"
+      // matches those literals, not wildcard patterns. ESCAPE '\' works on both PG
+      // and SQLite. The bound value is still a parameter — this only fixes the
+      // pattern semantics, not injection (which is already prevented by binding).
+      const escaped = String(f.value).replace(/[\\%_]/g, '\\$&')
+      return `${col} LIKE ${ph(`%${escaped}%`)} ESCAPE '\\'`
+    }
+    return `${col} ${COMPARE[f.op]} ${ph(f.value)}`
   })
   const order = opts.sort.map(
     (s: Sort) => `${quoteIdent(s.column)} ${s.dir === 'desc' ? 'DESC' : 'ASC'}`

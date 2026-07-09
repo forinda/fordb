@@ -47,11 +47,14 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   })
   const [error, setError] = useState<string | null>(null)
   // Track the loaded row count in state so background paging triggers a
-  // re-render (the source's row array grows mutably otherwise).
+  // re-render (the source's row array grows mutably otherwise). Re-sync on
+  // tab.status too: run() sets the source BEFORE awaiting the first page, so the
+  // initial mount sees 0 rows — the status flip to 'done' is our signal the page
+  // landed (same source instance, so a source-only dep would miss it).
   const [loadedCount, setLoadedCount] = useState(source?.loadedRowCount() ?? 0)
   useEffect(() => {
     setLoadedCount(source?.loadedRowCount() ?? 0)
-  }, [source])
+  }, [source, tab.status])
 
   // Filter-bar draft rows (local; committed to the store on Apply).
   const [filterRows, setFilterRows] = useState<{ column: string; op: FilterOp; value: string }[]>(
