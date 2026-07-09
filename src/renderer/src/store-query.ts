@@ -6,6 +6,7 @@ import { QueryResultSource } from '@shared/query/result-source'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
 import type { RowEdit } from '@shared/adapter/mutation-types'
+import type { Filter, Sort } from '@shared/adapter/browse-types'
 
 const PAGE_SIZE = 1000
 
@@ -19,8 +20,17 @@ export interface QueryTab {
   elapsedMs?: number
   kind: 'query' | 'data'
   /** Present on data tabs — the table being browsed/edited. `editable` is true
-   *  only when the engine supports mutation AND the table has a pk/unique key. */
-  data?: { schema: string; table: string; pkColumns: string[]; editable: boolean }
+   *  only when the engine supports mutation AND the table has a pk/unique key.
+   *  `browse` holds the current filter/sort (run() sends it to openBrowse);
+   *  `fkColumns` maps a single-column FK's local column → its referenced table. */
+  data?: {
+    schema: string
+    table: string
+    pkColumns: string[]
+    editable: boolean
+    browse: { filters: Filter[]; sort: Sort[] }
+    fkColumns: Record<string, string>
+  }
 }
 
 let seq = 0
@@ -40,7 +50,9 @@ interface QueryState {
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
   setMainView: (v: 'query' | 'dashboard') => void
-  openTable: (schema: string, table: string) => Promise<void>
+  openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
+  setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
+  openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
 }
 
@@ -57,7 +69,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const t: QueryTab = { id: tabId(), sql: '', status: 'idle', kind: 'query' }
     set((s) => ({ tabs: [...s.tabs, t], activeTabId: t.id }))
   },
-  openTable: async (schema, table) => {
+  openTable: async (schema, table, initialFilters) => {
     const connId = useConnStore.getState().activeConnectionId
     if (!connId) return
     const api = await hostApi()
@@ -67,21 +79,49 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     ])
     const pk = keys.find((k) => k.kind === 'primary') ?? keys.find((k) => k.kind === 'unique')
     const pkColumns = pk?.columns ?? []
-    // Stable order (so a row index maps consistently within an execution) when a
-    // key exists; identifiers quoted.
-    const orderBy = pkColumns.length
-      ? ` ORDER BY ${pkColumns.map((c) => `"${c.replace(/"/g, '""')}"`).join(', ')}`
-      : ''
+    // Single-column FKs → clickable navigation to the referenced table.
+    const fkColumns: Record<string, string> = {}
+    for (const k of keys)
+      if (k.kind === 'foreign' && k.columns.length === 1 && k.referencedTable)
+        fkColumns[k.columns[0]!] = k.referencedTable
     const id = tabId()
     const tab: QueryTab = {
       id,
-      sql: `SELECT * FROM "${schema}"."${table}"${orderBy}`,
+      sql: `browse ${schema}.${table}`,
       status: 'idle',
       kind: 'data',
-      data: { schema, table, pkColumns, editable: mutable && pkColumns.length > 0 }
+      data: {
+        schema,
+        table,
+        pkColumns,
+        editable: mutable && pkColumns.length > 0,
+        fkColumns,
+        // Default sort = pk (stable row index within a page); empty → no ORDER BY.
+        browse: {
+          filters: initialFilters ?? [],
+          sort: pkColumns.map((c) => ({ column: c, dir: 'asc' as const }))
+        }
+      }
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
-    await get().run(id) // reuse the SELECT streaming path
+    await get().run(id) // streams via openBrowse (data-tab branch)
+  },
+  setBrowse: (tabId, browse) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) =>
+        t.id === tabId && t.data ? { ...t, data: { ...t.data, browse } } : t
+      )
+    }))
+    void get().run(tabId)
+  },
+  openFkTarget: async (schema, refTable, value) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    const keys = await (await hostApi()).getKeys(connId, schema, refTable)
+    const pk = keys.find((k) => k.kind === 'primary')
+    const filters: Filter[] =
+      pk && pk.columns.length === 1 ? [{ column: pk.columns[0]!, op: 'eq', value }] : []
+    await get().openTable(schema, refTable, filters)
   },
   applyEdits: async (tabId, edits) => {
     const connId = useConnStore.getState().activeConnectionId
@@ -110,6 +150,30 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const started = performance.now()
     try {
       const api = await hostApi()
+      if (tab.kind === 'data' && tab.data) {
+        const open = await api.openBrowse(connId, {
+          schema: tab.data.schema,
+          table: tab.data.table,
+          filters: tab.data.browse.filters,
+          sort: tab.data.browse.sort,
+          pageSize: PAGE_SIZE
+        })
+        const source = new QueryResultSource(
+          {
+            fetchPage: (q) => api.fetchPage(connId, q),
+            closeQuery: (q) => api.closeQuery(connId, q)
+          },
+          open.queryId,
+          open.fields,
+          PAGE_SIZE
+        )
+        set((s) => ({ tabs: patch(s.tabs, id, { source }) }))
+        await source.ensureLoaded(0)
+        set((s) => ({
+          tabs: patch(s.tabs, id, { status: 'done', elapsedMs: performance.now() - started })
+        }))
+        return
+      }
       if (isSelectLike(tab.sql)) {
         const open = await api.openQuery(connId, tab.sql, PAGE_SIZE)
         const source = new QueryResultSource(
