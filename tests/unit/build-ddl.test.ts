@@ -45,9 +45,9 @@ describe('buildDdl', () => {
       `DROP INDEX "app"."i"`
     ])
   })
-  it('sqlite dropIndex omits the schema qualifier', () => {
+  it('sqlite dropIndex qualifies the index name', () => {
     expect(buildDdl({ kind: 'dropIndex', schema: 'main', name: 'i' }, 'sqlite')).toEqual([
-      `DROP INDEX "i"`
+      `DROP INDEX "main"."i"`
     ])
   })
   it('addForeignKey / dropForeignKey (pg)', () => {
@@ -86,30 +86,32 @@ describe('buildDdl', () => {
     expect(buildDdl({ kind: 'createDatabase', name: 'd' }, 'pg')).toEqual([`CREATE DATABASE "d"`])
     expect(buildDdl({ kind: 'dropDatabase', name: 'd' }, 'pg')).toEqual([`DROP DATABASE "d"`])
   })
-  it('sqlite: names are unqualified (no schema) for create/add/index/drop', () => {
+  it('sqlite: schema-qualified except CREATE INDEX (schema on the index name, bare ON-table)', () => {
     expect(
       buildDdl(
         {
           kind: 'createTable',
-          spec: { schema: 'main', table: 't', columns: [{ name: 'id', type: 'integer' }] }
+          spec: { schema: 'temp', table: 't', columns: [{ name: 'id', type: 'integer' }] }
         },
         'sqlite'
       )
-    ).toEqual([`CREATE TABLE "t" (\n  "id" integer\n)`])
+    ).toEqual([`CREATE TABLE "temp"."t" (\n  "id" integer\n)`])
     expect(
       buildDdl(
-        { kind: 'addColumn', schema: 'main', table: 't', column: { name: 'a', type: 'text' } },
+        { kind: 'addColumn', schema: 'temp', table: 't', column: { name: 'a', type: 'text' } },
         'sqlite'
       )
-    ).toEqual([`ALTER TABLE "t" ADD COLUMN "a" text`])
+    ).toEqual([`ALTER TABLE "temp"."t" ADD COLUMN "a" text`])
+    // The index name carries the schema; the ON-table is bare (SQLite rejects a
+    // qualified ON-table).
     expect(
       buildDdl(
-        { kind: 'createIndex', spec: { schema: 'main', table: 't', name: 'i', columns: ['a'] } },
+        { kind: 'createIndex', spec: { schema: 'temp', table: 't', name: 'i', columns: ['a'] } },
         'sqlite'
       )
-    ).toEqual([`CREATE INDEX "i" ON "t" ("a")`])
-    expect(buildDdl({ kind: 'dropTable', schema: 'main', table: 't' }, 'sqlite')).toEqual([
-      `DROP TABLE "t"`
+    ).toEqual([`CREATE INDEX "temp"."i" ON "t" ("a")`])
+    expect(buildDdl({ kind: 'dropTable', schema: 'temp', table: 't' }, 'sqlite')).toEqual([
+      `DROP TABLE "temp"."t"`
     ])
   })
   it('quotes identifiers with embedded quotes', () => {
