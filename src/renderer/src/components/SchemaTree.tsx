@@ -97,6 +97,10 @@ export function SchemaTree(): React.JSX.Element {
               .exportSql({ kind: 'table', schema: m.schema, table: m.table }, true, dialect)
         },
         {
+          label: 'Import CSV…',
+          run: () => void useQueryStore.getState().beginCsvImport(m.schema, m.table)
+        },
+        {
           label: 'Copy name',
           run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
         }
