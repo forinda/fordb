@@ -6,6 +6,9 @@ import IconDatabase from '~icons/lucide/database'
 import IconTable from '~icons/lucide/table'
 import IconEye from '~icons/lucide/eye'
 import IconColumn from '~icons/lucide/circle'
+import IconFolder from '~icons/lucide/folder'
+import IconBraces from '~icons/lucide/braces'
+import IconZap from '~icons/lucide/zap'
 import { useQuery } from '@tanstack/react-query'
 import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
@@ -13,10 +16,23 @@ import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
 import { buildDdl } from '@shared/ddl/build-ddl'
 import type { DdlChange } from '@shared/adapter/schema-types'
+import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { queryClient } from '../query/client'
-import { useSchemas, fetchTables, fetchColumns } from '../query/introspection'
-import { buildTree, invalidatedNodeId, type TreeNode } from '../query/schema-tree-model'
+import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
+import {
+  buildTree,
+  invalidatedNodeId,
+  type CategoryKind,
+  type TreeNode
+} from '../query/schema-tree-model'
+
+const CATEGORY_LABEL: Record<CategoryKind, string> = {
+  table: 'Tables',
+  view: 'Views',
+  function: 'Functions',
+  trigger: 'Triggers'
+}
 
 // Lazy tree: schemas come from React Query; a schema's tables load on first
 // expand, a table's columns on first expand. Fetches go through the shared
@@ -42,8 +58,12 @@ export function SchemaTree(): React.JSX.Element {
         toggle: () => void
       }
     | { kind: 'schema'; x: number; y: number; schema: string }
+    | { kind: 'object'; x: number; y: number; schema: string; objectKind: ObjectKind; name: string }
+    | { kind: 'newview'; x: number; y: number; schema: string }
     | null
   >(null)
+  // Inline "New view" form (name + SELECT) — Electron has no window.prompt.
+  const [newView, setNewView] = useState<{ schema: string } | null>(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
   const [ddlError, setDdlError] = useState<string | null>(null)
   // Electron has no window.prompt, so name-entry (new table/schema/database) uses
@@ -62,6 +82,14 @@ export function SchemaTree(): React.JSX.Element {
     queryFn: async () => (await hostApi()).schemaOps(connId!),
     enabled: !!connId
   })
+  const { data: objectKinds = [] } = useQuery({
+    queryKey: connId ? ['conn', connId, 'objectKinds'] : ['conn', 'none', 'objectKinds'],
+    queryFn: async (): Promise<ObjectKind[]> => {
+      const api = await hostApi()
+      return (await api.objectsSupported(connId!)) ? api.objectKinds(connId!) : []
+    },
+    enabled: !!connId
+  })
 
   // Build → preview (confirm) → apply. Store's applyDdl invalidates introspection.
   // Surface failures (permission denied, in-use database, syntax) instead of
@@ -78,6 +106,31 @@ export function SchemaTree(): React.JSX.Element {
   }
 
   function menuItems(m: NonNullable<typeof menu>): { label: string; run: () => void }[] {
+    if (m.kind === 'object') {
+      const items: { label: string; run: () => void }[] = [
+        {
+          label: 'Definition',
+          run: () => useQueryStore.getState().openObjectDefinition(m.schema, m.objectKind, m.name)
+        }
+      ]
+      if (m.objectKind === 'view')
+        items.push({
+          label: 'Drop view',
+          run: () => {
+            if (window.confirm(`Drop view "${m.schema}"."${m.name}"?`))
+              void useQueryStore
+                .getState()
+                .dropView(m.schema, m.name, dialect)
+                .catch((err: unknown) =>
+                  setDdlError(err instanceof Error ? err.message : String(err))
+                )
+          }
+        })
+      return items
+    }
+    if (m.kind === 'newview') {
+      return [{ label: 'New view…', run: () => setNewView({ schema: m.schema }) }]
+    }
     if (m.kind === 'table') {
       return [
         {
@@ -200,16 +253,41 @@ export function SchemaTree(): React.JSX.Element {
     if (!connId) return
     let kids: TreeNode[]
     if (id.startsWith('s:')) {
+      // schema → table nodes directly (common path, no extra click), plus a
+      // category folder for each object kind the engine exposes.
       const schema = id.slice(2)
       const tables = await fetchTables(queryClient, connId, schema)
-      kids = tables.map((t) => ({
-        id: `t:${schema}.${t.name}`,
-        name: t.name,
-        kind: t.type,
+      const tableNodes: TreeNode[] = tables
+        .filter((t) => t.type === 'table')
+        .map((t) => ({
+          id: `t:${schema}.${t.name}`,
+          name: t.name,
+          kind: 'table' as const,
+          schema,
+          table: t.name
+        }))
+      const catNodes: TreeNode[] = objectKinds.map((k) => ({
+        id: `cat:${schema}.${k}`,
+        name: CATEGORY_LABEL[k],
+        kind: 'category' as const,
         schema,
-        table: t.name
+        category: k
+      }))
+      kids = [...tableNodes, ...catNodes]
+    } else if (id.startsWith('cat:')) {
+      const rest = id.slice(4)
+      const dot = rest.lastIndexOf('.')
+      const schema = rest.slice(0, dot)
+      const cat = rest.slice(dot + 1) as CategoryKind
+      const objs = await fetchObjects(queryClient, connId, schema, cat as ObjectKind)
+      kids = objs.map((o) => ({
+        id: `obj:${schema}.${cat}.${o.name}`,
+        name: o.name,
+        kind: cat,
+        schema
       }))
     } else {
+      // t:<schema>.<table> → columns.
       const rest = id.slice(2)
       const dot = rest.indexOf('.')
       const schema = rest.slice(0, dot)
@@ -267,6 +345,20 @@ export function SchemaTree(): React.JSX.Element {
         </div>
       )}
       {namePrompt && <NamePrompt prompt={namePrompt} onClose={() => setNamePrompt(null)} />}
+      {newView && (
+        <NewViewForm
+          onCancel={() => setNewView(null)}
+          onSubmit={(name, select) => {
+            setNewView(null)
+            void useQueryStore
+              .getState()
+              .createView(newView.schema, name, select, dialect)
+              .catch((err: unknown) =>
+                setDdlError(err instanceof Error ? err.message : String(err))
+              )
+          }}
+        />
+      )}
       <Tree
         data={data}
         openByDefault={false}
@@ -279,28 +371,38 @@ export function SchemaTree(): React.JSX.Element {
         {({ node, style, dragHandle }) => {
           const kind = node.data.kind
           const isColumn = kind === 'column'
+          const isObject = kind === 'view' || kind === 'function' || kind === 'trigger'
           const TypeIcon =
             kind === 'schema'
               ? IconDatabase
-              : kind === 'view'
-                ? IconEye
-                : isColumn
-                  ? IconColumn
-                  : IconTable
-          const isTable = kind === 'table' || kind === 'view'
+              : kind === 'category'
+                ? IconFolder
+                : kind === 'view'
+                  ? IconEye
+                  : kind === 'function'
+                    ? IconBraces
+                    : kind === 'trigger'
+                      ? IconZap
+                      : isColumn
+                        ? IconColumn
+                        : IconTable
           return (
             <div
               style={style}
               ref={dragHandle}
-              // Primary click: a table/view opens its data tab; a schema toggles
-              // its children. Expanding a table's columns is on the chevron.
+              // Primary click: a table opens its data tab; an object (view/function/
+              // trigger) opens its definition; schema/category toggle their children.
               onClick={() => {
-                if (isTable)
+                if (kind === 'table')
                   void useQueryStore.getState().openTable(node.data.schema, node.data.name)
+                else if (isObject)
+                  useQueryStore
+                    .getState()
+                    .openObjectDefinition(node.data.schema, kind as ObjectKind, node.data.name)
                 else if (!isColumn) node.toggle()
               }}
               onContextMenu={(e) => {
-                if (isTable) {
+                if (kind === 'table') {
                   e.preventDefault()
                   setMenu({
                     kind: 'table',
@@ -308,9 +410,22 @@ export function SchemaTree(): React.JSX.Element {
                     y: e.clientY,
                     schema: node.data.schema,
                     table: node.data.name,
-                    isView: kind === 'view',
+                    isView: false,
                     toggle: () => node.toggle()
                   })
+                } else if (isObject) {
+                  e.preventDefault()
+                  setMenu({
+                    kind: 'object',
+                    x: e.clientX,
+                    y: e.clientY,
+                    schema: node.data.schema,
+                    objectKind: kind as ObjectKind,
+                    name: node.data.name
+                  })
+                } else if (kind === 'category' && node.data.category === 'view') {
+                  e.preventDefault()
+                  setMenu({ kind: 'newview', x: e.clientX, y: e.clientY, schema: node.data.schema })
                 } else if (kind === 'schema') {
                   e.preventDefault()
                   setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
@@ -403,6 +518,46 @@ function NamePrompt(props: {
       <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onClose}>
         Cancel
       </button>
+    </div>
+  )
+}
+
+function NewViewForm(props: {
+  onSubmit: (name: string, select: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [name, setName] = useState('')
+  const [select, setSelect] = useState('')
+  return (
+    <div className="mb-1 flex flex-col gap-1 rounded border border-border p-1 text-xs">
+      <span className="text-muted-foreground">New view</span>
+      <input
+        aria-label="view-name-input"
+        autoFocus
+        className="rounded border border-border bg-background px-1 py-0.5"
+        placeholder="view name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <textarea
+        aria-label="view-select-input"
+        className="h-16 rounded border border-border bg-background px-1 py-0.5 font-mono"
+        placeholder="SELECT …"
+        value={select}
+        onChange={(e) => setSelect(e.target.value)}
+      />
+      <div className="flex justify-end gap-1">
+        <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
+          Cancel
+        </button>
+        <button
+          className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
+          disabled={!name.trim() || !select.trim()}
+          onClick={() => props.onSubmit(name.trim(), select.trim())}
+        >
+          Create
+        </button>
+      </div>
     </div>
   )
 }
