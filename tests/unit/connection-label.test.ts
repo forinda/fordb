@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import { connectionLabel } from '../../src/shared/connection-label'
-import type { ConnectionProfile } from '../../src/shared/adapter/types'
+import type { PostgresProfile } from '../../src/shared/adapter/types'
 
-function profile(over: Partial<ConnectionProfile>): ConnectionProfile {
+function profile(over: Partial<PostgresProfile>): PostgresProfile {
   return {
     id: 'p1',
     name: '',
@@ -43,5 +43,15 @@ describe('connectionLabel', () => {
     expect(connectionLabel(profile({ name: '', host: '', database: '', user: '' }))).toBe(
       'Unnamed connection'
     )
+  })
+  it('falls back to the file basename (sqlite)', () => {
+    expect(connectionLabel({ id: 's1', name: '', engine: 'sqlite', file: '/tmp/app.sqlite' })).toBe(
+      'app.sqlite'
+    )
+  })
+  it('uses the name when set (sqlite)', () => {
+    expect(
+      connectionLabel({ id: 's1', name: 'Local', engine: 'sqlite', file: '/tmp/app.sqlite' })
+    ).toBe('Local')
   })
 })

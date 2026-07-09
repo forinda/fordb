@@ -9,6 +9,10 @@ import type { ConnectionProfile } from './adapter/types'
 export function connectionLabel(profile: ConnectionProfile): string {
   const name = profile.name.trim()
   if (name) return name
+  if (profile.engine === 'sqlite') {
+    const base = profile.file.split(/[\\/]/).pop() ?? profile.file
+    return base || 'SQLite database'
+  }
   const host = profile.host.trim()
   const user = profile.user.trim()
   const database = profile.database.trim()

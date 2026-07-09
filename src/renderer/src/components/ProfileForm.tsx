@@ -19,27 +19,30 @@ export function ProfileForm(props: {
   onCancel: () => void
 }): React.JSX.Element {
   const p = props.profile
+  // Postgres-only view of the edited profile. The engine selector + SQLite
+  // fields arrive in a later task; today the form edits Postgres profiles.
+  const pg = p?.engine === 'postgres' ? p : undefined
   const [name, setName] = useState(p?.name ?? '')
-  const [host, setHost] = useState(p?.host ?? 'localhost')
-  const [port, setPort] = useState(String(p?.port ?? 5432))
-  const [database, setDatabase] = useState(p?.database ?? '')
-  const [user, setUser] = useState(p?.user ?? '')
+  const [host, setHost] = useState(pg?.host ?? 'localhost')
+  const [port, setPort] = useState(String(pg?.port ?? 5432))
+  const [database, setDatabase] = useState(pg?.database ?? '')
+  const [user, setUser] = useState(pg?.user ?? '')
   const [password, setPassword] = useState('')
 
   // SSL — minimal "trust server certificate" toggle for M2.
-  const [useSsl, setUseSsl] = useState(p?.ssl != null)
-  const [verifyCert, setVerifyCert] = useState(p?.ssl?.rejectUnauthorized ?? true)
+  const [useSsl, setUseSsl] = useState(pg?.ssl != null)
+  const [verifyCert, setVerifyCert] = useState(pg?.ssl?.rejectUnauthorized ?? true)
 
   // SSH tunnel sub-form — collapsed by default.
-  const [useSsh, setUseSsh] = useState(p?.ssh != null)
-  const [sshHost, setSshHost] = useState(p?.ssh?.host ?? '')
-  const [sshPort, setSshPort] = useState(String(p?.ssh?.port ?? 22))
-  const [sshUser, setSshUser] = useState(p?.ssh?.user ?? '')
+  const [useSsh, setUseSsh] = useState(pg?.ssh != null)
+  const [sshHost, setSshHost] = useState(pg?.ssh?.host ?? '')
+  const [sshPort, setSshPort] = useState(String(pg?.ssh?.port ?? 22))
+  const [sshUser, setSshUser] = useState(pg?.ssh?.user ?? '')
   const [authMethod, setAuthMethod] = useState<SshOptions['authMethod']>(
-    p?.ssh?.authMethod ?? 'password'
+    pg?.ssh?.authMethod ?? 'password'
   )
   const [sshPassword, setSshPassword] = useState('')
-  const [privateKeyPath, setPrivateKeyPath] = useState(p?.ssh?.privateKeyPath ?? '')
+  const [privateKeyPath, setPrivateKeyPath] = useState(pg?.ssh?.privateKeyPath ?? '')
   const [sshPassphrase, setSshPassphrase] = useState('')
 
   const [testMsg, setTestMsg] = useState('')

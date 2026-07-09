@@ -15,12 +15,13 @@ export interface ConnectedAdapter {
  * leak a tunnel when the DB-side connect fails.
  */
 export async function connectAdapter(
-  makeAdapter: () => DbAdapter,
+  makeAdapter: (engine: ConnectionProfile['engine']) => DbAdapter,
   profile: ConnectionProfile
 ): Promise<ConnectedAdapter> {
   let tunnel: TunnelHandle | undefined
   let effective = profile
-  if (profile.ssh) {
+  // SSH tunnels are a Postgres concern; SQLite profiles have no `ssh`.
+  if (profile.engine === 'postgres' && profile.ssh) {
     const privateKey =
       profile.ssh.authMethod === 'key' && profile.ssh.privateKeyPath
         ? await readFile(profile.ssh.privateKeyPath)
@@ -36,7 +37,7 @@ export async function connectAdapter(
   // opened, the tunnel must still be torn down rather than leaked.
   let adapter: DbAdapter
   try {
-    adapter = makeAdapter()
+    adapter = makeAdapter(profile.engine)
     await adapter.connect(effective)
   } catch (err) {
     await tunnel?.close()

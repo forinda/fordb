@@ -8,6 +8,7 @@ import type {
   KeyInfo,
   OpenQueryResult,
   Page,
+  PostgresProfile,
   QueryResult,
   TableInfo
 } from '@shared/adapter/types'
@@ -41,7 +42,7 @@ interface OpenCursor {
 
 export class PostgresAdapter implements DbAdapter {
   private client: pg.Client | null = null
-  private profile: ConnectionProfile | null = null
+  private profile: PostgresProfile | null = null
   private backendPid: number | null = null
   private cursors = new Map<string, OpenCursor>()
   private nextCursorId = 1
@@ -52,7 +53,7 @@ export class PostgresAdapter implements DbAdapter {
     return this.client
   }
 
-  private static clientConfig(profile: ConnectionProfile): pg.ClientConfig {
+  private static clientConfig(profile: PostgresProfile): pg.ClientConfig {
     return {
       host: profile.host,
       port: profile.port,
@@ -71,6 +72,8 @@ export class PostgresAdapter implements DbAdapter {
   }
 
   async connect(profile: ConnectionProfile): Promise<void> {
+    if (profile.engine !== 'postgres')
+      throw new Error('PostgresAdapter requires a postgres profile')
     const client = new pg.Client(PostgresAdapter.clientConfig(profile))
     await client.connect()
     const pid = await client.query('SELECT pg_backend_pid() AS pid')

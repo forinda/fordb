@@ -16,10 +16,19 @@ export class ProfileStore {
   }
 
   async save(profile: ConnectionProfile): Promise<void> {
-    const { password: _pw, sshPassword: _sp, sshPassphrase: _pp, ...safe } = profile
-    void _pw
-    void _sp
-    void _pp
+    // Strip secrets before persisting. SQLite is structurally secretless;
+    // Postgres secrets are dropped by destructuring, so a new secret field on
+    // PostgresProfile fails to compile here until it's handled.
+    let safe: ConnectionProfile
+    if (profile.engine === 'postgres') {
+      const { password: _pw, sshPassword: _sp, sshPassphrase: _pp, ...rest } = profile
+      void _pw
+      void _sp
+      void _pp
+      safe = rest
+    } else {
+      safe = { ...profile }
+    }
     const list = await this.list()
     // Keep display names distinguishable: if another profile already uses this
     // name, append " (2)", " (3)", … Duplicates are only confusing, not invalid,
