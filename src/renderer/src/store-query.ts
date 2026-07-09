@@ -18,7 +18,7 @@ export interface QueryTab {
   source?: QueryResultSource
   message?: string // rowCount/command summary or error text
   elapsedMs?: number
-  kind: 'query' | 'data'
+  kind: 'query' | 'data' | 'structure'
   /** Present on data tabs — the table being browsed/edited. `editable` is true
    *  only when the engine supports mutation AND the table has a pk/unique key.
    *  `browse` holds the current filter/sort (run() sends it to openBrowse);
@@ -31,6 +31,8 @@ export interface QueryTab {
     browse: { filters: Filter[]; sort: Sort[] }
     fkColumns: Record<string, string>
   }
+  /** Present on structure tabs — the table whose DDL structure is shown/edited. */
+  structure?: { schema: string; table: string }
 }
 
 let seq = 0
@@ -54,6 +56,8 @@ interface QueryState {
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
+  openStructure: (schema: string, table: string) => void
+  applyDdl: (statements: string[]) => Promise<void>
 }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
@@ -128,6 +132,24 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     if (!connId) return
     await (await hostApi()).applyEdits(connId, edits)
     await get().run(tabId) // refresh the data view
+  },
+  openStructure: (schema, table) => {
+    const id = tabId()
+    const tab: QueryTab = {
+      id,
+      sql: `structure ${schema}.${table}`,
+      status: 'done',
+      kind: 'structure',
+      structure: { schema, table }
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+  },
+  applyDdl: async (statements) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    await (await hostApi()).applyDdl(connId, statements)
+    // Structure change → schema tree + any open structure view re-fetch.
+    void invalidateIntrospection(queryClient, connId)
   },
   closeTab: (id) => {
     const tab = get().tabs.find((t) => t.id === id)
