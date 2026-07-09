@@ -3,6 +3,7 @@ import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
 import { SqlEditor } from './SqlEditor'
 import { ResultsGrid } from './ResultsGrid'
+import { TableDataGrid } from './TableDataGrid'
 import { QueryTabs } from './QueryTabs'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
@@ -56,6 +57,17 @@ export function QueryWorkbench(): React.JSX.Element {
         ),
         'application/json'
       )
+  }
+
+  if (tab.kind === 'data') {
+    return (
+      <div className="flex flex-col h-full">
+        <QueryTabs />
+        <div className="min-h-0 flex-1">
+          <TableDataGrid key={tab.id} tab={tab} />
+        </div>
+      </div>
+    )
   }
 
   return (

@@ -7,6 +7,7 @@ import IconTable from '~icons/lucide/table'
 import IconEye from '~icons/lucide/eye'
 import IconColumn from '~icons/lucide/circle'
 import { useConnStore } from '../store'
+import { useQueryStore } from '../store-query'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns } from '../query/introspection'
 import { buildTree, invalidatedNodeId, type TreeNode } from '../query/schema-tree-model'
@@ -129,6 +130,11 @@ export function SchemaTree(): React.JSX.Element {
               // are leaves.
               onClick={() => {
                 if (!isColumn) node.toggle()
+              }}
+              // Double-click a table/view → open its data in an editable tab.
+              onDoubleClick={() => {
+                if (kind === 'table' || kind === 'view')
+                  void useQueryStore.getState().openTable(node.data.schema, node.data.name)
               }}
               className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
             >
