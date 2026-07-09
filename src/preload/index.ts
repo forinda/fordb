@@ -86,6 +86,10 @@ contextBridge.exposeInMainWorld('fordb', {
   dialog: {
     openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:open-file')
   },
+  exportFile: {
+    save: (defaultName: string, text: string, gzip: boolean): Promise<boolean> =>
+      ipcRenderer.invoke('export:save', defaultName, text, gzip)
+  },
   onDbHostRestarted: (cb: () => void): void => {
     ipcRenderer.on('db-host:restarted', () => cb())
   }

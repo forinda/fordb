@@ -6,6 +6,9 @@ import { QueryResultSource } from '@shared/query/result-source'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
 import { buildExplain } from '@shared/sql/explain'
+import { reconstructDdl } from '@shared/ddl/build-ddl'
+import { buildInsert } from '@shared/sql/build-insert'
+import { quoteIdent } from '@shared/mutation/build-edits'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 
@@ -68,7 +71,11 @@ interface QueryState {
   applyDdl: (statements: string[]) => Promise<void>
   formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
+  exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<void>
 }
+
+export type ExportScope =
+  { kind: 'table'; schema: string; table: string } | { kind: 'database'; schema: string }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
   return tabs.map((t) => (t.id === id ? { ...t, ...over } : t))
@@ -184,6 +191,41 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
     await get().run(id)
+  },
+  exportSql: async (scope, gzip, dialect) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    const api = await hostApi()
+    const tables =
+      scope.kind === 'table'
+        ? [scope.table]
+        : (await api.listTables(connId, scope.schema))
+            .filter((t) => t.type === 'table')
+            .map((t) => t.name)
+    const parts: string[] = ['-- fordb dump\n\n']
+    for (const table of tables) {
+      const [cols, keys, indexes] = await Promise.all([
+        api.getColumns(connId, scope.schema, table),
+        api.getKeys(connId, scope.schema, table),
+        api.getIndexes(connId, scope.schema, table)
+      ])
+      parts.push(reconstructDdl(cols, keys, indexes, scope.schema, table, dialect) + '\n')
+      const colNames = cols.map((c) => c.name)
+      const open = await api.openQuery(
+        connId,
+        `SELECT * FROM ${quoteIdent(scope.schema)}.${quoteIdent(table)}`,
+        1000
+      )
+      for (;;) {
+        const page = await api.fetchPage(connId, open.queryId)
+        for (const row of page.rows)
+          parts.push(buildInsert(scope.schema, table, colNames, row, dialect) + ';\n')
+        if (page.done) break
+      }
+      parts.push('\n')
+    }
+    const name = scope.kind === 'table' ? `${scope.table}.sql` : `${scope.schema}.sql`
+    await window.fordb.exportFile.save(name, parts.join(''), gzip)
   },
   formatActive: (sqlLang) => {
     const s = get()

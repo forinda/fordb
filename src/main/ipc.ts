@@ -1,5 +1,7 @@
 import { ipcMain, safeStorage, app, dialog } from 'electron'
 import { join } from 'node:path'
+import { writeFile } from 'node:fs/promises'
+import { gzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
 import { QueryLibraryStore } from './query-library-store'
@@ -117,5 +119,15 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
       ]
     })
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
+  })
+
+  // Save an exported SQL dump to a user-chosen path (gzip in main).
+  ipcMain.handle('export:save', async (_e, defaultName: string, text: string, gzip: boolean) => {
+    const r = await dialog.showSaveDialog({
+      defaultPath: gzip ? `${defaultName}.gz` : defaultName
+    })
+    if (r.canceled || !r.filePath) return false
+    await writeFile(r.filePath, gzip ? gzipSync(Buffer.from(text, 'utf8')) : text)
+    return true
   })
 }
