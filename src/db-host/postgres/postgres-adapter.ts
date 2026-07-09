@@ -15,10 +15,12 @@ import type {
 import type { ServerStatsProvider } from '@shared/adapter/stats-types'
 import type { DataMutator } from '@shared/adapter/mutation-types'
 import type { DataBrowser } from '@shared/adapter/browse-types'
+import type { SchemaEditor } from '@shared/adapter/schema-types'
 import * as SQL from './introspection-sql'
 import { PgServerStats } from './postgres-stats'
 import { PgDataMutator } from './postgres-mutator'
 import { PgDataBrowser } from './postgres-browser'
+import { PgSchemaEditor } from './postgres-schema'
 
 // pg's built-in type parsers don't cover `name[]` (OID 1003) — the array type
 // Postgres reports for `ARRAY(SELECT a.attname ...)` in the key/index
@@ -58,6 +60,10 @@ export class PostgresAdapter implements DbAdapter {
   readonly dataBrowser: DataBrowser = new PgDataBrowser((sql, params, ps) =>
     this.openCursor(sql, params, ps)
   )
+  readonly schemaEditor: SchemaEditor = new PgSchemaEditor(() => {
+    if (!this.profile) throw new Error('Not connected')
+    return new pg.Client(PostgresAdapter.clientConfig(this.profile))
+  })
 
   private get conn(): pg.Client {
     if (!this.client) throw new Error('Not connected')
