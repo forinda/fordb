@@ -89,11 +89,17 @@ export function App(): React.JSX.Element {
       label: 'Explain',
       run: () => void useQueryStore.getState().openExplain(dialect, false)
     },
-    {
-      id: 'explain-analyze',
-      label: 'Explain analyze',
-      run: () => void useQueryStore.getState().openExplain(dialect, true)
-    },
+    // EXPLAIN ANALYZE is Postgres-only (SQLite has no ANALYZE plan); hide the
+    // command for SQLite so it isn't a dead palette entry.
+    ...(dialect === 'pg'
+      ? [
+          {
+            id: 'explain-analyze',
+            label: 'Explain analyze',
+            run: () => void useQueryStore.getState().openExplain(dialect, true)
+          }
+        ]
+      : []),
     {
       id: 'save-query',
       label: 'Save query',
