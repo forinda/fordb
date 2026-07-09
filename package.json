@@ -23,7 +23,10 @@
     "e2e": "playwright test"
   },
   "devDependencies": {
+    "@iconify-json/lucide": "^1.2.116",
     "@playwright/test": "^1.61.1",
+    "@svgr/core": "^8.1.0",
+    "@svgr/plugin-jsx": "^8.1.0",
     "@tailwindcss/vite": "^4.3.2",
     "@types/node": "^22.20.1",
     "@types/pg": "^8.20.0",
@@ -39,6 +42,7 @@
     "tailwindcss": "^4.3.2",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.63.0",
+    "unplugin-icons": "^23.0.1",
     "vite": "^7",
     "vitest": "^3.2.7"
   },
