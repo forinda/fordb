@@ -82,4 +82,14 @@ describe('HostApi over RPC', () => {
   it('introspect on unknown id rejects', async () => {
     await expect(client.listSchemas('nope')).rejects.toThrow(/unknown connection/i)
   })
+
+  it('exposes server stats over the HostApi', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.serverStatsSupported(id)).toBe(true)
+    const snap = await client.getServerSnapshot(id)
+    expect(snap.maxConnections).toBeGreaterThan(0)
+    expect(Array.isArray(await client.getSessions(id))).toBe(true)
+    expect(Array.isArray(await client.getLocks(id))).toBe(true)
+    await client.closeConnection(id)
+  })
 })
