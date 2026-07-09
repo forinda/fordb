@@ -11,7 +11,7 @@ import type { ConnectionProfile } from '../../src/shared/adapter/types'
 export function runAdapterContractTests(
   makeAdapter: () => DbAdapter,
   profile: ConnectionProfile,
-  expected: { database: string; schema: string }
+  expected: { database: string; schema: string; cancelQuery?: string }
 ): void {
   describe('DbAdapter contract', () => {
     let adapter: DbAdapter
@@ -109,21 +109,29 @@ export function runAdapterContractTests(
       await expect(adapter.closeQuery(open.queryId)).resolves.toBeUndefined()
     })
 
-    it('cancel interrupts a running statement', async () => {
-      const slow = adapter.executeQuery('SELECT pg_sleep(30)')
-      // Register a rejection handler the instant the promise exists, so the
-      // cancellation error can never surface as an unhandled rejection in the
-      // window before expect(...).rejects attaches its own handler below.
-      const settled = slow.then(
-        () => new Error('query unexpectedly resolved'),
-        (err: unknown) => err
-      )
-      await new Promise((r) => setTimeout(r, 300))
-      await adapter.cancel()
-      const outcome = await settled
-      expect(outcome).toBeInstanceOf(Error)
-      expect((outcome as Error).message).toMatch(/cancel/i)
-    }, 15000)
+    // Only engines that can run a long statement AND interrupt it (Postgres via
+    // pg_cancel_backend) exercise this. SQLite/libsql run local statements to
+    // completion with a no-op cancel, so they omit `cancelQuery` → test skipped.
+    const cancelTest = expected.cancelQuery ? it : it.skip
+    cancelTest(
+      'cancel interrupts a running statement',
+      async () => {
+        const slow = adapter.executeQuery(expected.cancelQuery!)
+        // Register a rejection handler the instant the promise exists, so the
+        // cancellation error can never surface as an unhandled rejection in the
+        // window before expect(...).rejects attaches its own handler below.
+        const settled = slow.then(
+          () => new Error('query unexpectedly resolved'),
+          (err: unknown) => err
+        )
+        await new Promise((r) => setTimeout(r, 300))
+        await adapter.cancel()
+        const outcome = await settled
+        expect(outcome).toBeInstanceOf(Error)
+        expect((outcome as Error).message).toMatch(/cancel/i)
+      },
+      15000
+    )
 
     it('rejects bad SQL with a useful error', async () => {
       await expect(adapter.executeQuery('SELEKT 1')).rejects.toThrow(/syntax/i)
