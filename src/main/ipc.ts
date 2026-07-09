@@ -19,10 +19,20 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     async (
       _e,
       profile: ConnectionProfile,
-      secretFields: { password?: string; sshPassword?: string; sshPassphrase?: string }
+      secretFields: {
+        password?: string
+        sshPassword?: string
+        sshPassphrase?: string
+        authToken?: string
+      }
     ) => {
       await profiles.save(profile)
-      if (secretFields.password || secretFields.sshPassword || secretFields.sshPassphrase) {
+      if (
+        secretFields.password ||
+        secretFields.sshPassword ||
+        secretFields.sshPassphrase ||
+        secretFields.authToken
+      ) {
         await secrets.set(profile.id, secretFields)
       }
     }
@@ -40,15 +50,22 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     const all = await profiles.list()
     const profile = all.find((p) => p.id === id)
     if (!profile) throw new Error(`Unknown profile: ${id}`)
-    // Secrets only apply to Postgres; SQLite profiles are secretless.
-    if (profile.engine !== 'postgres') return profile
-    const s = await secrets.get(id)
-    return {
-      ...profile,
-      password: s.password,
-      sshPassword: s.sshPassword,
-      sshPassphrase: s.sshPassphrase
+    // Postgres carries password/ssh secrets; SQLite remote/replica carry an
+    // auth token. Local SQLite is secretless.
+    if (profile.engine === 'postgres') {
+      const s = await secrets.get(id)
+      return {
+        ...profile,
+        password: s.password,
+        sshPassword: s.sshPassword,
+        sshPassphrase: s.sshPassphrase
+      }
     }
+    if (profile.engine === 'sqlite' && (profile.kind === 'remote' || profile.kind === 'replica')) {
+      const s = await secrets.get(id)
+      return { ...profile, authToken: s.authToken }
+    }
+    return profile
   }
 
   ipcMain.handle('connection:test', async (_e, profileId: string) => {
