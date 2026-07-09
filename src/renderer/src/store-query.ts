@@ -9,6 +9,7 @@ import { buildExplain } from '@shared/sql/explain'
 import { reconstructDdl } from '@shared/ddl/build-ddl'
 import { buildInsert } from '@shared/sql/build-insert'
 import { quoteIdent } from '@shared/mutation/build-edits'
+import { splitStatements } from '@shared/sql/split-statements'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 
@@ -72,6 +73,9 @@ interface QueryState {
   formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
   exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<void>
+  importSqlFile: () => Promise<void>
+  importError: string | null
+  clearImportError: () => void
 }
 
 export type ExportScope =
@@ -85,6 +89,8 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   mainView: 'query',
+  importError: null,
+  clearImportError: () => set({ importError: null }),
   picker: null,
   setPicker: (p) => set({ picker: p }),
   loadIntoEditor: (sql) => {
@@ -226,6 +232,19 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     }
     const name = scope.kind === 'table' ? `${scope.table}.sql` : `${scope.schema}.sql`
     await window.fordb.exportFile.save(name, parts.join(''), gzip)
+  },
+  importSqlFile: async () => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return
+    const picked = await window.fordb.dialog.openTextFile(['sql'])
+    if (!picked) return
+    set({ importError: null })
+    try {
+      await (await hostApi()).executeScript(connId, splitStatements(picked.text))
+      void invalidateIntrospection(queryClient, connId)
+    } catch (err) {
+      set({ importError: err instanceof Error ? err.message : String(err) })
+    }
   },
   formatActive: (sqlLang) => {
     const s = get()

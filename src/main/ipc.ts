@@ -1,6 +1,6 @@
 import { ipcMain, safeStorage, app, dialog } from 'electron'
 import { join } from 'node:path'
-import { writeFile } from 'node:fs/promises'
+import { writeFile, readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
@@ -119,6 +119,20 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
       ]
     })
     return r.canceled || r.filePaths.length === 0 ? null : r.filePaths[0]
+  })
+
+  // Open a text file (import a .sql / .csv) and return its path + contents.
+  ipcMain.handle('dialog:open-text', async (_e, exts: string[]) => {
+    const r = await dialog.showOpenDialog({
+      properties: ['openFile'],
+      filters: [
+        { name: 'File', extensions: exts },
+        { name: 'All Files', extensions: ['*'] }
+      ]
+    })
+    const path = r.filePaths[0]
+    if (r.canceled || !path) return null
+    return { name: path, text: await readFile(path, 'utf8') }
   })
 
   // Save an exported SQL dump to a user-chosen path (gzip in main).

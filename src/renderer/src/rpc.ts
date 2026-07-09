@@ -37,7 +37,10 @@ declare global {
         setMode: (mode: 'light' | 'dark' | 'system') => Promise<void>
         onThemeChanged: (cb: (t: 'light' | 'dark') => void) => void
       }
-      dialog: { openFile: () => Promise<string | null> }
+      dialog: {
+        openFile: () => Promise<string | null>
+        openTextFile: (exts: string[]) => Promise<{ name: string; text: string } | null>
+      }
       exportFile: {
         save: (defaultName: string, text: string, gzip: boolean) => Promise<boolean>
       }
