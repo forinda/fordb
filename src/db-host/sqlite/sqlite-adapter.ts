@@ -1,5 +1,6 @@
-import { createClient, type Client, type ResultSet } from '@libsql/client'
+import { createClient, type Client, type Config, type ResultSet } from '@libsql/client'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
+import { configFor } from './sqlite-config'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -29,6 +30,10 @@ export class SqliteAdapter implements DbAdapter {
   private cursors = new Map<string, Cursor>()
   private nextCursor = 1
 
+  // The libsql client factory is injectable so connect() can be unit-tested
+  // without a real database/server.
+  constructor(private readonly makeClient: (config: Config) => Client = createClient) {}
+
   private get conn(): Client {
     if (!this.client) throw new Error('Not connected')
     return this.client
@@ -36,9 +41,10 @@ export class SqliteAdapter implements DbAdapter {
 
   async connect(profile: ConnectionProfile): Promise<void> {
     if (profile.engine !== 'sqlite') throw new Error('SqliteAdapter requires a sqlite profile')
-    // Task 4 wires remote/replica via configFor + injectable factory.
-    if (profile.kind !== 'local') throw new Error('remote/replica sqlite not wired yet')
-    this.client = createClient({ url: `file:${profile.file}` })
+    const client = this.makeClient(configFor(profile))
+    // Embedded replicas pull the remote snapshot down once on connect.
+    if (profile.kind === 'replica') await client.sync()
+    this.client = client
   }
   async disconnect(): Promise<void> {
     this.client?.close()
