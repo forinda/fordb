@@ -5,6 +5,7 @@ import { isSelectLike } from '@shared/sql/classify'
 import { QueryResultSource } from '@shared/query/result-source'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
+import { buildExplain } from '@shared/sql/explain'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 
@@ -18,7 +19,9 @@ export interface QueryTab {
   source?: QueryResultSource
   message?: string // rowCount/command summary or error text
   elapsedMs?: number
-  kind: 'query' | 'data' | 'structure'
+  kind: 'query' | 'data' | 'structure' | 'explain'
+  /** Present on explain tabs — the plan rows (one string per line). */
+  explainRows?: string[]
   /** Present on data tabs — the table being browsed/edited. `editable` is true
    *  only when the engine supports mutation AND the table has a pk/unique key.
    *  `browse` holds the current filter/sort (run() sends it to openBrowse);
@@ -59,6 +62,7 @@ interface QueryState {
   openStructure: (schema: string, table: string) => void
   applyDdl: (statements: string[]) => Promise<void>
   formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
+  openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
 }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
@@ -145,6 +149,19 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
   },
+  openExplain: async (dialect, analyze) => {
+    const src = get().tabs.find((t) => t.id === get().activeTabId)
+    if (!src || !src.sql.trim()) return
+    const id = tabId()
+    const tab: QueryTab = {
+      id,
+      sql: buildExplain(src.sql, dialect, analyze),
+      status: 'idle',
+      kind: 'explain'
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+    await get().run(id)
+  },
   formatActive: (sqlLang) => {
     const s = get()
     const tab = s.tabs.find((t) => t.id === s.activeTabId)
@@ -190,6 +207,19 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const started = performance.now()
     try {
       const api = await hostApi()
+      if (tab.kind === 'explain') {
+        const r = await api.executeQuery(connId, tab.sql)
+        set((s) => ({
+          tabs: patch(s.tabs, id, {
+            status: 'done',
+            explainRows: r.rows.map((row) =>
+              row.map((c) => (c == null ? '' : String(c))).join('  ')
+            ),
+            elapsedMs: performance.now() - started
+          })
+        }))
+        return
+      }
       if (tab.kind === 'data' && tab.data) {
         const open = await api.openBrowse(connId, {
           schema: tab.data.schema,
