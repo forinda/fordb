@@ -6,8 +6,13 @@ import IconDatabase from '~icons/lucide/database'
 import IconTable from '~icons/lucide/table'
 import IconEye from '~icons/lucide/eye'
 import IconColumn from '~icons/lucide/circle'
+import { useQuery } from '@tanstack/react-query'
 import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
+import { useProfiles } from '../query/profiles'
+import { hostApi } from '../rpc'
+import { buildDdl } from '@shared/ddl/build-ddl'
+import type { DdlChange } from '@shared/adapter/schema-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns } from '../query/introspection'
@@ -25,15 +30,92 @@ export function SchemaTree(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
   const { data: schemas, isLoading, error } = useSchemas(connId)
   const [childrenById, setChildrenById] = useState<Record<string, TreeNode[]>>({})
-  // Right-click context menu + read-only table-info dialog.
-  const [menu, setMenu] = useState<{
-    x: number
-    y: number
-    schema: string
-    table: string
-    toggle: () => void
-  } | null>(null)
+  // Right-click context menu (table or schema node) + read-only table-info dialog.
+  const [menu, setMenu] = useState<
+    | { kind: 'table'; x: number; y: number; schema: string; table: string; toggle: () => void }
+    | { kind: 'schema'; x: number; y: number; schema: string }
+    | null
+  >(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
+
+  const profileId = useConnStore((s) => s.activeProfileId)
+  const { data: profiles = [] } = useProfiles()
+  const dialect: 'pg' | 'sqlite' =
+    profiles.find((p) => p.id === profileId)?.engine === 'postgres' ? 'pg' : 'sqlite'
+  const { data: ops } = useQuery({
+    queryKey: connId ? ['conn', connId, 'schemaOps'] : ['conn', 'none', 'schemaOps'],
+    queryFn: async () => (await hostApi()).schemaOps(connId!),
+    enabled: !!connId
+  })
+
+  // Build → preview (confirm) → apply. Store's applyDdl invalidates introspection.
+  async function runDdl(change: DdlChange): Promise<void> {
+    const statements = buildDdl(change, dialect)
+    if (!window.confirm(`Apply this DDL?\n\n${statements.join(';\n')}`)) return
+    await useQueryStore.getState().applyDdl(statements)
+  }
+
+  function menuItems(m: NonNullable<typeof menu>): { label: string; run: () => void }[] {
+    if (m.kind === 'table') {
+      return [
+        {
+          label: 'Open data',
+          run: () => void useQueryStore.getState().openTable(m.schema, m.table)
+        },
+        {
+          label: 'Structure',
+          run: () => useQueryStore.getState().openStructure(m.schema, m.table)
+        },
+        { label: 'Show columns', run: () => m.toggle() },
+        { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
+        {
+          label: 'Copy name',
+          run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
+        }
+      ]
+    }
+    // Schema node — DDL entries gated on the engine's advertised ops.
+    const items: { label: string; run: () => void }[] = []
+    if (ops?.createTable)
+      items.push({
+        label: 'New table…',
+        run: () => {
+          const name = window.prompt('New table name')?.trim()
+          if (name)
+            void runDdl({
+              kind: 'createTable',
+              spec: {
+                schema: m.schema,
+                table: name,
+                columns: [{ name: 'id', type: 'integer', notNull: true }],
+                primaryKey: ['id']
+              }
+            })
+        }
+      })
+    if (ops?.dropSchema)
+      items.push({
+        label: 'Drop schema',
+        run: () => void runDdl({ kind: 'dropSchema', name: m.schema })
+      })
+    if (ops?.createDatabase)
+      items.push({
+        label: 'New database…',
+        run: () => {
+          const name = window.prompt('New database name')?.trim()
+          if (name) void runDdl({ kind: 'createDatabase', name })
+        }
+      })
+    if (ops?.dropDatabase)
+      items.push({
+        label: 'Drop database…',
+        run: () => {
+          const name = window.prompt('Database to drop')?.trim()
+          if (name) void runDdl({ kind: 'dropDatabase', name })
+        }
+      })
+    return items
+  }
 
   // Reset loaded children synchronously when the connection changes, so a prior
   // connection's tables/columns can never pair with a new connection's schemas
@@ -144,15 +226,20 @@ export function SchemaTree(): React.JSX.Element {
                 else if (!isColumn) node.toggle()
               }}
               onContextMenu={(e) => {
-                if (!isTable) return
-                e.preventDefault()
-                setMenu({
-                  x: e.clientX,
-                  y: e.clientY,
-                  schema: node.data.schema,
-                  table: node.data.name,
-                  toggle: () => node.toggle()
-                })
+                if (isTable) {
+                  e.preventDefault()
+                  setMenu({
+                    kind: 'table',
+                    x: e.clientX,
+                    y: e.clientY,
+                    schema: node.data.schema,
+                    table: node.data.name,
+                    toggle: () => node.toggle()
+                  })
+                } else if (kind === 'schema') {
+                  e.preventDefault()
+                  setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
+                }
               }}
               className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
             >
@@ -188,23 +275,7 @@ export function SchemaTree(): React.JSX.Element {
             className="fixed z-50 min-w-40 rounded border border-border bg-background py-1 text-sm shadow-md"
             style={{ left: menu.x, top: menu.y }}
           >
-            {(
-              [
-                {
-                  label: 'Open data',
-                  run: () => void useQueryStore.getState().openTable(menu.schema, menu.table)
-                },
-                { label: 'Show columns', run: () => menu.toggle() },
-                {
-                  label: 'Table info',
-                  run: () => setInfo({ schema: menu.schema, table: menu.table })
-                },
-                {
-                  label: 'Copy name',
-                  run: () => void navigator.clipboard.writeText(`"${menu.schema}"."${menu.table}"`)
-                }
-              ] as const
-            ).map((item) => (
+            {menuItems(menu).map((item) => (
               <button
                 key={item.label}
                 className="block w-full px-3 py-1 text-left text-foreground hover:bg-muted"
