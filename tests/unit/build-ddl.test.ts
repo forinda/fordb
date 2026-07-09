@@ -86,6 +86,32 @@ describe('buildDdl', () => {
     expect(buildDdl({ kind: 'createDatabase', name: 'd' }, 'pg')).toEqual([`CREATE DATABASE "d"`])
     expect(buildDdl({ kind: 'dropDatabase', name: 'd' }, 'pg')).toEqual([`DROP DATABASE "d"`])
   })
+  it('sqlite: names are unqualified (no schema) for create/add/index/drop', () => {
+    expect(
+      buildDdl(
+        {
+          kind: 'createTable',
+          spec: { schema: 'main', table: 't', columns: [{ name: 'id', type: 'integer' }] }
+        },
+        'sqlite'
+      )
+    ).toEqual([`CREATE TABLE "t" (\n  "id" integer\n)`])
+    expect(
+      buildDdl(
+        { kind: 'addColumn', schema: 'main', table: 't', column: { name: 'a', type: 'text' } },
+        'sqlite'
+      )
+    ).toEqual([`ALTER TABLE "t" ADD COLUMN "a" text`])
+    expect(
+      buildDdl(
+        { kind: 'createIndex', spec: { schema: 'main', table: 't', name: 'i', columns: ['a'] } },
+        'sqlite'
+      )
+    ).toEqual([`CREATE INDEX "i" ON "t" ("a")`])
+    expect(buildDdl({ kind: 'dropTable', schema: 'main', table: 't' }, 'sqlite')).toEqual([
+      `DROP TABLE "t"`
+    ])
+  })
   it('quotes identifiers with embedded quotes', () => {
     expect(buildDdl({ kind: 'dropTable', schema: 'a"b', table: 't"x' }, 'pg')).toEqual([
       `DROP TABLE "a""b"."t""x"`
