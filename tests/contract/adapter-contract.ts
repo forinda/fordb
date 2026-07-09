@@ -122,5 +122,34 @@ export function runAdapterContractTests(
     it('rejects bad SQL with a useful error', async () => {
       await expect(adapter.executeQuery('SELEKT 1')).rejects.toThrow(/syntax/i)
     })
+
+    it('server stats: snapshot has sane shape when supported', async () => {
+      if (!adapter.serverStats) return // capability not implemented by this engine
+      const s = await adapter.serverStats.getServerSnapshot()
+      expect(s.maxConnections).toBeGreaterThan(0)
+      expect(s.backends).toBeGreaterThan(0)
+      expect(s.dbSizeBytes).toBeGreaterThan(0)
+      const sum =
+        s.activityByState.active +
+        s.activityByState.idle +
+        s.activityByState.idleInTransaction +
+        s.activityByState.idleInTransactionAborted +
+        s.activityByState.other
+      // Per-current-db state counts can't exceed server-wide backends.
+      expect(sum).toBeLessThanOrEqual(s.backends)
+      expect(typeof s.fullVisibility).toBe('boolean')
+    })
+
+    it('server stats: sessions exclude our own backend and expose pids', async () => {
+      if (!adapter.serverStats) return
+      const rows = await adapter.serverStats.getSessions()
+      for (const r of rows) expect(Number.isFinite(r.pid)).toBe(true)
+    })
+
+    it('server stats: locks returns an array (empty on an idle db)', async () => {
+      if (!adapter.serverStats) return
+      const locks = await adapter.serverStats.getLocks()
+      expect(Array.isArray(locks)).toBe(true)
+    })
   })
 }
