@@ -24,15 +24,19 @@ export class ProfileStore {
   }
 
   async save(profile: ConnectionProfile): Promise<void> {
-    // Strip secrets before persisting. SQLite is structurally secretless;
-    // Postgres secrets are dropped by destructuring, so a new secret field on
-    // PostgresProfile fails to compile here until it's handled.
+    // Strip secrets before persisting. Local SQLite is secretless; Postgres
+    // secrets and the SQLite remote/replica auth token are dropped by
+    // destructuring, so a new secret field fails to compile here until handled.
     let safe: ConnectionProfile
     if (profile.engine === 'postgres') {
       const { password: _pw, sshPassword: _sp, sshPassphrase: _pp, ...rest } = profile
       void _pw
       void _sp
       void _pp
+      safe = rest
+    } else if (profile.kind === 'remote' || profile.kind === 'replica') {
+      const { authToken: _at, ...rest } = profile
+      void _at
       safe = rest
     } else {
       safe = { ...profile }

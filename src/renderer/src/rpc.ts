@@ -9,7 +9,12 @@ declare global {
         list: () => Promise<import('@shared/adapter/types').ConnectionProfile[]>
         save: (
           p: import('@shared/adapter/types').ConnectionProfile,
-          secrets: { password?: string; sshPassword?: string; sshPassphrase?: string }
+          secrets: {
+            password?: string
+            sshPassword?: string
+            sshPassphrase?: string
+            authToken?: string
+          }
         ) => Promise<void>
         delete: (id: string) => Promise<void>
       }
