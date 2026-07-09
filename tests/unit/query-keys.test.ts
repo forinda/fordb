@@ -17,4 +17,9 @@ describe('query key factory', () => {
     }
     expect(qk.schemas('B').slice(0, 2)).not.toEqual(['conn', 'A'])
   })
+  it('stats keys are conn-scoped', () => {
+    expect(qk.serverSnapshot('c1')).toEqual(['conn', 'c1', 'serverSnapshot'])
+    expect(qk.sessions('c1')).toEqual(['conn', 'c1', 'sessions'])
+    expect(qk.locks('c1')).toEqual(['conn', 'c1', 'locks'])
+  })
 })
