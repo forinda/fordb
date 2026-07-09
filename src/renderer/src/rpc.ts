@@ -38,6 +38,9 @@ declare global {
         onThemeChanged: (cb: (t: 'light' | 'dark') => void) => void
       }
       dialog: { openFile: () => Promise<string | null> }
+      exportFile: {
+        save: (defaultName: string, text: string, gzip: boolean) => Promise<boolean>
+      }
       onDbHostRestarted: (cb: () => void) => void
     }
   }
