@@ -32,5 +32,6 @@ beforeAll(async () => {
 
 runAdapterContractTests(() => new PostgresAdapter(), profile, {
   database: 'fordb_test',
-  schema: 'app'
+  schema: 'app',
+  cancelQuery: 'SELECT pg_sleep(30)'
 })
