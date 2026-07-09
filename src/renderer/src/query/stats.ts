@@ -3,6 +3,18 @@ import type { ServerSnapshot, SessionRow, LockRow } from '@shared/adapter/stats-
 import { hostApi } from '../rpc'
 import { qk } from './keys'
 
+/** Whether the connection's engine exposes server stats (Postgres yes, SQLite
+ *  no). One-shot — no polling. Used to hide the Dashboard tab. */
+export function useServerStatsSupported(connId: string | null): UseQueryResult<boolean> {
+  return useQuery({
+    queryKey: connId
+      ? (['conn', connId, 'statsSupported'] as const)
+      : (['conn', 'none', 'statsSupported'] as const),
+    queryFn: async () => (await hostApi()).serverStatsSupported(connId!),
+    enabled: !!connId
+  })
+}
+
 interface PollOpts {
   intervalMs: number
   enabled: boolean
