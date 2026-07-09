@@ -32,7 +32,7 @@ export function App(): React.JSX.Element {
   const setMode = useThemeStore((s) => s.setMode)
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
-  const { sqlLang } = useDialect()
+  const { dialect, sqlLang } = useDialect()
   // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
 
@@ -82,6 +82,16 @@ export function App(): React.JSX.Element {
       id: 'format-sql',
       label: 'Format SQL',
       run: () => useQueryStore.getState().formatActive(sqlLang)
+    },
+    {
+      id: 'explain',
+      label: 'Explain',
+      run: () => void useQueryStore.getState().openExplain(dialect, false)
+    },
+    {
+      id: 'explain-analyze',
+      label: 'Explain analyze',
+      run: () => void useQueryStore.getState().openExplain(dialect, true)
     },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },

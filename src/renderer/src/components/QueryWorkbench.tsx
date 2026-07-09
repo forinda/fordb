@@ -5,6 +5,7 @@ import { SqlEditor } from './SqlEditor'
 import { ResultsGrid } from './ResultsGrid'
 import { TableDataGrid } from './TableDataGrid'
 import { StructureView } from './StructureView'
+import { ExplainView } from './ExplainView'
 import { QueryTabs } from './QueryTabs'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
@@ -35,7 +36,8 @@ export function QueryWorkbench(): React.JSX.Element {
   const run = useQueryStore((s) => s.run)
   const cancel = useQueryStore((s) => s.cancel)
   const formatActive = useQueryStore((s) => s.formatActive)
-  const { sqlLang } = useDialect()
+  const openExplain = useQueryStore((s) => s.openExplain)
+  const { dialect, sqlLang } = useDialect()
   const tab = tabs.find((t) => t.id === activeId)
 
   useEffect(() => {
@@ -85,6 +87,17 @@ export function QueryWorkbench(): React.JSX.Element {
     )
   }
 
+  if (tab.kind === 'explain') {
+    return (
+      <div className="flex flex-col h-full">
+        <QueryTabs />
+        <div className="min-h-0 flex-1">
+          <ExplainView key={tab.id} tab={tab} />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
@@ -102,6 +115,22 @@ export function QueryWorkbench(): React.JSX.Element {
         <Button variant="ghost" onClick={() => formatActive(sqlLang)} disabled={!tab.sql.trim()}>
           Format
         </Button>
+        <Button
+          variant="ghost"
+          onClick={() => void openExplain(dialect, false)}
+          disabled={!tab.sql.trim()}
+        >
+          Explain
+        </Button>
+        {dialect === 'pg' && (
+          <Button
+            variant="ghost"
+            onClick={() => void openExplain(dialect, true)}
+            disabled={!tab.sql.trim()}
+          >
+            Explain analyze
+          </Button>
+        )}
         <Button variant="ghost" onClick={() => void exportData('csv')} disabled={!tab.source}>
           Export CSV
         </Button>
