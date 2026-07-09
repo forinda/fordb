@@ -55,4 +55,7 @@ export interface HostApi {
   schemaEditSupported(id: ConnectionId): Promise<boolean>
   schemaOps(id: ConnectionId): Promise<SchemaOps>
   applyDdl(id: ConnectionId, statements: string[]): Promise<void>
+
+  /** Run a list of statements in one transaction (import a .sql file). */
+  executeScript(id: ConnectionId, statements: string[]): Promise<void>
 }

@@ -139,4 +139,27 @@ describe('HostApi over RPC', () => {
     await client.applyDdl(id, [`DROP TABLE app.ma3_hostapi`])
     await client.closeConnection(id)
   })
+
+  it('executeScript runs statements in one transaction; rolls back on error', async () => {
+    const id = await client.openConnection(profile)
+    await client.executeScript(id, [`DROP TABLE app.ma5_s`]).catch(() => {})
+    await client.executeScript(id, [
+      `CREATE TABLE app.ma5_s ("id" integer NOT NULL, PRIMARY KEY ("id"))`,
+      `INSERT INTO app.ma5_s ("id") VALUES (1)`,
+      `INSERT INTO app.ma5_s ("id") VALUES (2)`
+    ])
+    const r = await client.executeQuery(id, `SELECT count(*) FROM app.ma5_s`)
+    expect(Number(r.rows[0]?.[0])).toBe(2)
+    // A failing statement rolls back the whole batch.
+    await expect(
+      client.executeScript(id, [
+        `INSERT INTO app.ma5_s ("id") VALUES (3)`,
+        `INSERT INTO app.ma5_s ("id") VALUES (1)` // pk conflict
+      ])
+    ).rejects.toThrow()
+    const r2 = await client.executeQuery(id, `SELECT count(*) FROM app.ma5_s`)
+    expect(Number(r2.rows[0]?.[0])).toBe(2) // 3 was rolled back
+    await client.executeScript(id, [`DROP TABLE app.ma5_s`])
+    await client.closeConnection(id)
+  })
 })
