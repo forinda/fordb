@@ -49,7 +49,16 @@ export function createRpcClient<T extends object>(
   })
 
   return new Proxy({} as T, {
-    get(_t, method: string) {
+    get(_t, prop): unknown {
+      // The client is routinely awaited (`await hostApi()`), and Promise
+      // adoption probes `.then` on the resolved value. Without this guard the
+      // Proxy would answer `get('then')` with a function, look thenable, and
+      // the machinery would call `.then(resolve, reject)` — sending those
+      // FUNCTIONS over postMessage, which throws "could not be cloned". Symbol
+      // keys and the promise methods are never real RPC methods, so refuse them.
+      if (typeof prop !== 'string' || prop === 'then' || prop === 'catch' || prop === 'finally')
+        return undefined
+      const method = prop
       return (...args: unknown[]): Promise<unknown> =>
         new Promise((resolve, reject) => {
           const id = nextId++

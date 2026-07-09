@@ -73,6 +73,18 @@ describe('rpc', () => {
     port1.close()
   })
 
+  it('is not thenable, so awaiting a promise that resolves to it works', async () => {
+    // Regression: the Proxy used to answer get('then') with a function, making
+    // it look thenable. Promise adoption then called .then(resolve, reject),
+    // sending those functions over postMessage — "could not be cloned". So
+    // `const api = await hostApi()` detonated on every metadata call.
+    const { client, teardown } = setup()
+    expect((client as unknown as { then?: unknown }).then).toBeUndefined()
+    const resolved = await Promise.resolve(client)
+    await expect(resolved.add(2, 2)).resolves.toBe(4)
+    teardown()
+  })
+
   it('round-trips a structured error with a code', async () => {
     const { client, teardown } = setup()
     await expect(client.failWithCode()).rejects.toMatchObject({
