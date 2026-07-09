@@ -7,7 +7,7 @@ import { useConnStore } from '../store'
 import { Button } from './ui/button'
 
 export function ConnectionList(props: {
-  onConnect: (connectionId: string, profileId: string) => void
+  onConnect: (connectionId: string, profileId: string, database: string | null) => void
   onEdit: (profile: ConnectionProfile) => void
   onNew: () => void
 }): React.JSX.Element {
@@ -25,7 +25,8 @@ export function ConnectionList(props: {
     setConnectError(null)
     try {
       const connectionId = await window.fordb.connection.open(id)
-      props.onConnect(connectionId, id)
+      const p = profiles.find((x) => x.id === id)
+      props.onConnect(connectionId, id, p?.engine === 'postgres' ? p.database : null)
     } catch (err) {
       setConnectError(err instanceof Error ? err.message : String(err))
     } finally {
