@@ -15,7 +15,9 @@ const PG_OPS: SchemaOps = {
   createSchema: true,
   dropSchema: true,
   createDatabase: true,
-  dropDatabase: true
+  dropDatabase: true,
+  createView: true,
+  dropView: true
 }
 
 // CREATE/DROP DATABASE cannot run inside a transaction block.
