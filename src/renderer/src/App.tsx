@@ -115,6 +115,11 @@ export function App(): React.JSX.Element {
       label: 'Query history',
       run: () => useQueryStore.getState().setPicker('history')
     },
+    {
+      id: 'import-sql',
+      label: 'Import SQL file',
+      run: () => void useQueryStore.getState().importSqlFile()
+    },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
     { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
@@ -196,6 +201,21 @@ export function App(): React.JSX.Element {
       </ResizablePanelGroup>
       <CommandPalette commands={commands} />
       <QueryLibrary />
+      <ImportErrorBanner />
+    </div>
+  )
+}
+
+function ImportErrorBanner(): React.JSX.Element | null {
+  const err = useQueryStore((s) => s.importError)
+  const clear = useQueryStore((s) => s.clearImportError)
+  if (!err) return null
+  return (
+    <div className="fixed bottom-2 left-1/2 z-50 flex max-w-[90vw] -translate-x-1/2 items-start gap-2 rounded border border-border bg-destructive/10 p-2 text-sm text-destructive shadow">
+      <span className="min-w-0 break-words">Import failed: {err}</span>
+      <button className="shrink-0 hover:underline" onClick={clear}>
+        dismiss
+      </button>
     </div>
   )
 }

@@ -84,7 +84,9 @@ contextBridge.exposeInMainWorld('fordb', {
     }
   },
   dialog: {
-    openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:open-file')
+    openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:open-file'),
+    openTextFile: (exts: string[]): Promise<{ name: string; text: string } | null> =>
+      ipcRenderer.invoke('dialog:open-text', exts)
   },
   exportFile: {
     save: (defaultName: string, text: string, gzip: boolean): Promise<boolean> =>
