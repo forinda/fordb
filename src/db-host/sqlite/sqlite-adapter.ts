@@ -1,6 +1,8 @@
 import { createClient, type Client, type Config, type ResultSet } from '@libsql/client'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
+import type { DataMutator } from '@shared/adapter/mutation-types'
 import { configFor } from './sqlite-config'
+import { SqliteDataMutator } from './sqlite-mutator'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -33,6 +35,8 @@ export class SqliteAdapter implements DbAdapter {
   // The libsql client factory is injectable so connect() can be unit-tested
   // without a real database/server.
   constructor(private readonly makeClient: (config: Config) => Client = createClient) {}
+
+  readonly dataMutator: DataMutator = new SqliteDataMutator(() => this.conn)
 
   private get conn(): Client {
     if (!this.client) throw new Error('Not connected')
