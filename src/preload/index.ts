@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type { PortLike } from '@shared/rpc/protocol'
 import type { ConnectionProfile } from '@shared/adapter/types'
+import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 
 // contextBridge clones plain values across the isolated-world/main-world
 // boundary but does not preserve MessagePort identity/methods (Electron
@@ -50,6 +51,18 @@ contextBridge.exposeInMainWorld('fordb', {
       }
     ): Promise<void> => ipcRenderer.invoke('profiles:save', p, secrets),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('profiles:delete', id)
+  },
+  queries: {
+    historyList: (profileId: string): Promise<HistoryEntry[]> =>
+      ipcRenderer.invoke('queries:history-list', profileId),
+    historyAdd: (profileId: string, sql: string): Promise<void> =>
+      ipcRenderer.invoke('queries:history-add', profileId, sql),
+    savedList: (profileId: string): Promise<SavedQuery[]> =>
+      ipcRenderer.invoke('queries:saved-list', profileId),
+    save: (profileId: string, name: string, sql: string): Promise<SavedQuery> =>
+      ipcRenderer.invoke('queries:save', profileId, name, sql),
+    deleteSaved: (profileId: string, id: string): Promise<void> =>
+      ipcRenderer.invoke('queries:saved-delete', profileId, id)
   },
   connection: {
     test: (profileId: string): Promise<{ ok: boolean; error?: string }> =>

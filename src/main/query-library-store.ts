@@ -1,16 +1,9 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
+import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 
-export interface HistoryEntry {
-  sql: string
-  ts: number
-}
-export interface SavedQuery {
-  id: string
-  name: string
-  sql: string
-  createdAt: number
-}
+export type { HistoryEntry, SavedQuery }
+
 interface LibraryFile {
   history?: Record<string, HistoryEntry[]>
   saved?: Record<string, SavedQuery[]>
