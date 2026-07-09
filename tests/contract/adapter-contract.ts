@@ -10,7 +10,8 @@ import type { ConnectionProfile } from '../../src/shared/adapter/types'
  */
 export function runAdapterContractTests(
   makeAdapter: () => DbAdapter,
-  profile: ConnectionProfile
+  profile: ConnectionProfile,
+  expected: { database: string; schema: string }
 ): void {
   describe('DbAdapter contract', () => {
     let adapter: DbAdapter
@@ -26,16 +27,16 @@ export function runAdapterContractTests(
 
     it('lists databases including the connected one', async () => {
       const dbs = await adapter.listDatabases()
-      expect(dbs).toContain(profile.database)
+      expect(dbs).toContain(expected.database)
     })
 
     it('lists schemas including app', async () => {
       const schemas = await adapter.listSchemas()
-      expect(schemas).toContain('app')
+      expect(schemas).toContain(expected.schema)
     })
 
     it('lists tables and views with type flag', async () => {
-      const tables = await adapter.listTables('app')
+      const tables = await adapter.listTables(expected.schema)
       const names = tables.map((t) => `${t.type}:${t.name}`)
       expect(names).toContain('table:users')
       expect(names).toContain('table:orders')
@@ -43,7 +44,7 @@ export function runAdapterContractTests(
     })
 
     it('describes columns with nullability and defaults', async () => {
-      const cols = await adapter.getColumns('app', 'users')
+      const cols = await adapter.getColumns(expected.schema, 'users')
       const email = cols.find((c) => c.name === 'email')
       const name = cols.find((c) => c.name === 'name')
       expect(email?.nullable).toBe(false)
@@ -56,24 +57,26 @@ export function runAdapterContractTests(
     })
 
     it('reports primary, foreign, and unique keys', async () => {
-      const userKeys = await adapter.getKeys('app', 'users')
+      const userKeys = await adapter.getKeys(expected.schema, 'users')
       expect(userKeys.some((k) => k.kind === 'primary' && k.columns.includes('id'))).toBe(true)
       expect(userKeys.some((k) => k.kind === 'unique' && k.columns.includes('email'))).toBe(true)
-      const orderKeys = await adapter.getKeys('app', 'orders')
+      const orderKeys = await adapter.getKeys(expected.schema, 'orders')
       const fk = orderKeys.find((k) => k.kind === 'foreign')
       expect(fk?.columns).toContain('user_id')
       expect(fk?.referencedTable).toBe('users')
     })
 
     it('reports indexes', async () => {
-      const idx = await adapter.getIndexes('app', 'orders')
+      const idx = await adapter.getIndexes(expected.schema, 'orders')
       const byName = idx.find((i) => i.name === 'orders_user_id_idx')
       expect(byName?.columns).toEqual(['user_id'])
       expect(byName?.unique).toBe(false)
     })
 
     it('executes a buffered query with fields and rows', async () => {
-      const r = await adapter.executeQuery('SELECT id, email FROM app.users ORDER BY id LIMIT 3')
+      const r = await adapter.executeQuery(
+        `SELECT id, email FROM ${expected.schema}.users ORDER BY id LIMIT 3`
+      )
       expect(r.fields.map((f) => f.name)).toEqual(['id', 'email'])
       expect(r.rows).toHaveLength(3)
       expect(r.rowCount).toBe(3)
@@ -81,7 +84,10 @@ export function runAdapterContractTests(
     })
 
     it('streams large results in pages until done', async () => {
-      const open = await adapter.openQuery('SELECT id FROM app.orders ORDER BY id', 1000)
+      const open = await adapter.openQuery(
+        `SELECT id FROM ${expected.schema}.orders ORDER BY id`,
+        1000
+      )
       expect(open.fields.map((f) => f.name)).toEqual(['id'])
       let total = 0
       let pages = 0
@@ -98,7 +104,7 @@ export function runAdapterContractTests(
     })
 
     it('closeQuery frees the cursor early without error', async () => {
-      const open = await adapter.openQuery('SELECT id FROM app.orders', 100)
+      const open = await adapter.openQuery(`SELECT id FROM ${expected.schema}.orders`, 100)
       await adapter.fetchPage(open.queryId)
       await expect(adapter.closeQuery(open.queryId)).resolves.toBeUndefined()
     })

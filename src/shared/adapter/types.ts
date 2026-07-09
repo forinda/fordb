@@ -14,9 +14,12 @@ export interface SshOptions {
   privateKeyPath?: string
 }
 
-export interface ConnectionProfile {
+interface BaseProfile {
   id: string
   name: string
+}
+
+export interface PostgresProfile extends BaseProfile {
   engine: 'postgres'
   host: string
   port: number
@@ -32,6 +35,16 @@ export interface ConnectionProfile {
   ssl?: SslOptions
   ssh?: SshOptions
 }
+
+export interface SqliteProfile extends BaseProfile {
+  engine: 'sqlite'
+  /** Absolute path to the .sqlite/.db file. SQLite profiles are secretless. */
+  file: string
+}
+
+/** A saved connection. Discriminated on `engine`; consumers narrow before
+ *  reading engine-specific fields (the union is the compile-time safety net). */
+export type ConnectionProfile = PostgresProfile | SqliteProfile
 
 export interface TableInfo {
   schema: string

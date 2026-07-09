@@ -1,5 +1,5 @@
 import { createTunnel } from 'tunnel-ssh'
-import type { ConnectionProfile } from '@shared/adapter/types'
+import type { PostgresProfile } from '@shared/adapter/types'
 
 export interface TunnelConfig {
   ssh: {
@@ -20,7 +20,7 @@ export interface TunnelHandle {
 }
 
 export function buildTunnelConfig(
-  profile: ConnectionProfile,
+  profile: PostgresProfile,
   sshPassword: string | undefined,
   privateKey: Buffer | undefined
 ): TunnelConfig {
@@ -41,7 +41,7 @@ export function buildTunnelConfig(
 }
 
 export async function openTunnel(
-  profile: ConnectionProfile,
+  profile: PostgresProfile,
   sshPassword: string | undefined,
   privateKey: Buffer | undefined
 ): Promise<TunnelHandle> {

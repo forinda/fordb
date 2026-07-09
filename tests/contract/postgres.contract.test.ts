@@ -30,4 +30,7 @@ beforeAll(async () => {
   await client.end()
 })
 
-runAdapterContractTests(() => new PostgresAdapter(), profile)
+runAdapterContractTests(() => new PostgresAdapter(), profile, {
+  database: 'fordb_test',
+  schema: 'app'
+})

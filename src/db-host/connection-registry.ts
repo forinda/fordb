@@ -14,7 +14,7 @@ export class ConnectionRegistry {
   private entries = new Map<ConnectionId, Entry>()
 
   constructor(
-    private readonly makeAdapter: () => DbAdapter,
+    private readonly makeAdapter: (engine: ConnectionProfile['engine']) => DbAdapter,
     private readonly nextId: () => ConnectionId
   ) {}
 
