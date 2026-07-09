@@ -67,4 +67,21 @@ describe('SqliteAdapter.connect wiring', () => {
     } as SqliteProfile)
     expect(fc.calls).toContain('sync')
   })
+
+  it('closes the client and rethrows when replica sync fails (no leak)', async () => {
+    const fc = fakeClient()
+    fc.sync = () => {
+      throw new Error('sync failed')
+    }
+    const adapter = new SqliteAdapter((() => fc) as never)
+    await expect(
+      adapter.connect({
+        ...base,
+        kind: 'replica',
+        file: '/tmp/r.db',
+        syncUrl: 'libsql://x'
+      } as SqliteProfile)
+    ).rejects.toThrow('sync failed')
+    expect(fc.calls).toContain('close')
+  })
 })
