@@ -1,8 +1,16 @@
-import { createClient, type Client, type Config, type ResultSet } from '@libsql/client'
+import {
+  createClient,
+  type Client,
+  type Config,
+  type InValue,
+  type ResultSet
+} from '@libsql/client'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type { DataMutator } from '@shared/adapter/mutation-types'
+import type { DataBrowser } from '@shared/adapter/browse-types'
 import { configFor } from './sqlite-config'
 import { SqliteDataMutator } from './sqlite-mutator'
+import { SqliteDataBrowser } from './sqlite-browser'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -37,6 +45,9 @@ export class SqliteAdapter implements DbAdapter {
   constructor(private readonly makeClient: (config: Config) => Client = createClient) {}
 
   readonly dataMutator: DataMutator = new SqliteDataMutator(() => this.conn)
+  readonly dataBrowser: DataBrowser = new SqliteDataBrowser((sql, params, ps) =>
+    this.openBuffered(sql, params as InValue[], ps)
+  )
 
   private get conn(): Client {
     if (!this.client) throw new Error('Not connected')
@@ -152,7 +163,14 @@ export class SqliteAdapter implements DbAdapter {
   }
 
   async openQuery(sql: string, pageSize: number): Promise<OpenQueryResult> {
-    const rs = await this.conn.execute(sql)
+    return this.openBuffered(sql, [], pageSize)
+  }
+  private async openBuffered(
+    sql: string,
+    args: InValue[],
+    pageSize: number
+  ): Promise<OpenQueryResult> {
+    const rs = await this.conn.execute({ sql, args })
     const fields = SqliteAdapter.fieldsOf(rs)
     const id = `c${this.nextCursor++}`
     this.cursors.set(id, { rows: SqliteAdapter.arrayRows(rs), fields, offset: 0, pageSize })
