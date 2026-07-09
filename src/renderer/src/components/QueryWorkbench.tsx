@@ -10,14 +10,10 @@ import { QueryTabs } from './QueryTabs'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
+import { stringifyCsv } from '@shared/csv/csv'
 
-function toCsv(fields: string[], rows: unknown[][]): string {
-  const esc = (v: unknown): string => {
-    const s = v === null || v === undefined ? '' : String(v)
-    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  return [fields.join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n')
-}
+const cellStr = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
+
 function download(name: string, text: string, type: string): void {
   const url = URL.createObjectURL(new Blob([text], { type }))
   const a = document.createElement('a')
@@ -53,7 +49,8 @@ export function QueryWorkbench(): React.JSX.Element {
     await src.drainAll()
     const names = src.fields.map((f) => f.name)
     const rows = Array.from({ length: src.loadedRowCount() }, (_, i) => src.getRow(i) ?? [])
-    if (kind === 'csv') download('result.csv', toCsv(names, rows), 'text/csv')
+    if (kind === 'csv')
+      download('result.csv', stringifyCsv([names, ...rows.map((r) => r.map(cellStr))]), 'text/csv')
     else
       download(
         'result.json',
