@@ -6,14 +6,11 @@ import {
 } from '../../src/renderer/src/query/schema-tree-model'
 
 describe('buildTree', () => {
-  it('nests schema → category → objects; tables expand to columns, objects are leaves', () => {
+  it('schema → tables (direct) + category folders; tables expand, objects are leaves', () => {
     const childrenById: Record<string, TreeNode[]> = {
       's:app': [
-        { id: 'cat:app.table', name: 'Tables', kind: 'category', schema: 'app', category: 'table' },
+        { id: 't:app.users', name: 'users', kind: 'table', schema: 'app', table: 'users' },
         { id: 'cat:app.view', name: 'Views', kind: 'category', schema: 'app', category: 'view' }
-      ],
-      'cat:app.table': [
-        { id: 't:app.users', name: 'users', kind: 'table', schema: 'app', table: 'users' }
       ],
       'cat:app.view': [{ id: 'obj:app.view.v1', name: 'v1', kind: 'view', schema: 'app' }],
       't:app.users': [
@@ -21,15 +18,13 @@ describe('buildTree', () => {
       ]
     }
     const schema = buildTree(['app'], childrenById)[0]!
-    expect(schema.kind).toBe('schema')
-    const [tables, views] = schema.children!
-    expect(tables!.name).toBe('Tables')
+    const [users, views] = schema.children!
     // table node picks up columns once loaded (not frozen at expand)
-    const users = tables!.children![0]!
-    expect(users.name).toBe('users')
-    expect(users.children![0]!.name).toBe('id')
-    expect(users.children![0]!.children).toBeUndefined() // column is a leaf
-    // a view object is a leaf
+    expect(users!.name).toBe('users')
+    expect(users!.children![0]!.name).toBe('id')
+    expect(users!.children![0]!.children).toBeUndefined() // column is a leaf
+    // a view object under its category folder is a leaf
+    expect(views!.name).toBe('Views')
     expect(views!.children![0]!.name).toBe('v1')
     expect(views!.children![0]!.children).toBeUndefined()
   })
@@ -41,7 +36,7 @@ describe('buildTree', () => {
 
 describe('invalidatedNodeId', () => {
   it('maps tables/objects/columns keys to the right node ids', () => {
-    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('cat:app.table')
+    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('s:app')
     expect(invalidatedNodeId(['conn', 'c1', 'objects', 'app', 'view'])).toBe('cat:app.view')
     expect(invalidatedNodeId(['conn', 'c1', 'columns', 'app', 'users'])).toBe('t:app.users')
   })
