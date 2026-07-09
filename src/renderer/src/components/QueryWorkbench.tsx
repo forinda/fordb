@@ -5,6 +5,7 @@ import { SqlEditor } from './SqlEditor'
 import { ResultsGrid } from './ResultsGrid'
 import { QueryTabs } from './QueryTabs'
 import { Button } from './ui/button'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
 
 function toCsv(fields: string[], rows: unknown[][]): string {
   const esc = (v: unknown): string => {
@@ -86,23 +87,32 @@ export function QueryWorkbench(): React.JSX.Element {
           {tab.status === 'error' && <span className="text-destructive">{tab.message}</span>}
         </span>
       </div>
-      <div className="h-1/2 min-h-40">
-        {/* key by tab so switching tabs remounts the editor with that tab's
-            text (the editor is uncontrolled — value is the initial doc). */}
-        <SqlEditor
-          key={tab.id}
-          value={tab.sql}
-          onChange={(v) => setSql(tab.id, v)}
-          onRun={() => void run(tab.id)}
-          connectionId={connId}
-        />
-      </div>
       <div className="flex-1 min-h-0">
-        {tab.source ? (
-          <ResultsGrid source={tab.source} />
-        ) : (
-          <div className="p-4 text-muted-foreground">Run a query to see results.</div>
-        )}
+        <ResizablePanelGroup direction="vertical">
+          <ResizablePanel defaultSize={50} minSize={20}>
+            <div className="h-full min-h-0">
+              {/* key by tab so switching tabs remounts the editor with that tab's
+                  text (the editor is uncontrolled — value is the initial doc). */}
+              <SqlEditor
+                key={tab.id}
+                value={tab.sql}
+                onChange={(v) => setSql(tab.id, v)}
+                onRun={() => void run(tab.id)}
+                connectionId={connId}
+              />
+            </div>
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel minSize={20}>
+            <div className="h-full min-h-0">
+              {tab.source ? (
+                <ResultsGrid source={tab.source} />
+              ) : (
+                <div className="p-4 text-muted-foreground">Run a query to see results.</div>
+              )}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   )
