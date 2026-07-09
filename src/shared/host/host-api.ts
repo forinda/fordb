@@ -9,6 +9,7 @@ import type {
   TableInfo
 } from '../adapter/types'
 import type { ServerSnapshot, SessionRow, LockRow } from '../adapter/stats-types'
+import type { RowEdit } from '../adapter/mutation-types'
 
 export type ConnectionId = string
 
@@ -42,4 +43,7 @@ export interface HostApi {
   getServerSnapshot(id: ConnectionId): Promise<ServerSnapshot>
   getSessions(id: ConnectionId): Promise<SessionRow[]>
   getLocks(id: ConnectionId): Promise<LockRow[]>
+
+  mutationSupported(id: ConnectionId): Promise<boolean>
+  applyEdits(id: ConnectionId, edits: RowEdit[]): Promise<void>
 }

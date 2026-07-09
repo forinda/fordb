@@ -15,6 +15,7 @@ import type {
   LockRow,
   ServerStatsProvider
 } from '@shared/adapter/stats-types'
+import type { DataMutator, RowEdit } from '@shared/adapter/mutation-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -104,5 +105,17 @@ export class HostApiImpl implements HostApi {
   }
   getLocks(id: ConnectionId): Promise<LockRow[]> {
     return this.stats(id).getLocks()
+  }
+
+  private mutator(id: ConnectionId): DataMutator {
+    const m = this.registry.get(id).dataMutator
+    if (!m) throw new Error('Editing is not supported by this engine')
+    return m
+  }
+  async mutationSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).dataMutator != null
+  }
+  applyEdits(id: ConnectionId, edits: RowEdit[]): Promise<void> {
+    return this.mutator(id).apply(edits)
   }
 }

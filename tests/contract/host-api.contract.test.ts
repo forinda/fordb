@@ -92,4 +92,21 @@ describe('HostApi over RPC', () => {
     expect(Array.isArray(await client.getLocks(id))).toBe(true)
     await client.closeConnection(id)
   })
+
+  it('exposes data mutation over the HostApi', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.mutationSupported(id)).toBe(true)
+    await client.applyEdits(id, [
+      {
+        kind: 'update',
+        schema: 'app',
+        table: 'users',
+        pk: [{ column: 'id', value: 3 }],
+        set: [{ column: 'name', value: 'Via HostApi' }]
+      }
+    ])
+    const r = await client.executeQuery(id, `SELECT name FROM app.users WHERE id = 3`)
+    expect(r.rows[0]?.[0]).toBe('Via HostApi')
+    await client.closeConnection(id)
+  })
 })
