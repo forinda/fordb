@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useInvalidateProfiles } from '../query/profiles'
-import type { ConnectionProfile, SqliteProfile, SshOptions } from '@shared/adapter/types'
+import type { ConnectionProfile, SqliteLocal, SshOptions } from '@shared/adapter/types'
 import { parseConnectionUrl } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
 import { Button } from './ui/button'
@@ -22,7 +22,7 @@ export function ProfileForm(props: {
   // Postgres-only view of the edited profile, used to seed the PG field state.
   const pg = p?.engine === 'postgres' ? p : undefined
   const [engine, setEngine] = useState<'postgres' | 'sqlite'>(p?.engine ?? 'postgres')
-  const [file, setFile] = useState(p?.engine === 'sqlite' ? p.file : '')
+  const [file, setFile] = useState(p?.engine === 'sqlite' && 'file' in p ? p.file : '')
   const [name, setName] = useState(p?.name ?? '')
   const [host, setHost] = useState(pg?.host ?? 'localhost')
   const [port, setPort] = useState(String(pg?.port ?? 5432))
@@ -81,7 +81,13 @@ export function ProfileForm(props: {
 
   function build(): ConnectionProfile {
     if (engine === 'sqlite') {
-      const base: SqliteProfile = { id: p?.id ?? newId(), name, engine: 'sqlite', file }
+      const base: SqliteLocal = {
+        id: p?.id ?? newId(),
+        name,
+        engine: 'sqlite',
+        kind: 'local',
+        file
+      }
       return { ...base, name: name.trim() || connectionLabel(base) }
     }
     const parsedPort = Number(port)

@@ -12,7 +12,7 @@ import type { SqliteProfile } from '../../src/shared/adapter/types'
 // such a table produces malformed SQL. A table named  weird"name  exercises it.
 describe('SqliteAdapter escapes quoted identifiers', () => {
   const adapter = new SqliteAdapter()
-  const profile: SqliteProfile = { id: 'q', name: 'q', engine: 'sqlite', file: '' }
+  const profile: SqliteProfile = { id: 'q', name: 'q', engine: 'sqlite', kind: 'local', file: '' }
 
   beforeAll(async () => {
     const file = join(mkdtempSync(join(tmpdir(), 'fordb-sqlite-idq-')), 'q.sqlite')

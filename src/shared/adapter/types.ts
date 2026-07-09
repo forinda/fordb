@@ -36,11 +36,32 @@ export interface PostgresProfile extends BaseProfile {
   ssh?: SshOptions
 }
 
-export interface SqliteProfile extends BaseProfile {
+interface SqliteBase extends BaseProfile {
   engine: 'sqlite'
-  /** Absolute path to the .sqlite/.db file. SQLite profiles are secretless. */
+}
+
+/** A local .sqlite/.db file — secretless. */
+export interface SqliteLocal extends SqliteBase {
+  kind: 'local'
   file: string
 }
+
+/** A remote libsql/Turso database. `authToken` is a SECRET (keychain, never persisted). */
+export interface SqliteRemote extends SqliteBase {
+  kind: 'remote'
+  url: string
+  authToken?: string
+}
+
+/** An embedded replica: a local file synced from a remote. `authToken` SECRET. */
+export interface SqliteReplica extends SqliteBase {
+  kind: 'replica'
+  file: string
+  syncUrl: string
+  authToken?: string
+}
+
+export type SqliteProfile = SqliteLocal | SqliteRemote | SqliteReplica
 
 /** A saved connection. Discriminated on `engine`; consumers narrow before
  *  reading engine-specific fields (the union is the compile-time safety net). */

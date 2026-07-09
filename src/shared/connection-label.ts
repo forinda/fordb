@@ -10,6 +10,7 @@ export function connectionLabel(profile: ConnectionProfile): string {
   const name = profile.name.trim()
   if (name) return name
   if (profile.engine === 'sqlite') {
+    if (profile.kind === 'remote') return profile.url.trim() || 'SQLite (remote)'
     const base = profile.file.split(/[\\/]/).pop() ?? profile.file
     return base || 'SQLite database'
   }

@@ -44,14 +44,49 @@ describe('connectionLabel', () => {
       'Unnamed connection'
     )
   })
-  it('falls back to the file basename (sqlite)', () => {
-    expect(connectionLabel({ id: 's1', name: '', engine: 'sqlite', file: '/tmp/app.sqlite' })).toBe(
-      'app.sqlite'
-    )
-  })
-  it('uses the name when set (sqlite)', () => {
+  it('falls back to the file basename (sqlite local)', () => {
     expect(
-      connectionLabel({ id: 's1', name: 'Local', engine: 'sqlite', file: '/tmp/app.sqlite' })
+      connectionLabel({
+        id: 's1',
+        name: '',
+        engine: 'sqlite',
+        kind: 'local',
+        file: '/tmp/app.sqlite'
+      })
+    ).toBe('app.sqlite')
+  })
+  it('uses the name when set (sqlite local)', () => {
+    expect(
+      connectionLabel({
+        id: 's1',
+        name: 'Local',
+        engine: 'sqlite',
+        kind: 'local',
+        file: '/tmp/app.sqlite'
+      })
     ).toBe('Local')
+  })
+  it('sqlite remote falls back to the url', () => {
+    expect(
+      connectionLabel({
+        id: 'r',
+        name: '',
+        engine: 'sqlite',
+        kind: 'remote',
+        url: 'libsql://x.turso.io'
+      })
+    ).toBe('libsql://x.turso.io')
+  })
+  it('sqlite replica falls back to the file basename', () => {
+    expect(
+      connectionLabel({
+        id: 'r',
+        name: '',
+        engine: 'sqlite',
+        kind: 'replica',
+        file: '/tmp/rep.sqlite',
+        syncUrl: 'libsql://x'
+      })
+    ).toBe('rep.sqlite')
   })
 })
