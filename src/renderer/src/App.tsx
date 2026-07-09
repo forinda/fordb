@@ -122,12 +122,14 @@ export function App(): React.JSX.Element {
               <div className="flex h-full flex-col">
                 <div className="flex gap-1 border-b border-border p-1">
                   <button
+                    aria-pressed={mainView === 'query'}
                     className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
                     onClick={() => setMainView('query')}
                   >
                     Query
                   </button>
                   <button
+                    aria-pressed={mainView === 'dashboard'}
                     className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
                     onClick={() => setMainView('dashboard')}
                   >

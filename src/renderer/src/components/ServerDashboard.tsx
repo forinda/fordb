@@ -34,12 +34,10 @@ export function ServerDashboard(): React.JSX.Element {
     [connT, connections]
   )
 
-  if (snapshotQ.isError)
-    return (
-      <div className="p-4 text-destructive">
-        Stats failed: {snapshotQ.error instanceof Error ? snapshotQ.error.message : 'error'}
-      </div>
-    )
+  // Errors surface per-panel (spec §7) — a failing snapshot must not blank the
+  // ControlsBar or the independently-polled sessions/locks panels.
+  const panelError = (q: { isError: boolean; error: unknown }): string | null =>
+    q.isError ? `Failed: ${q.error instanceof Error ? q.error.message : 'error'}` : null
 
   return (
     <div className="flex h-full flex-col overflow-auto">
@@ -50,6 +48,9 @@ export function ServerDashboard(): React.JSX.Element {
         onTogglePause={() => setPaused((p) => !p)}
         fullVisibility={snapshotQ.data?.fullVisibility ?? true}
       />
+      {panelError(snapshotQ) && (
+        <div className="p-2 text-sm text-destructive">Stats {panelError(snapshotQ)}</div>
+      )}
       {snapshotQ.data && <Gauges snapshot={snapshotQ.data} />}
       <div className="grid grid-cols-1 gap-2 p-2 lg:grid-cols-2">
         <TimeSeriesChart title="Transactions/s" labels={['tps']} data={tpsData} />
@@ -69,10 +70,16 @@ export function ServerDashboard(): React.JSX.Element {
       <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
         Sessions
       </div>
+      {panelError(sessionsQ) && (
+        <div className="p-2 text-sm text-destructive">Sessions {panelError(sessionsQ)}</div>
+      )}
       {sessionsQ.data && <SessionsTable rows={sessionsQ.data} />}
       <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
         Locks
       </div>
+      {panelError(locksQ) && (
+        <div className="p-2 text-sm text-destructive">Locks {panelError(locksQ)}</div>
+      )}
       {locksQ.data && <LocksPanel rows={locksQ.data} />}
     </div>
   )
