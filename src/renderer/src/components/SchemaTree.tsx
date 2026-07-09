@@ -37,6 +37,7 @@ export function SchemaTree(): React.JSX.Element {
     | null
   >(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
+  const [ddlError, setDdlError] = useState<string | null>(null)
 
   const profileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
@@ -49,10 +50,17 @@ export function SchemaTree(): React.JSX.Element {
   })
 
   // Build → preview (confirm) → apply. Store's applyDdl invalidates introspection.
+  // Surface failures (permission denied, in-use database, syntax) instead of
+  // dropping the rejection silently.
   async function runDdl(change: DdlChange): Promise<void> {
     const statements = buildDdl(change, dialect)
     if (!window.confirm(`Apply this DDL?\n\n${statements.join(';\n')}`)) return
-    await useQueryStore.getState().applyDdl(statements)
+    setDdlError(null)
+    try {
+      await useQueryStore.getState().applyDdl(statements)
+    } catch (err) {
+      setDdlError(err instanceof Error ? err.message : String(err))
+    }
   }
 
   function menuItems(m: NonNullable<typeof menu>): { label: string; run: () => void }[] {
@@ -91,6 +99,14 @@ export function SchemaTree(): React.JSX.Element {
                 primaryKey: ['id']
               }
             })
+        }
+      })
+    if (ops?.createSchema)
+      items.push({
+        label: 'New schema…',
+        run: () => {
+          const name = window.prompt('New schema name')?.trim()
+          if (name) void runDdl({ kind: 'createSchema', name })
         }
       })
     if (ops?.dropSchema)
@@ -193,6 +209,14 @@ export function SchemaTree(): React.JSX.Element {
 
   return (
     <div className="p-2">
+      {ddlError && (
+        <div className="mb-1 flex items-start gap-2 rounded bg-destructive/10 p-1 text-xs text-destructive">
+          <span className="min-w-0 flex-1 break-words">DDL failed: {ddlError}</span>
+          <button className="shrink-0 hover:underline" onClick={() => setDdlError(null)}>
+            dismiss
+          </button>
+        </div>
+      )}
       <Tree
         data={data}
         openByDefault={false}

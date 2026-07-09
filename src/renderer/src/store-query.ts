@@ -146,7 +146,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   },
   applyDdl: async (statements) => {
     const connId = useConnStore.getState().activeConnectionId
-    if (!connId) return
+    // Throw (don't silently no-op) so the caller's try/catch surfaces "nothing
+    // applied" instead of closing its form as if the DDL succeeded.
+    if (!connId) throw new Error('No active connection')
     await (await hostApi()).applyDdl(connId, statements)
     // Structure change → schema tree + any open structure view re-fetch.
     void invalidateIntrospection(queryClient, connId)
