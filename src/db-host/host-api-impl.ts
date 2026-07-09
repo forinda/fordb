@@ -18,6 +18,7 @@ import type {
 import type { DataMutator, RowEdit } from '@shared/adapter/mutation-types'
 import type { DataBrowser, BrowseOptions } from '@shared/adapter/browse-types'
 import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
+import type { ObjectBrowser, ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -151,5 +152,28 @@ export class HostApiImpl implements HostApi {
     // applyDdl is the shared per-engine transactional statement runner — it does
     // not validate the statements are DDL, so it runs an INSERT/mixed script too.
     return this.schema(id).applyDdl(statements)
+  }
+
+  private objs(id: ConnectionId): ObjectBrowser {
+    const o = this.registry.get(id).objects
+    if (!o) throw new Error('Object browsing is not supported by this engine')
+    return o
+  }
+  async objectsSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).objects != null
+  }
+  async objectKinds(id: ConnectionId): Promise<ObjectKind[]> {
+    return [...this.objs(id).kinds]
+  }
+  listObjects(id: ConnectionId, schema: string, kind: ObjectKind): Promise<ObjectSummary[]> {
+    return this.objs(id).list(schema, kind)
+  }
+  objectDefinition(
+    id: ConnectionId,
+    schema: string,
+    kind: ObjectKind,
+    name: string
+  ): Promise<string> {
+    return this.objs(id).definition(schema, kind, name)
   }
 }

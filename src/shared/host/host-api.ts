@@ -12,6 +12,7 @@ import type { ServerSnapshot, SessionRow, LockRow } from '../adapter/stats-types
 import type { RowEdit } from '../adapter/mutation-types'
 import type { BrowseOptions } from '../adapter/browse-types'
 import type { SchemaOps } from '../adapter/schema-types'
+import type { ObjectKind, ObjectSummary } from '../adapter/object-types'
 
 export type ConnectionId = string
 
@@ -58,4 +59,14 @@ export interface HostApi {
 
   /** Run a list of statements in one transaction (import a .sql file). */
   executeScript(id: ConnectionId, statements: string[]): Promise<void>
+
+  objectsSupported(id: ConnectionId): Promise<boolean>
+  objectKinds(id: ConnectionId): Promise<ObjectKind[]>
+  listObjects(id: ConnectionId, schema: string, kind: ObjectKind): Promise<ObjectSummary[]>
+  objectDefinition(
+    id: ConnectionId,
+    schema: string,
+    kind: ObjectKind,
+    name: string
+  ): Promise<string>
 }
