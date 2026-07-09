@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import type { DbAdapter } from '../../src/shared/adapter/db-adapter'
 import type { ConnectionProfile } from '../../src/shared/adapter/types'
+import { buildDdl } from '../../src/shared/ddl/build-ddl'
 
 /**
  * Engine-agnostic adapter contract. Every engine adapter must pass this
@@ -139,31 +140,63 @@ export function runAdapterContractTests(
       expect(inj).toHaveLength(0)
     })
 
-    // Uses its own throwaway table (dropped at the end) so it never touches the
-    // shared fixture rows the mutator test depends on.
+    // Exercises the real buildDdl → applyDdl path on a throwaway table so it
+    // never touches the shared fixture rows the mutator test depends on. The
+    // dialect is inferred from the advertised ops (only Postgres does FK-add in
+    // MA3a). The remote/replica SQLite suites share one sqld, so pre-clean any
+    // residue from an earlier run before asserting creation.
     it('schema editor: create/add-column/index/fk then drop — introspection reflects each', async () => {
       if (!adapter.schemaEditor) return
       const s = expected.schema
-      const q = (id: string): string => `"${id.replace(/"/g, '""')}"`
-      const ddl = (stmts: string[]): Promise<void> => adapter.schemaEditor!.applyDdl(stmts)
+      const ed = adapter.schemaEditor
+      const dialect = ed.ops.addForeignKey ? 'pg' : 'sqlite'
+      const apply = (c: Parameters<typeof buildDdl>[0]): Promise<void> =>
+        ed.applyDdl(buildDdl(c, dialect))
 
-      await ddl([`CREATE TABLE ${q(s)}.${q('ma3_t')} ("id" integer NOT NULL, PRIMARY KEY ("id"))`])
+      await apply({ kind: 'dropTable', schema: s, table: 'ma3_t' }).catch(() => {})
+
+      await apply({
+        kind: 'createTable',
+        spec: {
+          schema: s,
+          table: 'ma3_t',
+          columns: [{ name: 'id', type: 'integer', notNull: true }],
+          primaryKey: ['id']
+        }
+      })
       expect((await adapter.listTables(s)).some((t) => t.name === 'ma3_t')).toBe(true)
 
-      await ddl([`ALTER TABLE ${q(s)}.${q('ma3_t')} ADD COLUMN ${q('label')} text`])
+      await apply({
+        kind: 'addColumn',
+        schema: s,
+        table: 'ma3_t',
+        column: { name: 'label', type: 'text' }
+      })
       expect((await adapter.getColumns(s, 'ma3_t')).some((c) => c.name === 'label')).toBe(true)
 
-      await ddl([`CREATE INDEX ${q('ma3_idx')} ON ${q(s)}.${q('ma3_t')} (${q('label')})`])
+      await apply({
+        kind: 'createIndex',
+        spec: { schema: s, table: 'ma3_t', name: 'ma3_idx', columns: ['label'] }
+      })
       expect((await adapter.getIndexes(s, 'ma3_t')).some((i) => i.name === 'ma3_idx')).toBe(true)
 
-      if (adapter.schemaEditor.ops.addForeignKey) {
-        await ddl([
-          `ALTER TABLE ${q(s)}.${q('ma3_t')} ADD CONSTRAINT ${q('ma3_fk')} FOREIGN KEY (${q('id')}) REFERENCES ${q(s)}.${q('users')} (${q('id')})`
-        ])
+      if (ed.ops.addForeignKey) {
+        await apply({
+          kind: 'addForeignKey',
+          spec: {
+            schema: s,
+            table: 'ma3_t',
+            name: 'ma3_fk',
+            columns: ['id'],
+            refSchema: s,
+            refTable: 'users',
+            refColumns: ['id']
+          }
+        })
         expect((await adapter.getKeys(s, 'ma3_t')).some((k) => k.kind === 'foreign')).toBe(true)
       }
 
-      await ddl([`DROP TABLE ${q(s)}.${q('ma3_t')}`])
+      await apply({ kind: 'dropTable', schema: s, table: 'ma3_t' })
       expect((await adapter.listTables(s)).some((t) => t.name === 'ma3_t')).toBe(false)
     })
 
