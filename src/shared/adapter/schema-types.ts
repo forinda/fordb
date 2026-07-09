@@ -15,6 +15,8 @@ export interface SchemaOps {
   dropSchema: boolean
   createDatabase: boolean
   dropDatabase: boolean
+  createView: boolean
+  dropView: boolean
 }
 
 /** The current structure a SQLite rebuild needs to reconstruct a table. */
@@ -78,6 +80,8 @@ export type DdlChange =
   | { kind: 'dropSchema'; name: string }
   | { kind: 'createDatabase'; name: string }
   | { kind: 'dropDatabase'; name: string }
+  | { kind: 'createView'; schema: string; name: string; select: string; orReplace?: boolean }
+  | { kind: 'dropView'; schema: string; name: string }
 
 /** Optional structure-editing capability: advertises supported ops and applies
  *  pre-generated, user-previewed DDL statements transactionally. */

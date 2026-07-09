@@ -17,7 +17,9 @@ const SQLITE_OPS: SchemaOps = {
   createSchema: false,
   dropSchema: false,
   createDatabase: false,
-  dropDatabase: false
+  dropDatabase: false,
+  createView: true,
+  dropView: true
 }
 
 export class SqliteSchemaEditor implements SchemaEditor {
