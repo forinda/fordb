@@ -32,9 +32,10 @@ describe('ProfileStore', () => {
     const [p] = await store.list()
     expect(p).toBeDefined()
     expect(p!.id).toBe('p1')
-    expect(p!.password).toBeUndefined()
-    expect(p!.sshPassword).toBeUndefined()
-    expect(p!.sshPassphrase).toBeUndefined()
+    const secrets = p as { password?: string; sshPassword?: string; sshPassphrase?: string }
+    expect(secrets.password).toBeUndefined()
+    expect(secrets.sshPassword).toBeUndefined()
+    expect(secrets.sshPassphrase).toBeUndefined()
   })
   it('save upserts by id', async () => {
     await store.save(base)

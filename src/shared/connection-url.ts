@@ -1,7 +1,7 @@
-import type { ConnectionProfile } from './adapter/types'
+import type { PostgresProfile } from './adapter/types'
 
 export interface ParsedConnection {
-  profile: Partial<ConnectionProfile>
+  profile: Partial<PostgresProfile>
   password?: string
   extraParams: Record<string, string>
 }
@@ -13,7 +13,7 @@ export function parseConnectionUrl(input: string): ParsedConnection {
   if (!SCHEMES.has(url.protocol)) {
     throw new Error(`Unsupported scheme "${url.protocol}"; expected a postgres:// URL`)
   }
-  const profile: Partial<ConnectionProfile> = {
+  const profile: Partial<PostgresProfile> = {
     engine: 'postgres',
     host: url.hostname || 'localhost',
     port: url.port ? Number(url.port) : 5432,

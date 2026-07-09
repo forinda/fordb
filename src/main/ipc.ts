@@ -40,6 +40,8 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     const all = await profiles.list()
     const profile = all.find((p) => p.id === id)
     if (!profile) throw new Error(`Unknown profile: ${id}`)
+    // Secrets only apply to Postgres; SQLite profiles are secretless.
+    if (profile.engine !== 'postgres') return profile
     const s = await secrets.get(id)
     return {
       ...profile,

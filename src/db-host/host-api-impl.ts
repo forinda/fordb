@@ -34,7 +34,11 @@ export class HostApiImpl implements HostApi {
     let adapter: DbAdapter | undefined
     let tunnel: TunnelHandle | undefined
     try {
-      ;({ adapter, tunnel } = await connectAdapter(() => new PostgresAdapter(), profile))
+      ;({ adapter, tunnel } = await connectAdapter((engine) => {
+        // Task 5 replaces this stub with adapterForEngine(engine).
+        if (engine === 'postgres') return new PostgresAdapter()
+        throw new Error('sqlite adapter not yet wired')
+      }, profile))
       await adapter.executeQuery('SELECT 1')
       return { ok: true }
     } catch (err) {

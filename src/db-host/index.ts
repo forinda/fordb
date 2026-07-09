@@ -6,7 +6,11 @@ import { PostgresAdapter } from './postgres/postgres-adapter'
 
 let idCounter = 0
 const registry = new ConnectionRegistry(
-  () => new PostgresAdapter(),
+  // Task 5 replaces this stub with adapterForEngine(engine).
+  (engine) => {
+    if (engine === 'postgres') return new PostgresAdapter()
+    throw new Error('sqlite adapter not yet wired')
+  },
   () => `conn-${process.pid}-${++idCounter}`
 )
 
