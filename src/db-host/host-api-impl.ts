@@ -16,6 +16,7 @@ import type {
   ServerStatsProvider
 } from '@shared/adapter/stats-types'
 import type { DataMutator, RowEdit } from '@shared/adapter/mutation-types'
+import type { DataBrowser, BrowseOptions } from '@shared/adapter/browse-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -117,5 +118,17 @@ export class HostApiImpl implements HostApi {
   }
   applyEdits(id: ConnectionId, edits: RowEdit[]): Promise<void> {
     return this.mutator(id).apply(edits)
+  }
+
+  private browser(id: ConnectionId): DataBrowser {
+    const b = this.registry.get(id).dataBrowser
+    if (!b) throw new Error('Browsing is not supported by this engine')
+    return b
+  }
+  async browseSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).dataBrowser != null
+  }
+  openBrowse(id: ConnectionId, opts: BrowseOptions): Promise<OpenQueryResult> {
+    return this.browser(id).openBrowse(opts)
   }
 }
