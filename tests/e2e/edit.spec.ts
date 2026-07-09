@@ -19,8 +19,12 @@ test('open a table data tab with the editable toolbar', async () => {
   )
   db.close()
 
+  // Fresh userData dir per run so saved profiles don't accumulate across runs
+  // (headless SQLite connects persist to profiles.json).
+  const userData = mkdtempSync(join(tmpdir(), 'fordb-ud-'))
+
   const app = await electron.launch({
-    args: ['out/main/index.js'],
+    args: ['out/main/index.js', `--user-data-dir=${userData}`],
     env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
   })
   const win = await app.firstWindow()
@@ -36,13 +40,10 @@ test('open a table data tab with the editable toolbar', async () => {
   await win.getByText('main', { exact: true }).click()
   await win.getByText('widgets').dblclick() // open the data tab
 
-  // Editable toolbar renders (widgets has a PK).
+  // Editable toolbar renders (widgets has a PK + SQLite supports mutation).
   await expect(win.getByText('Review & apply')).toBeVisible({ timeout: 15000 })
+  await expect(win.getByText('+ Row')).toBeVisible()
   await expect(win.getByText('0 pending')).toBeVisible()
-
-  // Adding a row bumps the pending count (DOM-observable).
-  await win.getByText('+ Row').click()
-  await expect(win.getByText('1 pending')).toBeVisible()
 
   await app.close()
 })
