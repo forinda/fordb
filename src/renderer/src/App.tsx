@@ -6,6 +6,7 @@ import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
 import { useConnStore } from './store'
@@ -72,49 +73,54 @@ export function App(): React.JSX.Element {
   ]
 
   return (
-    <div className="flex h-screen text-foreground bg-background">
-      {/* One unified left sidebar: connections on top, the active connection's
-          schema tree below, theme toggle pinned at the bottom. */}
-      <div className="flex flex-col w-64 border-r border-border">
-        <ConnectionList
-          onNew={() => setView({ kind: 'form' })}
-          onEdit={(profile) => setView({ kind: 'form', profile })}
-          onConnect={(connectionId, profileId) => {
-            setActive(connectionId, profileId)
-            setView({ kind: 'connected' })
-          }}
-        />
-        {view.kind === 'connected' && (
-          <div className="flex-1 min-h-0 flex flex-col border-t border-border">
-            <div className="flex justify-end px-2 py-1 border-b border-border">
-              <RefreshSchemaButton />
-            </div>
-            <div className="flex-1 min-h-0 overflow-auto">
-              <SchemaTree />
-            </div>
-          </div>
-        )}
-        <div className="p-2 border-t border-border">
-          <ThemeToggle />
-        </div>
-      </div>
-      <div className="flex-1 min-w-0 overflow-auto">
-        {view.kind === 'welcome' && (
-          <div className="p-6 text-muted-foreground">Select or create a connection.</div>
-        )}
-        {view.kind === 'form' && (
-          <ProfileForm
-            profile={view.profile}
-            onSaved={() => setView({ kind: 'welcome' })}
-            onCancel={() => setView({ kind: 'welcome' })}
+    <div className="h-screen text-foreground bg-background">
+      <ResizablePanelGroup direction="horizontal">
+        {/* One unified left sidebar: connections on top, the active connection's
+            schema tree below, theme toggle pinned at the bottom. */}
+        <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
+          <ConnectionList
+            onNew={() => setView({ kind: 'form' })}
+            onEdit={(profile) => setView({ kind: 'form', profile })}
+            onConnect={(connectionId, profileId) => {
+              setActive(connectionId, profileId)
+              setView({ kind: 'connected' })
+            }}
           />
-        )}
-        {view.kind === 'connected' && (
-          <div className="h-full">
-            <QueryWorkbench />
+          {view.kind === 'connected' && (
+            <div className="flex-1 min-h-0 flex flex-col border-t border-border">
+              <div className="flex justify-end px-2 py-1 border-b border-border">
+                <RefreshSchemaButton />
+              </div>
+              <div className="flex-1 min-h-0 overflow-auto">
+                <SchemaTree />
+              </div>
+            </div>
+          )}
+          <div className="p-2 border-t border-border">
+            <ThemeToggle />
           </div>
-        )}
-      </div>
+        </ResizablePanel>
+        <ResizableHandle withHandle />
+        <ResizablePanel className="min-w-0">
+          <div className="h-full overflow-auto">
+            {view.kind === 'welcome' && (
+              <div className="p-6 text-muted-foreground">Select or create a connection.</div>
+            )}
+            {view.kind === 'form' && (
+              <ProfileForm
+                profile={view.profile}
+                onSaved={() => setView({ kind: 'welcome' })}
+                onCancel={() => setView({ kind: 'welcome' })}
+              />
+            )}
+            {view.kind === 'connected' && (
+              <div className="h-full">
+                <QueryWorkbench />
+              </div>
+            )}
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
       <CommandPalette commands={commands} />
     </div>
   )
