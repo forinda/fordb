@@ -9,6 +9,7 @@ import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
+import { ActiveConnectionBar } from './components/ActiveConnectionBar'
 import { ServerDashboard } from './components/ServerDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
@@ -28,10 +29,23 @@ type View =
 
 export function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ kind: 'welcome' })
+  // When connected, whether the connection list is revealed (to switch) over the
+  // schema tree. Collapsed by default so the active connection gets the room.
+  const [showConnList, setShowConnList] = useState(false)
   const setActive = useConnStore((s) => s.setActive)
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
   const setMode = useThemeStore((s) => s.setMode)
+
+  // Connect (or switch): closes the previously-open connection so switching from
+  // the revealed list doesn't leak the old session.
+  function connectTo(connectionId: string, profileId: string, database: string | null): void {
+    const prev = activeConnectionId
+    setActive(connectionId, profileId, database)
+    setView({ kind: 'connected' })
+    setShowConnList(false)
+    if (prev && prev !== connectionId) void window.fordb.connection.close(prev)
+  }
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
   const { dialect, sqlLang } = useDialect()
@@ -129,29 +143,48 @@ export function App(): React.JSX.Element {
   return (
     <div className="h-screen text-foreground bg-background">
       <ResizablePanelGroup direction="horizontal">
-        {/* One unified left sidebar: connections on top, the active connection's
-            schema tree below, theme toggle pinned at the bottom. */}
+        {/* Left sidebar. Not connected: the connection list (landing). Connected:
+            a compact active-connection bar + the schema tree; a toggle reveals the
+            connection list to switch, without closing the current session. */}
         <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
-          <ConnectionList
-            onNew={() => setView({ kind: 'form' })}
-            onEdit={(profile) => setView({ kind: 'form', profile })}
-            onConnect={(connectionId, profileId, database) => {
-              setActive(connectionId, profileId, database)
-              setView({ kind: 'connected' })
-            }}
-          />
-          {view.kind === 'connected' && (
-            <div className="flex-1 min-h-0 flex flex-col border-t border-border">
-              <DatabaseSwitcher />
-              <div className="flex justify-end px-2 py-1 border-b border-border">
-                <RefreshSchemaButton />
-              </div>
-              <div className="flex-1 min-h-0 overflow-auto">
-                <SchemaTree />
-              </div>
-            </div>
+          {view.kind === 'connected' ? (
+            <>
+              <ActiveConnectionBar
+                listOpen={showConnList}
+                onToggleList={() => setShowConnList((v) => !v)}
+                onDisconnect={() => {
+                  if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+                  clearActive()
+                  setShowConnList(false)
+                  setView({ kind: 'welcome' })
+                }}
+              />
+              {showConnList ? (
+                <ConnectionList
+                  onNew={() => setView({ kind: 'form' })}
+                  onEdit={(profile) => setView({ kind: 'form', profile })}
+                  onConnect={connectTo}
+                />
+              ) : (
+                <div className="flex min-h-0 flex-1 flex-col">
+                  <DatabaseSwitcher />
+                  <div className="flex justify-end border-b border-border px-2 py-1">
+                    <RefreshSchemaButton />
+                  </div>
+                  <div className="min-h-0 flex-1 overflow-auto">
+                    <SchemaTree />
+                  </div>
+                </div>
+              )}
+            </>
+          ) : (
+            <ConnectionList
+              onNew={() => setView({ kind: 'form' })}
+              onEdit={(profile) => setView({ kind: 'form', profile })}
+              onConnect={connectTo}
+            />
           )}
-          <div className="p-2 border-t border-border">
+          <div className="border-t border-border p-2">
             <ThemeToggle />
           </div>
         </ResizablePanel>
