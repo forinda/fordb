@@ -22,20 +22,28 @@ function statement(e: RowEdit): { text: string; params: unknown[] } {
 }
 
 export class PgDataMutator implements DataMutator {
-  constructor(private readonly conn: () => pg.Client) {}
+  // Opens a DEDICATED connection per apply — never the shared query client. The
+  // data tab's SELECT leaves a pg-cursor open (only page 1 loaded), and node-pg
+  // won't dispatch a queued BEGIN until that cursor drains/closes; a BEGIN on
+  // the shared client would hang indefinitely. A fresh connection sidesteps it
+  // entirely (same approach as PostgresAdapter.cancel()'s side connection).
+  constructor(private readonly makeClient: () => pg.Client) {}
 
   async apply(edits: RowEdit[]): Promise<void> {
-    const c = this.conn()
-    await c.query('BEGIN')
+    const c = this.makeClient()
+    await c.connect()
     try {
+      await c.query('BEGIN')
       for (const e of edits) {
         const { text, params } = statement(e)
         await c.query(text, params)
       }
       await c.query('COMMIT')
     } catch (err) {
-      await c.query('ROLLBACK')
+      await c.query('ROLLBACK').catch(() => undefined)
       throw err
+    } finally {
+      await c.end()
     }
   }
 }
