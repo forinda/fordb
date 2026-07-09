@@ -13,6 +13,8 @@ import { splitStatements } from '@shared/sql/split-statements'
 import { parseCsv } from '@shared/csv/csv'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
+import type { ObjectKind } from '@shared/adapter/object-types'
+import { buildDdl } from '@shared/ddl/build-ddl'
 
 const PAGE_SIZE = 1000
 
@@ -24,9 +26,11 @@ export interface QueryTab {
   source?: QueryResultSource
   message?: string // rowCount/command summary or error text
   elapsedMs?: number
-  kind: 'query' | 'data' | 'structure' | 'explain'
+  kind: 'query' | 'data' | 'structure' | 'explain' | 'object'
   /** Present on explain tabs — the plan rows (one string per line). */
   explainRows?: string[]
+  /** Present on object tabs — the object whose definition is shown. */
+  object?: { schema: string; kind: ObjectKind; name: string }
   /** Present on data tabs — the table being browsed/edited. `editable` is true
    *  only when the engine supports mutation AND the table has a pk/unique key.
    *  `browse` holds the current filter/sort (run() sends it to openBrowse);
@@ -70,6 +74,14 @@ interface QueryState {
   openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
+  openObjectDefinition: (schema: string, kind: ObjectKind, name: string) => void
+  createView: (
+    schema: string,
+    name: string,
+    select: string,
+    dialect: 'pg' | 'sqlite'
+  ) => Promise<void>
+  dropView: (schema: string, name: string, dialect: 'pg' | 'sqlite') => Promise<void>
   applyDdl: (statements: string[]) => Promise<void>
   formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
@@ -223,6 +235,23 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       structure: { schema, table }
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+  },
+  openObjectDefinition: (schema, kind, name) => {
+    const id = tabId()
+    const tab: QueryTab = {
+      id,
+      sql: `${kind} ${schema}.${name}`,
+      status: 'done',
+      kind: 'object',
+      object: { schema, kind, name }
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+  },
+  createView: async (schema, name, select, dialect) => {
+    await get().applyDdl(buildDdl({ kind: 'createView', schema, name, select }, dialect))
+  },
+  dropView: async (schema, name, dialect) => {
+    await get().applyDdl(buildDdl({ kind: 'dropView', schema, name }, dialect))
   },
   openExplain: async (dialect, analyze) => {
     const src = get().tabs.find((t) => t.id === get().activeTabId)
