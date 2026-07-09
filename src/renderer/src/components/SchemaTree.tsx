@@ -244,10 +244,14 @@ export function SchemaTree(): React.JSX.Element {
     setChildrenById({})
   }
 
-  // Latest snapshot for the (connId-scoped) cache subscription without making it
-  // a subscription dependency.
+  // Latest snapshots for the (connId-scoped) cache subscription without making
+  // them subscription dependencies. objectKindsRef matters: the subscription's
+  // loadChildren closure would otherwise capture the pre-fetch empty kinds and
+  // rebuild a schema WITHOUT its category folders on the next DDL reload.
   const childrenRef = useRef(childrenById)
   childrenRef.current = childrenById
+  const objectKindsRef = useRef(objectKinds)
+  objectKindsRef.current = objectKinds
 
   async function loadChildren(id: string): Promise<void> {
     if (!connId) return
@@ -266,7 +270,7 @@ export function SchemaTree(): React.JSX.Element {
           schema,
           table: t.name
         }))
-      const catNodes: TreeNode[] = objectKinds.map((k) => ({
+      const catNodes: TreeNode[] = objectKindsRef.current.map((k) => ({
         id: `cat:${schema}.${k}`,
         name: CATEGORY_LABEL[k],
         kind: 'category' as const,
