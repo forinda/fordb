@@ -113,10 +113,6 @@ docs/         # PRD, work plan, specs, and per-milestone implementation plans
 | [docs/07-work-plan.md](docs/07-work-plan.md)            | Milestones + roadmap                                |
 | [docs/specs/](docs/specs/) · [docs/plans/](docs/plans/) | Per-milestone design specs and implementation plans |
 
-## Roadmap (next)
-
-Export / import (SQL dump & load, CSV) · object browsing (views, routines, triggers) · server administration (cancel/terminate backends, roles & grants) · release pipeline (signed installers) · MongoDB · an MCP/agent surface over the same guarded `HostApi`. See [docs/07-work-plan.md](docs/07-work-plan.md).
-
 ## Contributing
 
 Contributions welcome. Read [AGENTS.md](AGENTS.md) (conventions) and [CONTRIBUTING.md](CONTRIBUTING.md) (setup) first. The workflow is spec → plan → task-by-task, one PR per task, with tests kept green (`pnpm typecheck && pnpm lint && pnpm test`).
