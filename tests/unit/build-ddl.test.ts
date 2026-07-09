@@ -114,6 +114,20 @@ describe('buildDdl', () => {
       `DROP TABLE "temp"."t"`
     ])
   })
+  it('createView (pg orReplace) / dropView', () => {
+    expect(
+      buildDdl(
+        { kind: 'createView', schema: 'app', name: 'v', select: 'SELECT 1', orReplace: true },
+        'pg'
+      )
+    ).toEqual([`CREATE OR REPLACE VIEW "app"."v" AS SELECT 1`])
+    expect(
+      buildDdl({ kind: 'createView', schema: 'app', name: 'v', select: 'SELECT 1' }, 'sqlite')
+    ).toEqual([`CREATE VIEW "app"."v" AS SELECT 1`])
+    expect(buildDdl({ kind: 'dropView', schema: 'app', name: 'v' }, 'pg')).toEqual([
+      `DROP VIEW "app"."v"`
+    ])
+  })
   it('quotes identifiers with embedded quotes', () => {
     expect(buildDdl({ kind: 'dropTable', schema: 'a"b', table: 't"x' }, 'pg')).toEqual([
       `DROP TABLE "a""b"."t""x"`

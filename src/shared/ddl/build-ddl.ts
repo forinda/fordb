@@ -222,9 +222,13 @@ export function buildDdl(change: DdlChange, dialect: Dialect, context?: TableStr
       return [`CREATE DATABASE ${qi(change.name)}`]
     case 'dropDatabase':
       return [`DROP DATABASE ${qi(change.name)}`]
-    default:
-      // createView/dropView land in MA6 Task 2.
-      throw new Error(`Unsupported DDL change: ${(change as DdlChange).kind}`)
+    case 'createView': {
+      // OR REPLACE only on PG; the SELECT body is raw user SQL (preview-gated).
+      const or = change.orReplace && dialect === 'pg' ? 'OR REPLACE ' : ''
+      return [`CREATE ${or}VIEW ${qtable(change.schema, change.name)} AS ${change.select}`]
+    }
+    case 'dropView':
+      return [`DROP VIEW ${qtable(change.schema, change.name)}`]
   }
 }
 
