@@ -162,4 +162,15 @@ describe('HostApi over RPC', () => {
     await client.executeScript(id, [`DROP TABLE app.ma5_s`])
     await client.closeConnection(id)
   })
+
+  it('lists objects + a view definition over the HostApi', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.objectsSupported(id)).toBe(true)
+    expect(await client.objectKinds(id)).toContain('view')
+    expect(
+      (await client.listObjects(id, 'app', 'view')).some((v) => v.name === 'user_emails')
+    ).toBe(true)
+    expect(await client.objectDefinition(id, 'app', 'view', 'user_emails')).toMatch(/select/i)
+    await client.closeConnection(id)
+  })
 })
