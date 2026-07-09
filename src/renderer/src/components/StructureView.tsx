@@ -31,8 +31,10 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
 
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState<null | 'column' | 'index' | 'fk'>(null)
-  // Which column's inline Alter form is open (by name).
+  // Which column's inline Alter / Rename form is open (by name). Electron has no
+  // window.prompt, so rename uses an inline input too.
   const [editCol, setEditCol] = useState<string | null>(null)
+  const [renameColName, setRenameColName] = useState<string | null>(null)
 
   // Preview the generated SQL, confirm, apply. Any browse/tree cache refresh is
   // handled by the store's applyDdl (it invalidates introspection). The current
@@ -46,6 +48,7 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
       await applyDdl(statements)
       setForm(null)
       setEditCol(null)
+      setRenameColName(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -90,18 +93,16 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
               <span className="ml-auto flex gap-1">
                 {ops?.renameColumn && (
                   <button
+                    aria-label={`col-rename-${c.name}`}
                     className="rounded px-1 text-xs hover:bg-muted"
-                    onClick={() => {
-                      const to = window.prompt(`Rename "${c.name}" to`, c.name)?.trim()
-                      if (to && to !== c.name)
-                        void run({ kind: 'renameColumn', schema, table, from: c.name, to })
-                    }}
+                    onClick={() => setRenameColName(renameColName === c.name ? null : c.name)}
                   >
                     rename
                   </button>
                 )}
                 {ops?.alterColumn && (
                   <button
+                    aria-label={`col-alter-${c.name}`}
                     className="rounded px-1 text-xs hover:bg-muted"
                     onClick={() => setEditCol(editCol === c.name ? null : c.name)}
                   >
@@ -110,6 +111,7 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
                 )}
                 {ops?.dropColumn && (
                   <button
+                    aria-label={`col-drop-${c.name}`}
                     className="rounded px-1 text-xs text-destructive hover:bg-muted"
                     onClick={() => void run({ kind: 'dropColumn', schema, table, column: c.name })}
                   >
@@ -118,6 +120,15 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
                 )}
               </span>
             </Row>
+            {renameColName === c.name && (
+              <RenameColumnForm
+                column={c.name}
+                onCancel={() => setRenameColName(null)}
+                onSubmit={(to) =>
+                  void run({ kind: 'renameColumn', schema, table, from: c.name, to })
+                }
+              />
+            )}
             {editCol === c.name && (
               <AlterColumnForm
                 column={c.name}
@@ -239,6 +250,36 @@ function Row(props: { children: React.ReactNode }): React.JSX.Element {
 }
 
 const input = 'rounded border border-border bg-background px-1 py-0.5'
+
+function RenameColumnForm(props: {
+  column: string
+  onSubmit: (to: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [to, setTo] = useState(props.column)
+  const submit = (): void => {
+    const t = to.trim()
+    if (t && t !== props.column) props.onSubmit(t)
+  }
+  return (
+    <Row>
+      <span className="text-muted-foreground">rename {props.column} →</span>
+      <input
+        aria-label="ddl-rename-to"
+        className={input}
+        value={to}
+        onChange={(e) => setTo(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+      />
+      <button className="rounded bg-primary px-2 py-0.5 text-primary-foreground" onClick={submit}>
+        Rename
+      </button>
+      <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
+        Cancel
+      </button>
+    </Row>
+  )
+}
 
 // Emits an alterColumn change carrying ONLY the fields the user actually changed
 // (untouched fields stay undefined so PG emits minimal ALTERs and the SQLite
