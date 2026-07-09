@@ -9,9 +9,11 @@ import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type { DataMutator } from '@shared/adapter/mutation-types'
 import type { DataBrowser } from '@shared/adapter/browse-types'
 import type { SchemaEditor } from '@shared/adapter/schema-types'
+import type { ObjectBrowser } from '@shared/adapter/object-types'
 import { configFor } from './sqlite-config'
 import { SqliteDataMutator } from './sqlite-mutator'
 import { SqliteDataBrowser } from './sqlite-browser'
+import { SqliteObjectBrowser } from './sqlite-objects'
 import { SqliteSchemaEditor } from './sqlite-schema'
 import type {
   ColumnInfo,
@@ -51,6 +53,7 @@ export class SqliteAdapter implements DbAdapter {
     this.openBuffered(sql, params as InValue[], ps)
   )
   readonly schemaEditor: SchemaEditor = new SqliteSchemaEditor(() => this.conn)
+  readonly objects: ObjectBrowser = new SqliteObjectBrowser(() => this.conn)
 
   private get conn(): Client {
     if (!this.client) throw new Error('Not connected')

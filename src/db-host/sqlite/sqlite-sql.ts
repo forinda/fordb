@@ -26,3 +26,10 @@ export const indexList = (schema: string, table: string): string =>
 
 export const indexInfo = (schema: string, index: string): string =>
   `PRAGMA ${q(schema)}.index_info(${q(index)})`
+
+// `type` is a fixed literal from a closed set (safe to interpolate); `name` is
+// bound via execute({sql, args}).
+export const listObjects = (schema: string, type: 'view' | 'trigger'): string =>
+  `SELECT name FROM ${q(schema)}.sqlite_master WHERE type = '${type}' AND name NOT LIKE 'sqlite_%' ORDER BY name`
+export const objectDefinition = (schema: string, type: 'view' | 'trigger'): string =>
+  `SELECT sql FROM ${q(schema)}.sqlite_master WHERE type = '${type}' AND name = ? LIMIT 1`
