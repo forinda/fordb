@@ -18,8 +18,9 @@ export interface QueryTab {
   message?: string // rowCount/command summary or error text
   elapsedMs?: number
   kind: 'query' | 'data'
-  /** Present on data tabs — the table being browsed/edited. */
-  data?: { schema: string; table: string; pkColumns: string[] }
+  /** Present on data tabs — the table being browsed/edited. `editable` is true
+   *  only when the engine supports mutation AND the table has a pk/unique key. */
+  data?: { schema: string; table: string; pkColumns: string[]; editable: boolean }
 }
 
 let seq = 0
@@ -60,15 +61,24 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const connId = useConnStore.getState().activeConnectionId
     if (!connId) return
     const api = await hostApi()
-    const keys = await api.getKeys(connId, schema, table)
+    const [keys, mutable] = await Promise.all([
+      api.getKeys(connId, schema, table),
+      api.mutationSupported(connId)
+    ])
     const pk = keys.find((k) => k.kind === 'primary') ?? keys.find((k) => k.kind === 'unique')
+    const pkColumns = pk?.columns ?? []
+    // Stable order (so a row index maps consistently within an execution) when a
+    // key exists; identifiers quoted.
+    const orderBy = pkColumns.length
+      ? ` ORDER BY ${pkColumns.map((c) => `"${c.replace(/"/g, '""')}"`).join(', ')}`
+      : ''
     const id = tabId()
     const tab: QueryTab = {
       id,
-      sql: `SELECT * FROM "${schema}"."${table}"`,
+      sql: `SELECT * FROM "${schema}"."${table}"${orderBy}`,
       status: 'idle',
       kind: 'data',
-      data: { schema, table, pkColumns: pk?.columns ?? [] }
+      data: { schema, table, pkColumns, editable: mutable && pkColumns.length > 0 }
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
     await get().run(id) // reuse the SELECT streaming path

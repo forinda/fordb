@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   DataEditor,
   GridCellKind,
@@ -30,13 +30,22 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     rows: CompactSelection.empty()
   })
   const [error, setError] = useState<string | null>(null)
+  // Track the loaded row count in state so background paging triggers a
+  // re-render (the source's row array grows mutably otherwise).
+  const [loadedCount, setLoadedCount] = useState(source?.loadedRowCount() ?? 0)
+  useEffect(() => {
+    setLoadedCount(source?.loadedRowCount() ?? 0)
+  }, [source])
 
-  const editable = !!data && data.pkColumns.length > 0
+  const editable = !!data && data.editable
   const fields = source?.fields ?? []
   const colName = (col: number): string => fields[col]?.name ?? ''
-  const baseRows = source?.loadedRowCount() ?? 0
+  const baseRows = loadedCount
   const totalRows = baseRows + inserts.length
-  const dirty = Object.keys(edits).length + inserts.length + deletes.size
+  const dirty =
+    Object.keys(edits).length +
+    inserts.filter((r) => Object.keys(r).length > 0).length +
+    deletes.size
 
   const columns = fields.map((f) => ({ title: f.name, id: f.name, width: 160 }))
 
@@ -89,7 +98,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     (range: { y: number; height: number }): void => {
       const need = range.y + range.height + 200
       if (source && !source.done() && need >= source.loadedRowCount())
-        void source.ensureLoaded(need)
+        void source.ensureLoaded(need).then(() => setLoadedCount(source.loadedRowCount()))
     },
     [source]
   )

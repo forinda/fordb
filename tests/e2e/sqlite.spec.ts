@@ -15,8 +15,11 @@ test('create a sqlite connection, browse, run a query', async () => {
   )
   db.close()
 
+  // Fresh userData dir per run so saved profiles don't accumulate across runs.
+  const userData = mkdtempSync(join(tmpdir(), 'fordb-ud-'))
+
   const app = await electron.launch({
-    args: ['out/main/index.js'],
+    args: ['out/main/index.js', `--user-data-dir=${userData}`],
     env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
   })
   const win = await app.firstWindow()

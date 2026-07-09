@@ -49,7 +49,10 @@ export class PostgresAdapter implements DbAdapter {
   private cursors = new Map<string, OpenCursor>()
   private nextCursorId = 1
   readonly serverStats: ServerStatsProvider = new PgServerStats(() => this.conn)
-  readonly dataMutator: DataMutator = new PgDataMutator(() => this.conn)
+  readonly dataMutator: DataMutator = new PgDataMutator(() => {
+    if (!this.profile) throw new Error('Not connected')
+    return new pg.Client(PostgresAdapter.clientConfig(this.profile))
+  })
 
   private get conn(): pg.Client {
     if (!this.client) throw new Error('Not connected')
