@@ -2,15 +2,11 @@ import { serveRpc } from '@shared/rpc/server'
 import type { PortLike } from '@shared/rpc/protocol'
 import { ConnectionRegistry } from './connection-registry'
 import { HostApiImpl } from './host-api-impl'
-import { PostgresAdapter } from './postgres/postgres-adapter'
+import { adapterForEngine } from './adapter-factory'
 
 let idCounter = 0
 const registry = new ConnectionRegistry(
-  // Task 5 replaces this stub with adapterForEngine(engine).
-  (engine) => {
-    if (engine === 'postgres') return new PostgresAdapter()
-    throw new Error('sqlite adapter not yet wired')
-  },
+  (engine) => adapterForEngine(engine),
   () => `conn-${process.pid}-${++idCounter}`
 )
 
