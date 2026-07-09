@@ -146,6 +146,11 @@ Ordered by value × dependency. These turn fordb from a browse/query client into
 
 MA1 (editing) → MA2 (browse/filter/FK) → MA3 (structure/DDL) → MA4 (query tools) → MA5 (export/import) → MA6 (objects) → MA7 (server admin). MA1–MA3 are the core DBA surface; interleave **M5 (release pipeline)** after MA1–MA2 so a genuinely useful build ships early, and **M7 (MongoDB)** whenever the multi-engine wedge is the priority. Each MA milestone gets its own brainstorm → spec → plan → per-task-PR cycle.
 
+### Cross-cutting / future (keep the architecture aware)
+
+- **MCP servers + agentic flows** — fordb should be positioned to (a) **expose** an MCP server so external agents can introspect schemas and run guarded queries against a chosen connection, and (b) **consume** MCP/agentic flows inside the app (natural-language → SQL, schema-aware assistants). Architectural implications to protect now: keep the `HostApi` (connectionId-addressed, capability-gated) as the single choke point any agent must go through — an MCP server is a thin adapter over `HostApi`, never a second path to the drivers; **secrets stay in main/keychain and never cross to an agent surface**; every agent-initiated mutation/DDL flows through the same preview→confirm gate as the UI (no silent writes). No new dependency yet — this is a design constraint, not a milestone. Likely its own milestone (**MA8 — MCP/agent surface**) after the core DBA features land.
+- **Editor theming** — the CodeMirror SQL editor needs first-class light/dark theming (syntax colors, selection, gutters) tracking the app theme, plus (later) user-selectable themes. Small and near-term; slot it into MA4 (query tools) or a dedicated follow-up. Keep the theme signal flowing from the existing `appearance`/theme system into the editor's theme extension rather than a separate toggle.
+
 ## Sequencing notes
 
 - M1 before any UI: adapter contract is the foundation; UI consumes it.
