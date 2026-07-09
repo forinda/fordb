@@ -212,6 +212,16 @@ export function runAdapterContractTests(
         expect((await adapter.getKeys(s, 'ma3_t')).some((k) => k.kind === 'foreign')).toBe(true)
       }
 
+      // Drop the FK — PG native, SQLite rebuild. Match the synthetic/constraint
+      // name reported by getKeys.
+      if (ed.ops.dropForeignKey) {
+        const fkName = (await adapter.getKeys(s, 'ma3_t')).find((k) => k.kind === 'foreign')?.name
+        if (fkName) {
+          await apply({ kind: 'dropForeignKey', schema: s, table: 'ma3_t', name: fkName }, true)
+          expect((await adapter.getKeys(s, 'ma3_t')).some((k) => k.kind === 'foreign')).toBe(false)
+        }
+      }
+
       // Rename column — native both engines.
       if (ed.ops.renameColumn) {
         await apply({

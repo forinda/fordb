@@ -236,6 +236,42 @@ describe('buildDdl', () => {
       )
     ).toThrow(/context/i)
   })
+  it('sqlite rebuild re-declares UNIQUE as a table constraint and skips its reserved auto-index', () => {
+    const uq = {
+      columns: [
+        { name: 'id', dataType: 'INTEGER', nullable: false, defaultValue: null, ordinal: 1 },
+        { name: 'email', dataType: 'TEXT', nullable: false, defaultValue: null, ordinal: 2 },
+        { name: 'amt', dataType: 'REAL', nullable: true, defaultValue: null, ordinal: 3 }
+      ],
+      keys: [
+        {
+          name: 'primary',
+          kind: 'primary' as const,
+          columns: ['id'],
+          referencedTable: null,
+          referencedColumns: null
+        },
+        {
+          name: 'sqlite_autoindex_users_1',
+          kind: 'unique' as const,
+          columns: ['email'],
+          referencedTable: null,
+          referencedColumns: null
+        }
+      ],
+      // getIndexes surfaces the auto-index for the UNIQUE constraint.
+      indexes: [{ name: 'sqlite_autoindex_users_1', columns: ['email'], unique: true }]
+    }
+    const stmts = buildDdl(
+      { kind: 'alterColumn', schema: 'main', table: 'users', column: 'amt', type: 'NUMERIC' },
+      'sqlite',
+      uq
+    )
+    const create = stmts.find((s) => s.startsWith('CREATE TABLE'))!
+    expect(create).toContain('UNIQUE ("email")')
+    // The reserved auto-index name must never be recreated via CREATE INDEX.
+    expect(stmts.some((s) => s.includes('sqlite_autoindex'))).toBe(false)
+  })
 })
 
 describe('reconstructDdl', () => {

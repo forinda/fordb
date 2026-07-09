@@ -123,7 +123,12 @@ export class SqliteAdapter implements DbAdapter {
       })
 
     const byId = new Map<number, { columns: string[]; refCols: string[]; ref: string }>()
-    for (const r of await this.rows(SQL.foreignKeyList(schema, table))) {
+    // PRAGMA foreign_key_list emits one row per column with a `seq`; sort by it so
+    // a composite key's column order is deterministic (not row-arrival order).
+    const fkRows = (await this.rows(SQL.foreignKeyList(schema, table))).sort(
+      (a, b) => Number(a.seq) - Number(b.seq)
+    )
+    for (const r of fkRows) {
       const id = Number(r.id)
       const e = byId.get(id) ?? { columns: [], refCols: [], ref: String(r.table) }
       e.columns.push(String(r.from))

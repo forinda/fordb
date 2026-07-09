@@ -150,8 +150,10 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     // applied" instead of closing its form as if the DDL succeeded.
     if (!connId) throw new Error('No active connection')
     await (await hostApi()).applyDdl(connId, statements)
-    // Structure change → schema tree + any open structure view re-fetch.
-    void invalidateIntrospection(queryClient, connId)
+    // Await the refetch so callers (StructureView) don't build the NEXT rebuild's
+    // TableStructure context from pre-change columns/keys — a stale context can
+    // reference a column the prior rebuild renamed away.
+    await invalidateIntrospection(queryClient, connId)
   },
   closeTab: (id) => {
     const tab = get().tabs.find((t) => t.id === id)

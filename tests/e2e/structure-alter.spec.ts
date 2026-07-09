@@ -12,8 +12,10 @@ import { join } from 'node:path'
 test('rename a column and change a column type (rebuild)', async () => {
   const file = join(mkdtempSync(join(tmpdir(), 'fordb-alter-')), 'a.sqlite')
   const db = createClient({ url: `file:${file}` })
+  // label is UNIQUE so the type-change rebuild must preserve the constraint's
+  // reserved sqlite_autoindex_* (regression guard for the rebuild re-emitting it).
   await db.executeMultiple(
-    `CREATE TABLE widgets (id INTEGER PRIMARY KEY, label TEXT, amt REAL);
+    `CREATE TABLE widgets (id INTEGER PRIMARY KEY, label TEXT UNIQUE, amt REAL);
      INSERT INTO widgets (label, amt) VALUES ('a', 1.5);`
   )
   db.close()

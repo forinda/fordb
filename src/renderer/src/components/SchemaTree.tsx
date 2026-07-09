@@ -38,6 +38,12 @@ export function SchemaTree(): React.JSX.Element {
   >(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
   const [ddlError, setDdlError] = useState<string | null>(null)
+  // Electron has no window.prompt, so name-entry (new table/schema/database) uses
+  // an inline input rendered above the tree.
+  const [namePrompt, setNamePrompt] = useState<{
+    title: string
+    onSubmit: (name: string) => void
+  } | null>(null)
 
   const profileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
@@ -87,27 +93,29 @@ export function SchemaTree(): React.JSX.Element {
     if (ops?.createTable)
       items.push({
         label: 'New table…',
-        run: () => {
-          const name = window.prompt('New table name')?.trim()
-          if (name)
-            void runDdl({
-              kind: 'createTable',
-              spec: {
-                schema: m.schema,
-                table: name,
-                columns: [{ name: 'id', type: 'integer', notNull: true }],
-                primaryKey: ['id']
-              }
-            })
-        }
+        run: () =>
+          setNamePrompt({
+            title: `New table in ${m.schema}`,
+            onSubmit: (name) =>
+              void runDdl({
+                kind: 'createTable',
+                spec: {
+                  schema: m.schema,
+                  table: name,
+                  columns: [{ name: 'id', type: 'integer', notNull: true }],
+                  primaryKey: ['id']
+                }
+              })
+          })
       })
     if (ops?.createSchema)
       items.push({
         label: 'New schema…',
-        run: () => {
-          const name = window.prompt('New schema name')?.trim()
-          if (name) void runDdl({ kind: 'createSchema', name })
-        }
+        run: () =>
+          setNamePrompt({
+            title: 'New schema name',
+            onSubmit: (name) => void runDdl({ kind: 'createSchema', name })
+          })
       })
     if (ops?.dropSchema)
       items.push({
@@ -117,18 +125,20 @@ export function SchemaTree(): React.JSX.Element {
     if (ops?.createDatabase)
       items.push({
         label: 'New database…',
-        run: () => {
-          const name = window.prompt('New database name')?.trim()
-          if (name) void runDdl({ kind: 'createDatabase', name })
-        }
+        run: () =>
+          setNamePrompt({
+            title: 'New database name',
+            onSubmit: (name) => void runDdl({ kind: 'createDatabase', name })
+          })
       })
     if (ops?.dropDatabase)
       items.push({
         label: 'Drop database…',
-        run: () => {
-          const name = window.prompt('Database to drop')?.trim()
-          if (name) void runDdl({ kind: 'dropDatabase', name })
-        }
+        run: () =>
+          setNamePrompt({
+            title: 'Database to drop',
+            onSubmit: (name) => void runDdl({ kind: 'dropDatabase', name })
+          })
       })
     return items
   }
@@ -217,6 +227,7 @@ export function SchemaTree(): React.JSX.Element {
           </button>
         </div>
       )}
+      {namePrompt && <NamePrompt prompt={namePrompt} onClose={() => setNamePrompt(null)} />}
       <Tree
         data={data}
         openByDefault={false}
@@ -318,6 +329,40 @@ export function SchemaTree(): React.JSX.Element {
       {info && (
         <TableInfoDialog schema={info.schema} table={info.table} onClose={() => setInfo(null)} />
       )}
+    </div>
+  )
+}
+
+function NamePrompt(props: {
+  prompt: { title: string; onSubmit: (name: string) => void }
+  onClose: () => void
+}): React.JSX.Element {
+  const [name, setName] = useState('')
+  const submit = (): void => {
+    const n = name.trim()
+    if (n) props.prompt.onSubmit(n)
+    props.onClose()
+  }
+  return (
+    <div className="mb-1 flex items-center gap-1 rounded border border-border p-1 text-xs">
+      <span className="text-muted-foreground">{props.prompt.title}</span>
+      <input
+        aria-label="name-prompt-input"
+        autoFocus
+        className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') submit()
+          if (e.key === 'Escape') props.onClose()
+        }}
+      />
+      <button className="rounded bg-primary px-2 py-0.5 text-primary-foreground" onClick={submit}>
+        OK
+      </button>
+      <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onClose}>
+        Cancel
+      </button>
     </div>
   )
 }
