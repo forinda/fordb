@@ -258,6 +258,31 @@ export function runAdapterContractTests(
       expect((await adapter.listTables(s)).some((t) => t.name === 'ma3_t')).toBe(false)
     })
 
+    it('object browser: kinds, list views/triggers, definition, view create/drop', async () => {
+      if (!adapter.objects || !adapter.schemaEditor) return
+      const s = expected.schema
+      const dialect = adapter.schemaEditor.ops.createSchema ? 'pg' : 'sqlite'
+      expect(adapter.objects.kinds).toContain('view')
+      const views = await adapter.objects.list(s, 'view')
+      expect(views.some((v) => v.name === 'user_emails')).toBe(true)
+      expect(await adapter.objects.definition(s, 'view', 'user_emails')).toMatch(/select/i)
+      // triggers list runs (may be empty)
+      expect(Array.isArray(await adapter.objects.list(s, 'trigger'))).toBe(true)
+      // create + drop a view via the schema editor
+      await adapter.schemaEditor.applyDdl(
+        buildDdl(
+          { kind: 'createView', schema: s, name: 'ma6_v', select: 'SELECT 1 AS one' },
+          dialect
+        )
+      )
+      expect((await adapter.objects.list(s, 'view')).some((v) => v.name === 'ma6_v')).toBe(true)
+      expect(await adapter.objects.definition(s, 'view', 'ma6_v')).toBeTruthy()
+      await adapter.schemaEditor.applyDdl(
+        buildDdl({ kind: 'dropView', schema: s, name: 'ma6_v' }, dialect)
+      )
+      expect((await adapter.objects.list(s, 'view')).some((v) => v.name === 'ma6_v')).toBe(false)
+    })
+
     it('executes a buffered query with fields and rows', async () => {
       const r = await adapter.executeQuery(
         `SELECT id, email FROM ${expected.schema}.users ORDER BY id LIMIT 3`
