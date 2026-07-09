@@ -1,5 +1,5 @@
 import { useQuery, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
-import type { ColumnInfo, TableInfo } from '@shared/adapter/types'
+import type { ColumnInfo, IndexInfo, KeyInfo, TableInfo } from '@shared/adapter/types'
 import { hostApi } from '../rpc'
 import { qk } from './keys'
 
@@ -33,6 +33,34 @@ export function useColumns(
         ? qk.columns(connId, schema, table)
         : ['conn', 'none', 'columns', '', ''],
     queryFn: async () => (await hostApi()).getColumns(connId!, schema!, table!),
+    enabled: !!connId && !!schema && !!table
+  })
+}
+
+export function useKeys(
+  connId: string | null,
+  schema: string | null,
+  table: string | null
+): UseQueryResult<KeyInfo[]> {
+  return useQuery({
+    queryKey:
+      connId && schema && table ? qk.keys(connId, schema, table) : ['conn', 'none', 'keys', '', ''],
+    queryFn: async () => (await hostApi()).getKeys(connId!, schema!, table!),
+    enabled: !!connId && !!schema && !!table
+  })
+}
+
+export function useIndexes(
+  connId: string | null,
+  schema: string | null,
+  table: string | null
+): UseQueryResult<IndexInfo[]> {
+  return useQuery({
+    queryKey:
+      connId && schema && table
+        ? qk.indexes(connId, schema, table)
+        : ['conn', 'none', 'indexes', '', ''],
+    queryFn: async () => (await hostApi()).getIndexes(connId!, schema!, table!),
     enabled: !!connId && !!schema && !!table
   })
 }
