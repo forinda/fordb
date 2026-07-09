@@ -65,6 +65,7 @@ export function runAdapterContractTests(
       const fk = orderKeys.find((k) => k.kind === 'foreign')
       expect(fk?.columns).toContain('user_id')
       expect(fk?.referencedTable).toBe('users')
+      expect(fk?.referencedColumns).toEqual(['id'])
     })
 
     it('reports indexes', async () => {

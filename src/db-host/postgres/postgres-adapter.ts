@@ -135,7 +135,14 @@ export class PostgresAdapter implements DbAdapter {
 
   async getKeys(schema: string, table: string): Promise<KeyInfo[]> {
     const r = await this.conn.query(SQL.GET_KEYS, [schema, table])
-    return r.rows as KeyInfo[]
+    // confkey is empty for non-FK constraints — normalize [] → null.
+    return (r.rows as KeyInfo[]).map((k) => ({
+      ...k,
+      referencedColumns:
+        Array.isArray(k.referencedColumns) && k.referencedColumns.length
+          ? k.referencedColumns
+          : null
+    }))
   }
 
   async getIndexes(schema: string, table: string): Promise<IndexInfo[]> {

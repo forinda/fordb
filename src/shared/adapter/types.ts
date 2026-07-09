@@ -86,6 +86,7 @@ export interface KeyInfo {
   kind: 'primary' | 'foreign' | 'unique'
   columns: string[]
   referencedTable: string | null
+  referencedColumns: string[] | null // FK target columns (null for pk/unique)
 }
 
 export interface IndexInfo {

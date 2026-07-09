@@ -4,6 +4,9 @@ import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 const PG_OPS: SchemaOps = {
   createTable: true,
   addColumn: true,
+  renameColumn: true,
+  dropColumn: true,
+  alterColumn: true,
   createIndex: true,
   dropIndex: true,
   addForeignKey: true,
