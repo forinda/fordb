@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { ServerSnapshot } from '@shared/adapter/stats-types'
 import { computeRate, pushSample, type RatePoint, type Sample } from '@shared/stats/rates'
 
@@ -18,22 +18,20 @@ export function useRateHistory(
 ): { rates: RatePoint[]; connections: ConnPoint[] } {
   const [samples, setSamples] = useState<Sample[]>([])
   const [conns, setConns] = useState<ConnPoint[]>([])
-  // Monotonic clock via a counter of appended snapshots avoids Date.now in
-  // render; we still need a real timestamp for dt, taken once per append.
-  const lastKey = useRef<string>('')
 
   useEffect(() => {
     setSamples([])
     setConns([])
-    lastKey.current = ''
   }, [connId])
 
+  // Append on every new snapshot. useServerSnapshot polls via refetchInterval;
+  // React Query's structural sharing keeps the reference stable when the data
+  // is unchanged, so this effect only runs on a genuinely new snapshot (and pg
+  // stat counters advance on every poll anyway). No manual content-hash dedup —
+  // that dropped legitimate polls (freezing the charts during idle) and ignored
+  // activityByState (missing state transitions).
   useEffect(() => {
     if (!snapshot) return
-    // Dedup: React Query may return the same object reference across renders.
-    const key = JSON.stringify(snapshot.counters) + snapshot.backends
-    if (key === lastKey.current) return
-    lastKey.current = key
     const tMs = performance.now()
     setSamples((buf) => pushSample(buf, { tMs, counters: snapshot.counters }, windowMs))
     setConns((buf) =>
