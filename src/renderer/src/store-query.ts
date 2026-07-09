@@ -10,6 +10,7 @@ import { reconstructDdl } from '@shared/ddl/build-ddl'
 import { buildInsert } from '@shared/sql/build-insert'
 import { quoteIdent } from '@shared/mutation/build-edits'
 import { splitStatements } from '@shared/sql/split-statements'
+import { parseCsv } from '@shared/csv/csv'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 
@@ -76,6 +77,10 @@ interface QueryState {
   importSqlFile: () => Promise<void>
   importError: string | null
   clearImportError: () => void
+  csvImport: { schema: string; table: string; headers: string[]; rows: string[][] } | null
+  beginCsvImport: (schema: string, table: string) => Promise<void>
+  cancelCsvImport: () => void
+  applyCsvImport: (mapping: (string | null)[]) => Promise<void>
 }
 
 export type ExportScope =
@@ -91,6 +96,35 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   mainView: 'query',
   importError: null,
   clearImportError: () => set({ importError: null }),
+  csvImport: null,
+  beginCsvImport: async (schema, table) => {
+    const picked = await window.fordb.dialog.openTextFile(['csv'])
+    if (!picked) return
+    const rows = parseCsv(picked.text).filter((r) => r.length > 0)
+    if (rows.length === 0) return
+    const [headers, ...data] = rows
+    set({ csvImport: { schema, table, headers: headers ?? [], rows: data }, importError: null })
+  },
+  cancelCsvImport: () => set({ csvImport: null }),
+  applyCsvImport: async (mapping) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const job = get().csvImport
+    if (!connId || !job) return
+    // mapping[i] = target column for CSV column i (null = skip).
+    const edits: RowEdit[] = job.rows.map((row) => ({
+      kind: 'insert' as const,
+      schema: job.schema,
+      table: job.table,
+      values: mapping.flatMap((col, i) => (col ? [{ column: col, value: row[i] ?? null }] : []))
+    }))
+    try {
+      await (await hostApi()).applyEdits(connId, edits)
+      void invalidateIntrospection(queryClient, connId)
+      set({ csvImport: null })
+    } catch (err) {
+      set({ importError: err instanceof Error ? err.message : String(err) })
+    }
+  },
   picker: null,
   setPicker: (p) => set({ picker: p }),
   loadIntoEditor: (sql) => {

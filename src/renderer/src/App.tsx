@@ -8,6 +8,7 @@ import { DatabaseSwitcher } from './components/DatabaseSwitcher'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
+import { CsvImportDialog } from './components/CsvImportDialog'
 import { ServerDashboard } from './components/ServerDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
@@ -201,6 +202,7 @@ export function App(): React.JSX.Element {
       </ResizablePanelGroup>
       <CommandPalette commands={commands} />
       <QueryLibrary />
+      <CsvImportDialog />
       <ImportErrorBanner />
     </div>
   )
