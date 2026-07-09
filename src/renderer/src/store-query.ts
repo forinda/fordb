@@ -190,7 +190,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     // Lazy import keeps sql-formatter off the initial bundle path.
     void import('sql-formatter').then(({ format }) => {
       try {
-        get().setSql(tab.id, format(tab.sql, { language: sqlLang }))
+        get().setSql(tab.id, format(tab.sql, { language: sqlLang, keywordCase: 'upper' }))
       } catch {
         // A formatter parse error leaves the SQL untouched (best-effort prettify).
       }
