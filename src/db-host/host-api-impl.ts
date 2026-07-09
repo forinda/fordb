@@ -9,6 +9,12 @@ import type {
   TableInfo
 } from '@shared/adapter/types'
 import type { ConnectionId, HostApi, TestResult } from '@shared/host/host-api'
+import type {
+  ServerSnapshot,
+  SessionRow,
+  LockRow,
+  ServerStatsProvider
+} from '@shared/adapter/stats-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -82,5 +88,24 @@ export class HostApiImpl implements HostApi {
   }
   cancel(id: ConnectionId): Promise<void> {
     return this.registry.get(id).cancel()
+  }
+
+  private stats(id: ConnectionId): ServerStatsProvider {
+    const s = this.registry.get(id).serverStats
+    if (!s) throw new Error('Server stats are not supported by this engine')
+    return s
+  }
+
+  async serverStatsSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).serverStats != null
+  }
+  getServerSnapshot(id: ConnectionId): Promise<ServerSnapshot> {
+    return this.stats(id).getServerSnapshot()
+  }
+  getSessions(id: ConnectionId): Promise<SessionRow[]> {
+    return this.stats(id).getSessions()
+  }
+  getLocks(id: ConnectionId): Promise<LockRow[]> {
+    return this.stats(id).getLocks()
   }
 }

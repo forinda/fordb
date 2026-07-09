@@ -8,6 +8,7 @@ import type {
   QueryResult,
   TableInfo
 } from '../adapter/types'
+import type { ServerSnapshot, SessionRow, LockRow } from '../adapter/stats-types'
 
 export type ConnectionId = string
 
@@ -36,4 +37,9 @@ export interface HostApi {
   fetchPage(id: ConnectionId, queryId: string): Promise<Page>
   closeQuery(id: ConnectionId, queryId: string): Promise<void>
   cancel(id: ConnectionId): Promise<void>
+
+  serverStatsSupported(id: ConnectionId): Promise<boolean>
+  getServerSnapshot(id: ConnectionId): Promise<ServerSnapshot>
+  getSessions(id: ConnectionId): Promise<SessionRow[]>
+  getLocks(id: ConnectionId): Promise<LockRow[]>
 }
