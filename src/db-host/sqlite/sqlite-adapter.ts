@@ -8,9 +8,11 @@ import {
 import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type { DataMutator } from '@shared/adapter/mutation-types'
 import type { DataBrowser } from '@shared/adapter/browse-types'
+import type { SchemaEditor } from '@shared/adapter/schema-types'
 import { configFor } from './sqlite-config'
 import { SqliteDataMutator } from './sqlite-mutator'
 import { SqliteDataBrowser } from './sqlite-browser'
+import { SqliteSchemaEditor } from './sqlite-schema'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -48,6 +50,7 @@ export class SqliteAdapter implements DbAdapter {
   readonly dataBrowser: DataBrowser = new SqliteDataBrowser((sql, params, ps) =>
     this.openBuffered(sql, params as InValue[], ps)
   )
+  readonly schemaEditor: SchemaEditor = new SqliteSchemaEditor(() => this.conn)
 
   private get conn(): Client {
     if (!this.client) throw new Error('Not connected')
