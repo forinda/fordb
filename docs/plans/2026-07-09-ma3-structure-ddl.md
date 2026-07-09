@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - pnpm; Node >= 22; TypeScript strict; no `any` except typed casts at the RPC/DB boundary.
-- Identifiers quoted via `quoteIdent` (`@shared/mutation/build-edits`, `"`-doubling). Column **types** and **DEFAULT** expressions are raw SQL text by design (a type/default *is* a SQL fragment) — mitigated by mandatory preview + explicit confirm; DDL is a privileged, local, authenticated action, never a bound-value path.
+- Identifiers quoted via `quoteIdent` (`@shared/mutation/build-edits`, `"`-doubling). Column **types** and **DEFAULT** expressions are raw SQL text by design (a type/default _is_ a SQL fragment) — mitigated by mandatory preview + explicit confirm; DDL is a privileged, local, authenticated action, never a bound-value path.
 - Every DDL op (especially every `DROP …`) shows the generated SQL and requires explicit confirm before apply (repo-wide rule).
 - Capability-gated (`adapter.schemaEditor`): PG all ops; SQLite = `createTable, addColumn, createIndex, dropIndex, dropTable`. UI reads `SchemaOps` and only offers supported actions; `host-api-impl` throws defensively if an unsupported path is called.
 - Apply is transactional where the engine allows (PG `BEGIN…COMMIT` on a dedicated `pg.Client`; SQLite `batch(…, 'write')`). PG `CREATE/DROP DATABASE` cannot run in a txn → single-statement bypass.
@@ -189,12 +189,17 @@ describe('buildDdl', () => {
       table: 't',
       column: { name: 'age', type: 'integer', notNull: true }
     }
-    expect(buildDdl(change, 'pg')).toEqual([`ALTER TABLE "app"."t" ADD COLUMN "age" integer NOT NULL`])
+    expect(buildDdl(change, 'pg')).toEqual([
+      `ALTER TABLE "app"."t" ADD COLUMN "age" integer NOT NULL`
+    ])
   })
   it('createIndex (unique) and dropIndex', () => {
     expect(
       buildDdl(
-        { kind: 'createIndex', spec: { schema: 'app', table: 't', name: 'i', columns: ['a', 'b'], unique: true } },
+        {
+          kind: 'createIndex',
+          spec: { schema: 'app', table: 't', name: 'i', columns: ['a', 'b'], unique: true }
+        },
         'pg'
       )
     ).toEqual([`CREATE UNIQUE INDEX "i" ON "app"."t" ("a", "b")`])
@@ -213,8 +218,13 @@ describe('buildDdl', () => {
         {
           kind: 'addForeignKey',
           spec: {
-            schema: 'app', table: 'orders', name: 'orders_user_fk',
-            columns: ['user_id'], refSchema: 'app', refTable: 'users', refColumns: ['id']
+            schema: 'app',
+            table: 'orders',
+            name: 'orders_user_fk',
+            columns: ['user_id'],
+            refSchema: 'app',
+            refTable: 'users',
+            refColumns: ['id']
           }
         },
         'pg'
@@ -223,7 +233,10 @@ describe('buildDdl', () => {
       `ALTER TABLE "app"."orders" ADD CONSTRAINT "orders_user_fk" FOREIGN KEY ("user_id") REFERENCES "app"."users" ("id")`
     ])
     expect(
-      buildDdl({ kind: 'dropForeignKey', schema: 'app', table: 'orders', name: 'orders_user_fk' }, 'pg')
+      buildDdl(
+        { kind: 'dropForeignKey', schema: 'app', table: 'orders', name: 'orders_user_fk' },
+        'pg'
+      )
     ).toEqual([`ALTER TABLE "app"."orders" DROP CONSTRAINT "orders_user_fk"`])
   })
   it('dropTable / createSchema / dropSchema / createDatabase / dropDatabase', () => {
@@ -236,9 +249,9 @@ describe('buildDdl', () => {
     expect(buildDdl({ kind: 'dropDatabase', name: 'd' }, 'pg')).toEqual([`DROP DATABASE "d"`])
   })
   it('quotes identifiers with embedded quotes', () => {
-    expect(
-      buildDdl({ kind: 'dropTable', schema: 'a"b', table: 't"x' }, 'pg')
-    ).toEqual([`DROP TABLE "a""b"."t""x"`])
+    expect(buildDdl({ kind: 'dropTable', schema: 'a"b', table: 't"x' }, 'pg')).toEqual([
+      `DROP TABLE "a""b"."t""x"`
+    ])
   })
 })
 
@@ -271,7 +284,13 @@ describe('reconstructDdl', () => {
 
 ```ts
 import type { ColumnInfo, IndexInfo, KeyInfo } from '../adapter/types'
-import type { ColumnSpec, DdlChange, ForeignKeySpec, IndexSpec, TableSpec } from '../adapter/schema-types'
+import type {
+  ColumnSpec,
+  DdlChange,
+  ForeignKeySpec,
+  IndexSpec,
+  TableSpec
+} from '../adapter/schema-types'
 import { quoteIdent } from '../mutation/build-edits'
 
 type Dialect = 'pg' | 'sqlite'
@@ -314,16 +333,24 @@ export function buildDdl(change: DdlChange, dialect: Dialect): string[] {
     case 'createTable':
       return [createTable(change.spec)]
     case 'addColumn':
-      return [`ALTER TABLE ${qtable(change.schema, change.table)} ADD COLUMN ${columnClause(change.column)}`]
+      return [
+        `ALTER TABLE ${qtable(change.schema, change.table)} ADD COLUMN ${columnClause(change.column)}`
+      ]
     case 'createIndex':
       return [createIndex(change.spec)]
     case 'dropIndex':
       // SQLite indexes live in the (single) schema namespace; a qualifier errors.
-      return [dialect === 'sqlite' ? `DROP INDEX ${qi(change.name)}` : `DROP INDEX ${qtable(change.schema, change.name)}`]
+      return [
+        dialect === 'sqlite'
+          ? `DROP INDEX ${qi(change.name)}`
+          : `DROP INDEX ${qtable(change.schema, change.name)}`
+      ]
     case 'addForeignKey':
       return [addForeignKey(change.spec)]
     case 'dropForeignKey':
-      return [`ALTER TABLE ${qtable(change.schema, change.table)} DROP CONSTRAINT ${qi(change.name)}`]
+      return [
+        `ALTER TABLE ${qtable(change.schema, change.table)} DROP CONSTRAINT ${qi(change.name)}`
+      ]
     case 'dropTable':
       return [`DROP TABLE ${qtable(change.schema, change.table)}`]
     case 'createSchema':
@@ -400,9 +427,17 @@ import type pg from 'pg'
 import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 
 const PG_OPS: SchemaOps = {
-  createTable: true, addColumn: true, createIndex: true, dropIndex: true,
-  addForeignKey: true, dropForeignKey: true, dropTable: true,
-  createSchema: true, dropSchema: true, createDatabase: true, dropDatabase: true
+  createTable: true,
+  addColumn: true,
+  createIndex: true,
+  dropIndex: true,
+  addForeignKey: true,
+  dropForeignKey: true,
+  dropTable: true,
+  createSchema: true,
+  dropSchema: true,
+  createDatabase: true,
+  dropDatabase: true
 }
 
 // CREATE/DROP DATABASE cannot run inside a transaction block.
@@ -477,7 +512,7 @@ it('schema editor: create/add-column/index/fk then drop — introspection reflec
 })
 ```
 
-Add a local `const q = (id: string): string => \`"${id.replace(/"/g, '""')}"\`` near the top of the contract's `describe` if one is not already present (check first; the mutator/browse tests may already define a quoting helper — reuse it, do not duplicate).
+Add a local `const q = (id: string): string => \`"${id.replace(/"/g, '""')}"\``near the top of the contract's`describe` if one is not already present (check first; the mutator/browse tests may already define a quoting helper — reuse it, do not duplicate).
 
 - [ ] **Step 4: Run + commit**
 
@@ -513,9 +548,17 @@ import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 // SQLite can do these without a table rebuild. FK/schema/database ops and
 // in-place column changes need a rebuild → deferred to MA3b, advertised false.
 const SQLITE_OPS: SchemaOps = {
-  createTable: true, addColumn: true, createIndex: true, dropIndex: true, dropTable: true,
-  addForeignKey: false, dropForeignKey: false,
-  createSchema: false, dropSchema: false, createDatabase: false, dropDatabase: false
+  createTable: true,
+  addColumn: true,
+  createIndex: true,
+  dropIndex: true,
+  dropTable: true,
+  addForeignKey: false,
+  dropForeignKey: false,
+  createSchema: false,
+  dropSchema: false,
+  createDatabase: false,
+  dropDatabase: false
 }
 
 export class SqliteSchemaEditor implements SchemaEditor {
@@ -600,7 +643,9 @@ it('applies DDL over the HostApi (create + drop a temp table)', async () => {
   expect(await client.schemaEditSupported(id)).toBe(true)
   const ops = await client.schemaOps(id)
   expect(ops.createTable).toBe(true)
-  await client.applyDdl(id, [`CREATE TABLE app.ma3_hostapi ("id" integer NOT NULL, PRIMARY KEY ("id"))`])
+  await client.applyDdl(id, [
+    `CREATE TABLE app.ma3_hostapi ("id" integer NOT NULL, PRIMARY KEY ("id"))`
+  ])
   expect((await client.listTables(id, 'app')).some((t) => t.name === 'ma3_hostapi')).toBe(true)
   await client.applyDdl(id, [`DROP TABLE app.ma3_hostapi`])
   await client.closeConnection(id)

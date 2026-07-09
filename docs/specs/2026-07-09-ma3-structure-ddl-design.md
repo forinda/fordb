@@ -105,7 +105,7 @@ export interface SchemaEditor {
 
 ### Pure DDL generation (`src/shared/ddl/build-ddl.ts`)
 
-`buildDdl(change: DdlChange, dialect: 'pg' | 'sqlite'): string[]` — pure, returns one or more statements. All identifiers quoted via the shared `quoteIdent` (`"`-doubling). **Column types and DEFAULT expressions are raw SQL text** the user typed — interpolated as-is. This is inherent to DDL (a type or default *is* a SQL fragment) and is why every DDL op is **previewed and confirmed** before apply; it is a privileged, authenticated, local-user action, not a bound-value path. Documented explicitly.
+`buildDdl(change: DdlChange, dialect: 'pg' | 'sqlite'): string[]` — pure, returns one or more statements. All identifiers quoted via the shared `quoteIdent` (`"`-doubling). **Column types and DEFAULT expressions are raw SQL text** the user typed — interpolated as-is. This is inherent to DDL (a type or default _is_ a SQL fragment) and is why every DDL op is **previewed and confirmed** before apply; it is a privileged, authenticated, local-user action, not a bound-value path. Documented explicitly.
 
 `reconstructDdl(cols, keys, indexes, schema, table, dialect): string` — pure, builds a `CREATE TABLE` + trailing `CREATE INDEX` lines from existing introspection (`getColumns`/`getKeys`/`getIndexes`), for the read-only DDL view.
 
