@@ -63,6 +63,10 @@ pick one:
 
 Before pushing, run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, and `pnpm db:up && pnpm test:contract` if you touched db-host/adapters.
 
+## Native modules
+
+The SQLite engine uses [`@libsql/client`](https://github.com/tursodatabase/libsql-client-ts), which ships **N-API prebuilt binaries** — ABI-stable across Node and Electron, so the same install runs under both `pnpm test` (Node) and the Electron db-host with **no rebuild step**. (better-sqlite3 was evaluated but rejected: its Node/Electron ABI split would force a test↔app rebuild toggle.) The Postgres driver `pg` is pure JS; `ssh2`'s optional native bindings are marked external and degrade gracefully.
+
 ## Testing philosophy
 
 - **Unit** (`tests/unit`): pure logic, keychain mocked, no Docker.
