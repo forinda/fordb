@@ -6,35 +6,43 @@ import {
 } from '../../src/renderer/src/query/schema-tree-model'
 
 describe('buildTree', () => {
-  it('resolves a table node’s columns once they are loaded (not frozen at schema-expand)', () => {
+  it('nests schema → category → objects; tables expand to columns, objects are leaves', () => {
     const childrenById: Record<string, TreeNode[]> = {
-      's:app': [{ id: 't:app.users', name: 'users', kind: 'table', schema: 'app', table: 'users' }],
+      's:app': [
+        { id: 'cat:app.table', name: 'Tables', kind: 'category', schema: 'app', category: 'table' },
+        { id: 'cat:app.view', name: 'Views', kind: 'category', schema: 'app', category: 'view' }
+      ],
+      'cat:app.table': [
+        { id: 't:app.users', name: 'users', kind: 'table', schema: 'app', table: 'users' }
+      ],
+      'cat:app.view': [{ id: 'obj:app.view.v1', name: 'v1', kind: 'view', schema: 'app' }],
       't:app.users': [
         { id: 'c:app.users.id', name: 'id', kind: 'column', schema: 'app', table: 'users' }
       ]
     }
-    const tree = buildTree(['app'], childrenById)
-    const users = tree[0]!.children![0]!
+    const schema = buildTree(['app'], childrenById)[0]!
+    expect(schema.kind).toBe('schema')
+    const [tables, views] = schema.children!
+    expect(tables!.name).toBe('Tables')
+    // table node picks up columns once loaded (not frozen at expand)
+    const users = tables!.children![0]!
     expect(users.name).toBe('users')
-    // The regression: this used to be [] because the schema's stored table node
-    // was built before the columns loaded.
-    expect(users.children).toHaveLength(1)
     expect(users.children![0]!.name).toBe('id')
-    // Columns are leaves.
-    expect(users.children![0]!.children).toBeUndefined()
+    expect(users.children![0]!.children).toBeUndefined() // column is a leaf
+    // a view object is a leaf
+    expect(views!.children![0]!.name).toBe('v1')
+    expect(views!.children![0]!.children).toBeUndefined()
   })
 
-  it('shows an unloaded schema/table as an expandable (empty) parent', () => {
-    const tree = buildTree(['app'], {})
-    expect(tree[0]!.children).toEqual([])
+  it('shows an unloaded schema as an expandable (empty) parent', () => {
+    expect(buildTree(['app'], {})[0]!.children).toEqual([])
   })
 })
 
 describe('invalidatedNodeId', () => {
-  it('maps a tables key to its schema node', () => {
-    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('s:app')
-  })
-  it('maps a columns key to its table node', () => {
+  it('maps tables/objects/columns keys to the right node ids', () => {
+    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('cat:app.table')
+    expect(invalidatedNodeId(['conn', 'c1', 'objects', 'app', 'view'])).toBe('cat:app.view')
     expect(invalidatedNodeId(['conn', 'c1', 'columns', 'app', 'users'])).toBe('t:app.users')
   })
   it('returns null for schemas and other keys', () => {
