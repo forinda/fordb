@@ -147,4 +147,9 @@ export class HostApiImpl implements HostApi {
   applyDdl(id: ConnectionId, statements: string[]): Promise<void> {
     return this.schema(id).applyDdl(statements)
   }
+  executeScript(id: ConnectionId, statements: string[]): Promise<void> {
+    // applyDdl is the shared per-engine transactional statement runner — it does
+    // not validate the statements are DDL, so it runs an INSERT/mixed script too.
+    return this.schema(id).applyDdl(statements)
+  }
 }
