@@ -35,15 +35,20 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
   // window.prompt, so rename uses an inline input too.
   const [editCol, setEditCol] = useState<string | null>(null)
   const [renameColName, setRenameColName] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
 
   // Preview the generated SQL, confirm, apply. Any browse/tree cache refresh is
   // handled by the store's applyDdl (it invalidates introspection). The current
   // structure is always passed as context — harmless for PG/native ops, required
   // for the SQLite table-rebuild (alterColumn / FK add-drop).
   async function run(change: DdlChange): Promise<void> {
+    // Serialize: a second op must not build its rebuild context from the current
+    // (about-to-be-stale) structure while the first is still applying/refetching.
+    if (busy) return
     setError(null)
     const statements = buildDdl(change, dialect, { columns: cols, keys, indexes })
     if (!window.confirm(`Apply this DDL?\n\n${statements.join(';\n')}`)) return
+    setBusy(true)
     try {
       await applyDdl(statements)
       setForm(null)
@@ -51,6 +56,8 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
       setRenameColName(null)
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
     }
   }
 
