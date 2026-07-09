@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useInvalidateProfiles } from '../query/profiles'
-import type { ConnectionProfile, SqliteLocal, SshOptions } from '@shared/adapter/types'
+import type { ConnectionProfile, SqliteProfile, SshOptions } from '@shared/adapter/types'
 import { parseConnectionUrl } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
 import { Button } from './ui/button'
@@ -22,7 +22,15 @@ export function ProfileForm(props: {
   // Postgres-only view of the edited profile, used to seed the PG field state.
   const pg = p?.engine === 'postgres' ? p : undefined
   const [engine, setEngine] = useState<'postgres' | 'sqlite'>(p?.engine ?? 'postgres')
+  const [kind, setKind] = useState<'local' | 'remote' | 'replica'>(
+    p?.engine === 'sqlite' ? p.kind : 'local'
+  )
   const [file, setFile] = useState(p?.engine === 'sqlite' && 'file' in p ? p.file : '')
+  const [url, setUrl] = useState(p?.engine === 'sqlite' && p.kind === 'remote' ? p.url : '')
+  const [syncUrl, setSyncUrl] = useState(
+    p?.engine === 'sqlite' && p.kind === 'replica' ? p.syncUrl : ''
+  )
+  const [authToken, setAuthToken] = useState('')
   const [name, setName] = useState(p?.name ?? '')
   const [host, setHost] = useState(pg?.host ?? 'localhost')
   const [port, setPort] = useState(String(pg?.port ?? 5432))
@@ -81,13 +89,12 @@ export function ProfileForm(props: {
 
   function build(): ConnectionProfile {
     if (engine === 'sqlite') {
-      const base: SqliteLocal = {
-        id: p?.id ?? newId(),
-        name,
-        engine: 'sqlite',
-        kind: 'local',
-        file
-      }
+      const id = p?.id ?? newId()
+      let base: SqliteProfile
+      if (kind === 'remote') base = { id, name, engine: 'sqlite', kind: 'remote', url }
+      else if (kind === 'replica')
+        base = { id, name, engine: 'sqlite', kind: 'replica', file, syncUrl }
+      else base = { id, name, engine: 'sqlite', kind: 'local', file }
       return { ...base, name: name.trim() || connectionLabel(base) }
     }
     const parsedPort = Number(port)
@@ -115,7 +122,14 @@ export function ProfileForm(props: {
     return { ...base, name: name.trim() || connectionLabel(base) }
   }
 
-  function secrets(): { password?: string; sshPassword?: string; sshPassphrase?: string } {
+  function secrets(): {
+    password?: string
+    sshPassword?: string
+    sshPassphrase?: string
+    authToken?: string
+  } {
+    if (engine === 'sqlite')
+      return kind === 'remote' || kind === 'replica' ? { authToken: authToken || undefined } : {}
     return {
       password: password || undefined,
       sshPassword: useSsh && authMethod === 'password' ? sshPassword || undefined : undefined,
@@ -152,21 +166,60 @@ export function ProfileForm(props: {
       </Label>
       <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
       {engine === 'sqlite' && (
-        <div className="flex gap-2">
-          <Input
-            className="flex-1"
-            placeholder="File"
-            value={file}
-            onChange={(e) => setFile(e.target.value)}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => void window.fordb.dialog.openFile().then((f) => f && setFile(f))}
-          >
-            Browse…
-          </Button>
-        </div>
+        <>
+          <Label>
+            Kind
+            <Select value={kind} onValueChange={(v) => setKind(v as typeof kind)}>
+              <SelectTrigger aria-label="SQLite kind">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="local">Local file</SelectItem>
+                <SelectItem value="remote">Remote</SelectItem>
+                <SelectItem value="replica">Embedded replica</SelectItem>
+              </SelectContent>
+            </Select>
+          </Label>
+          {(kind === 'local' || kind === 'replica') && (
+            <div className="flex gap-2">
+              <Input
+                className="flex-1"
+                placeholder="File"
+                value={file}
+                onChange={(e) => setFile(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void window.fordb.dialog.openFile().then((f) => f && setFile(f))}
+              >
+                Browse…
+              </Button>
+            </div>
+          )}
+          {kind === 'remote' && (
+            <Input
+              placeholder="libsql:// URL"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+            />
+          )}
+          {kind === 'replica' && (
+            <Input
+              placeholder="Sync URL"
+              value={syncUrl}
+              onChange={(e) => setSyncUrl(e.target.value)}
+            />
+          )}
+          {(kind === 'remote' || kind === 'replica') && (
+            <Input
+              type="password"
+              placeholder="Auth token"
+              value={authToken}
+              onChange={(e) => setAuthToken(e.target.value)}
+            />
+          )}
+        </>
       )}
       {engine === 'postgres' && (
         <>
