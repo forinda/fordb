@@ -6,6 +6,7 @@ import { ResultsGrid } from './ResultsGrid'
 import { TableDataGrid } from './TableDataGrid'
 import { StructureView } from './StructureView'
 import { QueryTabs } from './QueryTabs'
+import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
 
@@ -33,6 +34,8 @@ export function QueryWorkbench(): React.JSX.Element {
   const setSql = useQueryStore((s) => s.setSql)
   const run = useQueryStore((s) => s.run)
   const cancel = useQueryStore((s) => s.cancel)
+  const formatActive = useQueryStore((s) => s.formatActive)
+  const { sqlLang } = useDialect()
   const tab = tabs.find((t) => t.id === activeId)
 
   useEffect(() => {
@@ -95,6 +98,9 @@ export function QueryWorkbench(): React.JSX.Element {
           disabled={tab.status !== 'running'}
         >
           Cancel
+        </Button>
+        <Button variant="ghost" onClick={() => formatActive(sqlLang)} disabled={!tab.sql.trim()}>
+          Format
         </Button>
         <Button variant="ghost" onClick={() => void exportData('csv')} disabled={!tab.source}>
           Export CSV

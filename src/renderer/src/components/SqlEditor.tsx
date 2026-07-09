@@ -15,6 +15,7 @@ export function SqlEditor(props: {
   connectionId: string | null
 }): React.JSX.Element {
   const host = useRef<HTMLDivElement>(null)
+  const viewRef = useRef<EditorView | null>(null)
   const onChangeRef = useRef(props.onChange)
   const onRunRef = useRef(props.onRun)
   onChangeRef.current = props.onChange
@@ -46,10 +47,25 @@ export function SqlEditor(props: {
       ]
     })
     const view = new EditorView({ state, parent: host.current })
-    return () => view.destroy()
+    viewRef.current = view
+    return () => {
+      view.destroy()
+      viewRef.current = null
+    }
     // Recreate on connection change so the schema is rebound. value is the
     // initial doc only (CodeMirror owns the doc after mount).
   }, [props.connectionId])
+
+  // Reconcile external value changes (Format, load from history/saved) that the
+  // editor didn't originate. A programmatic replace re-fires onChange with the
+  // same string, so props.value converges and this won't loop.
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const current = view.state.doc.toString()
+    if (props.value !== current)
+      view.dispatch({ changes: { from: 0, to: current.length, insert: props.value } })
+  }, [props.value])
 
   return <div ref={host} className="h-full overflow-auto border border-border rounded" />
 }
