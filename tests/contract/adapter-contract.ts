@@ -165,5 +165,73 @@ export function runAdapterContractTests(
       const locks = await adapter.serverStats.getLocks()
       expect(Array.isArray(locks)).toBe(true)
     })
+
+    // Runs LAST so the mutations below don't disturb the read assertions above.
+    it('data mutator: update/insert/delete apply, and a bad batch rolls back', async () => {
+      if (!adapter.dataMutator) return
+      const s = expected.schema
+
+      await adapter.dataMutator.apply([
+        {
+          kind: 'update',
+          schema: s,
+          table: 'users',
+          pk: [{ column: 'id', value: 1 }],
+          set: [{ column: 'name', value: 'Zed' }]
+        }
+      ])
+      const afterUpdate = await adapter.executeQuery(`SELECT name FROM ${s}.users WHERE id = 1`)
+      expect(afterUpdate.rows[0]?.[0]).toBe('Zed')
+
+      await adapter.dataMutator.apply([
+        {
+          kind: 'insert',
+          schema: s,
+          table: 'users',
+          values: [
+            { column: 'email', value: 'zzz@example.com' },
+            { column: 'name', value: 'Zzz' }
+          ]
+        }
+      ])
+      const inserted = await adapter.executeQuery(
+        `SELECT id FROM ${s}.users WHERE email = 'zzz@example.com'`
+      )
+      const zid = inserted.rows[0]?.[0]
+      expect(zid).toBeDefined()
+
+      await adapter.dataMutator.apply([
+        { kind: 'delete', schema: s, table: 'users', pk: [{ column: 'id', value: zid }] }
+      ])
+      const gone = await adapter.executeQuery(
+        `SELECT count(*) FROM ${s}.users WHERE email = 'zzz@example.com'`
+      )
+      expect(Number(gone.rows[0]?.[0])).toBe(0)
+
+      // A valid update followed by a UNIQUE(email)-violating insert must roll
+      // the whole batch back — the update must not persist.
+      await expect(
+        adapter.dataMutator.apply([
+          {
+            kind: 'update',
+            schema: s,
+            table: 'users',
+            pk: [{ column: 'id', value: 1 }],
+            set: [{ column: 'name', value: 'RolledBack' }]
+          },
+          {
+            kind: 'insert',
+            schema: s,
+            table: 'users',
+            values: [
+              { column: 'email', value: 'user2@example.com' },
+              { column: 'name', value: 'Dup' }
+            ]
+          }
+        ])
+      ).rejects.toThrow()
+      const rolled = await adapter.executeQuery(`SELECT name FROM ${s}.users WHERE id = 1`)
+      expect(rolled.rows[0]?.[0]).not.toBe('RolledBack')
+    })
   })
 }
