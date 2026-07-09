@@ -222,6 +222,9 @@ export function buildDdl(change: DdlChange, dialect: Dialect, context?: TableStr
       return [`CREATE DATABASE ${qi(change.name)}`]
     case 'dropDatabase':
       return [`DROP DATABASE ${qi(change.name)}`]
+    default:
+      // createView/dropView land in MA6 Task 2.
+      throw new Error(`Unsupported DDL change: ${(change as DdlChange).kind}`)
   }
 }
 

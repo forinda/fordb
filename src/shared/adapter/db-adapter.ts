@@ -12,6 +12,7 @@ import type { ServerStatsProvider } from './stats-types'
 import type { DataMutator } from './mutation-types'
 import type { DataBrowser } from './browse-types'
 import type { SchemaEditor } from './schema-types'
+import type { ObjectBrowser } from './object-types'
 
 /**
  * Contract implemented by every engine adapter (db-host side) and by the
@@ -52,4 +53,7 @@ export interface DbAdapter {
 
   /** Optional structure/DDL capability (Postgres full; SQLite non-rebuild ops). */
   readonly schemaEditor?: SchemaEditor
+
+  /** Optional object browser (views/functions/triggers). */
+  readonly objects?: ObjectBrowser
 }
