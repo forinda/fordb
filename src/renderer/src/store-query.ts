@@ -43,10 +43,15 @@ function tabId(): string {
   return `t${++seq}`
 }
 
+export type PickerKind = 'history' | 'saved' | 'save' | null
+
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
   mainView: 'query' | 'dashboard'
+  picker: PickerKind
+  setPicker: (p: PickerKind) => void
+  loadIntoEditor: (sql: string) => void
   newTab: () => void
   closeTab: (id: string) => void
   setSql: (id: string, sql: string) => void
@@ -73,6 +78,22 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   tabs: [],
   activeTabId: null,
   mainView: 'query',
+  picker: null,
+  setPicker: (p) => set({ picker: p }),
+  loadIntoEditor: (sql) => {
+    const s = get()
+    const active = s.tabs.find((t) => t.id === s.activeTabId)
+    if (active && active.kind === 'query') {
+      get().setSql(active.id, sql)
+      return
+    }
+    // Active tab isn't an editor (data/structure/explain) → open a fresh one.
+    const id = tabId()
+    set((st) => ({
+      tabs: [...st.tabs, { id, sql, status: 'idle', kind: 'query' }],
+      activeTabId: id
+    }))
+  },
   setMainView: (v) => set({ mainView: v }),
   newTab: () => {
     const t: QueryTab = { id: tabId(), sql: '', status: 'idle', kind: 'query' }
@@ -278,6 +299,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         // A non-SELECT may have been DDL — the schema could have changed.
         void invalidateIntrospection(queryClient, connId)
       }
+      // Record the successful run in the per-profile history (fire-and-forget).
+      const profileId = useConnStore.getState().activeProfileId
+      if (profileId) void window.fordb.queries.historyAdd(profileId, tab.sql)
     } catch (err) {
       const cur = get().tabs.find((t) => t.id === id)?.source
       void cur?.dispose()

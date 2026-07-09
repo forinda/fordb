@@ -7,6 +7,7 @@ import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { DatabaseSwitcher } from './components/DatabaseSwitcher'
 import { ThemeToggle } from './components/ThemeToggle'
 import { QueryWorkbench } from './components/QueryWorkbench'
+import { QueryLibrary } from './components/QueryLibrary'
 import { ServerDashboard } from './components/ServerDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
@@ -93,6 +94,21 @@ export function App(): React.JSX.Element {
       label: 'Explain analyze',
       run: () => void useQueryStore.getState().openExplain(dialect, true)
     },
+    {
+      id: 'save-query',
+      label: 'Save query',
+      run: () => useQueryStore.getState().setPicker('save')
+    },
+    {
+      id: 'open-saved-query',
+      label: 'Open saved query',
+      run: () => useQueryStore.getState().setPicker('saved')
+    },
+    {
+      id: 'query-history',
+      label: 'Query history',
+      run: () => useQueryStore.getState().setPicker('history')
+    },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
     { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
@@ -173,6 +189,7 @@ export function App(): React.JSX.Element {
         </ResizablePanel>
       </ResizablePanelGroup>
       <CommandPalette commands={commands} />
+      <QueryLibrary />
     </div>
   )
 }
