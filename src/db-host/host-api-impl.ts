@@ -17,6 +17,7 @@ import type {
 } from '@shared/adapter/stats-types'
 import type { DataMutator, RowEdit } from '@shared/adapter/mutation-types'
 import type { DataBrowser, BrowseOptions } from '@shared/adapter/browse-types'
+import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -130,5 +131,20 @@ export class HostApiImpl implements HostApi {
   }
   openBrowse(id: ConnectionId, opts: BrowseOptions): Promise<OpenQueryResult> {
     return this.browser(id).openBrowse(opts)
+  }
+
+  private schema(id: ConnectionId): SchemaEditor {
+    const e = this.registry.get(id).schemaEditor
+    if (!e) throw new Error('Structure editing is not supported by this engine')
+    return e
+  }
+  async schemaEditSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).schemaEditor != null
+  }
+  async schemaOps(id: ConnectionId): Promise<SchemaOps> {
+    return this.schema(id).ops
+  }
+  applyDdl(id: ConnectionId, statements: string[]): Promise<void> {
+    return this.schema(id).applyDdl(statements)
   }
 }
