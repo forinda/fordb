@@ -10,6 +10,7 @@ import type {
 } from './types'
 import type { ServerStatsProvider } from './stats-types'
 import type { DataMutator } from './mutation-types'
+import type { DataBrowser } from './browse-types'
 
 /**
  * Contract implemented by every engine adapter (db-host side) and by the
@@ -44,4 +45,7 @@ export interface DbAdapter {
 
   /** Optional data-write capability (Postgres + SQLite). */
   readonly dataMutator?: DataMutator
+
+  /** Optional structured-browse capability (Postgres + SQLite). */
+  readonly dataBrowser?: DataBrowser
 }
