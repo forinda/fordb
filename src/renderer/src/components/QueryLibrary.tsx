@@ -28,12 +28,29 @@ export function QueryLibrary(): React.JSX.Element | null {
   useEffect(() => {
     if (!profileId) return
     setName('')
+    // Ignore a stale response if picker/profile changes before it resolves.
+    let live = true
     if (picker === 'history')
       void window.fordb.queries
         .historyList(profileId)
-        .then((h) => setItems(h.map((e) => ({ label: firstLine(e.sql), sql: e.sql }))))
+        .then((h) => {
+          if (live) setItems(h.map((e) => ({ label: firstLine(e.sql), sql: e.sql })))
+        })
+        .catch(() => {
+          if (live) setItems([])
+        })
     else if (picker === 'saved')
-      void window.fordb.queries.savedList(profileId).then((s) => setItems(savedItems(s)))
+      void window.fordb.queries
+        .savedList(profileId)
+        .then((s) => {
+          if (live) setItems(savedItems(s))
+        })
+        .catch(() => {
+          if (live) setItems([])
+        })
+    return () => {
+      live = false
+    }
   }, [picker, profileId])
 
   if (!picker || !profileId) return null
@@ -96,6 +113,7 @@ export function QueryLibrary(): React.JSX.Element | null {
                 .deleteSaved(profileId, id)
                 .then(() => window.fordb.queries.savedList(profileId))
                 .then((s) => setItems(savedItems(s)))
+                .catch(() => {})
           : undefined
       }
     />

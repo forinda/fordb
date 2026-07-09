@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { QueryLibraryStore } from '../../src/main/query-library-store'
@@ -31,5 +31,20 @@ describe('QueryLibraryStore', () => {
   it('missing file reads as empty', async () => {
     expect(await store.listHistory('nope')).toEqual([])
     expect(await store.listSaved('nope')).toEqual([])
+  })
+  it('concurrent addHistory does not lose entries (serialized RMW)', async () => {
+    await Promise.all(Array.from({ length: 20 }, (_, i) => store.addHistory('p1', `c${i}`)))
+    // All 20 distinct SQLs must survive despite firing concurrently.
+    const sqls = (await store.listHistory('p1')).map((h) => h.sql)
+    expect(new Set(sqls).size).toBe(20)
+  })
+  it('corrupt file reads as empty instead of throwing', async () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'fordb-ql-')), 'bad.json')
+    writeFileSync(file, '{ not valid json', 'utf8')
+    const s = new QueryLibraryStore(file)
+    expect(await s.listHistory('p1')).toEqual([])
+    // A subsequent write recovers the file to valid JSON.
+    await s.addHistory('p1', 'X')
+    expect((await s.listHistory('p1')).map((h) => h.sql)).toEqual(['X'])
   })
 })
