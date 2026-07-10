@@ -20,6 +20,12 @@ import type { DataBrowser, BrowseOptions } from '@shared/adapter/browse-types'
 import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectBrowser, ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import type { ServerAdmin, RoleInfo, GrantInfo, SettingRow } from '@shared/adapter/admin-types'
+import type {
+  DocumentQuery,
+  DocsPage,
+  FindOptions,
+  OpenDocsResult
+} from '@shared/adapter/document-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -200,5 +206,37 @@ export class HostApiImpl implements HostApi {
   }
   serverSettings(id: ConnectionId): Promise<SettingRow[]> {
     return this.admin(id).serverSettings()
+  }
+
+  private docq(id: ConnectionId): DocumentQuery {
+    const q = this.registry.get(id).documentQuery
+    if (!q) throw new Error('Document queries are not supported by this engine')
+    return q
+  }
+  async documentQuerySupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).documentQuery != null
+  }
+  findDocs(
+    id: ConnectionId,
+    coll: string,
+    filter: Record<string, unknown>,
+    opts: FindOptions,
+    pageSize: number
+  ): Promise<OpenDocsResult> {
+    return this.docq(id).find(coll, filter, opts, pageSize)
+  }
+  aggregateDocs(
+    id: ConnectionId,
+    coll: string,
+    pipeline: Record<string, unknown>[],
+    pageSize: number
+  ): Promise<OpenDocsResult> {
+    return this.docq(id).aggregate(coll, pipeline, pageSize)
+  }
+  fetchDocs(id: ConnectionId, queryId: string): Promise<DocsPage> {
+    return this.docq(id).fetchDocs(queryId)
+  }
+  closeDocs(id: ConnectionId, queryId: string): Promise<void> {
+    return this.docq(id).closeDocs(queryId)
   }
 }

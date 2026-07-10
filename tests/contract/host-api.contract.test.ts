@@ -5,12 +5,14 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ConnectionRegistry } from '../../src/db-host/connection-registry'
 import { HostApiImpl } from '../../src/db-host/host-api-impl'
-import { PostgresAdapter } from '../../src/db-host/postgres/postgres-adapter'
+import { adapterForEngine } from '../../src/db-host/adapter-factory'
 import { serveRpc } from '../../src/shared/rpc/server'
 import { createRpcClient } from '../../src/shared/rpc/client'
 import type { PortLike } from '../../src/shared/rpc/protocol'
 import type { HostApi } from '../../src/shared/host/host-api'
-import type { ConnectionProfile } from '../../src/shared/adapter/types'
+import type { ConnectionProfile, MongoProfile } from '../../src/shared/adapter/types'
+import { seedMongoFixture } from './mongo-fixture'
+import { buildMongoUri } from '../../src/db-host/mongo/mongo-config'
 
 const profile: ConnectionProfile = {
   id: 'p1',
@@ -23,6 +25,14 @@ const profile: ConnectionProfile = {
   password: 'fordb'
 }
 const badProfile: ConnectionProfile = { ...profile, password: 'wrong' }
+
+const mongoProfile: MongoProfile = {
+  id: 'm',
+  name: 'mongo',
+  engine: 'mongodb',
+  uri: 'mongodb://localhost:27027/',
+  database: 'app'
+}
 
 function nodePort(p: import('node:worker_threads').MessagePort): PortLike {
   return { postMessage: (m) => p.postMessage(m), onMessage: (cb) => p.on('message', cb) }
@@ -39,6 +49,9 @@ beforeAll(async () => {
   await c.connect()
   await c.query(readFileSync(join(__dirname, 'fixture.sql'), 'utf8'))
   await c.end()
+  // Seed the Mongo fixture too, so this file's documentQuery assertions pass
+  // when run in isolation (not just as part of the full `test:contract` run).
+  await seedMongoFixture(buildMongoUri(mongoProfile))
 })
 
 describe('HostApi over RPC', () => {
@@ -49,7 +62,7 @@ describe('HostApi over RPC', () => {
   beforeAll(() => {
     let n = 0
     registry = new ConnectionRegistry(
-      () => new PostgresAdapter(),
+      (engine) => adapterForEngine(engine),
       () => `c${++n}`
     )
     const { port1, port2 } = new MessageChannel()
@@ -185,6 +198,18 @@ describe('HostApi over RPC', () => {
     ).toBe(true)
     expect(await client.cancelBackend(id, 0)).toBe(false)
     expect(await client.terminateBackend(id, 0)).toBe(false)
+    // Postgres has no documentQuery capability — pin the negative here.
+    expect(await client.documentQuerySupported(id)).toBe(false)
     await client.closeConnection(id)
+  })
+
+  it('exposes documentQuery over the HostApi when supported', async () => {
+    const mid = await client.openConnection(mongoProfile)
+    expect(await client.documentQuerySupported(mid)).toBe(true)
+    const open = await client.findDocs(mid, 'orders', { status: 'open' }, { limit: 10 }, 10)
+    const page = await client.fetchDocs(mid, open.queryId)
+    expect(page.docs.length).toBe(10)
+    await client.closeDocs(mid, open.queryId)
+    await client.closeConnection(mid)
   })
 })
