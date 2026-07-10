@@ -20,6 +20,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resiz
 import { stringifyCsv } from '@shared/csv/csv'
 import { cmTheme, editorHighlight } from '../query/cm-theme'
 import { useThemeStore } from '../store-theme'
+import { useDocumentQuerySupported } from '../query/documents'
 
 const cellStr = (v: unknown): string => (v === null || v === undefined ? '' : String(v))
 
@@ -183,6 +184,7 @@ export function QueryWorkbench(): React.JSX.Element {
   const openExplain = useQueryStore((s) => s.openExplain)
   const setPicker = useQueryStore((s) => s.setPicker)
   const { dialect, sqlLang } = useDialect()
+  const docSupported = useDocumentQuerySupported(connId).data ?? false
   const tab = tabs.find((t) => t.id === activeId)
 
   useEffect(() => {
@@ -260,6 +262,23 @@ export function QueryWorkbench(): React.JSX.Element {
   // instead of the SQL editor/grid below. Relational query tabs (no `doc`)
   // fall through unchanged.
   if (tab.doc) return <DocumentWorkbench key={tab.id} tab={tab} />
+
+  // Document-mode (MongoDB) connection but the tab is a plain default tab
+  // (no doc attached yet — that only happens via openCollection). The SQL
+  // workbench and its toolbar (Run/Explain/Export/Save/History) don't apply
+  // to Mongo; show a hint to use the sidebar instead of a dead SQL editor.
+  if (docSupported) {
+    return (
+      <div className="flex flex-col h-full">
+        <QueryTabs />
+        <div className="flex-1 min-h-0 flex items-center justify-center p-4">
+          <p className="text-muted-foreground text-center max-w-sm">
+            Select a collection from the sidebar to query documents.
+          </p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col h-full">
