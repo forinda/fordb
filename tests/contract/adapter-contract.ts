@@ -295,6 +295,18 @@ export function runAdapterContractTests(
       expect((await adapter.objects.list(s, 'view')).some((v) => v.name === 'ma6_v')).toBe(false)
     })
 
+    it('server admin: roles, settings, grants, cancel/terminate a bogus pid', async () => {
+      if (!adapter.serverAdmin) return
+      const roles = await adapter.serverAdmin.listRoles()
+      expect(roles.some((r) => r.name === 'fordb')).toBe(true)
+      const settings = await adapter.serverAdmin.serverSettings()
+      expect(settings.some((x) => x.name === 'max_connections')).toBe(true)
+      expect(Array.isArray(await adapter.serverAdmin.roleGrants('fordb'))).toBe(true)
+      // No backend with pid 0 → false, not a throw.
+      expect(await adapter.serverAdmin.cancelBackend(0)).toBe(false)
+      expect(await adapter.serverAdmin.terminateBackend(0)).toBe(false)
+    })
+
     it('executes a buffered query with fields and rows', async () => {
       const r = await adapter.executeQuery(
         `SELECT id, email FROM ${expected.schema}.users ORDER BY id LIMIT 3`
