@@ -73,6 +73,16 @@ contextBridge.exposeInMainWorld('fordb', {
     close: (connectionId: string): Promise<void> =>
       ipcRenderer.invoke('connection:close', connectionId)
   },
+  platform: process.platform as 'darwin' | 'win32' | 'linux',
+  windowControls: {
+    minimize: (): void => ipcRenderer.send('window:minimize'),
+    maximize: (): void => ipcRenderer.send('window:maximize'),
+    close: (): void => ipcRenderer.send('window:close'),
+    isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized'),
+    onMaximizeChanged: (cb: (max: boolean) => void): void => {
+      ipcRenderer.on('window:maximize-changed', (_e, max: boolean) => cb(max))
+    }
+  },
   appearance: {
     // sendSync runs at preload load, before the renderer's scripts — so the
     // renderer entry can stamp the <html> theme class before React mounts.
