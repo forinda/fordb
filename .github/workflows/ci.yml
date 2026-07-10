@@ -31,18 +31,6 @@ jobs:
       - run: pnpm build
   contract:
     runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16-alpine
-        env:
-          POSTGRES_USER: fordb
-          POSTGRES_PASSWORD: fordb
-          POSTGRES_DB: fordb_test
-        ports:
-          - 54329:5432
-        options: >-
-          --health-cmd "pg_isready -U fordb -d fordb_test"
-          --health-interval 2s --health-timeout 2s --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -50,4 +38,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # Bring up ALL contract services (postgres + libsql + mongo) from the
+      # same compose file the local `pnpm db:up` uses — the previous
+      # postgres-only `services:` block left the SQLite-remote/replica and
+      # MongoDB contract suites with no server, failing the job.
+      - run: pnpm db:up
       - run: pnpm test:contract
+      - if: always()
+        run: pnpm db:down
