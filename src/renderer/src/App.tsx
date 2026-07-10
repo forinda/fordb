@@ -342,10 +342,6 @@ function ConnectionsScreen(props: {
               profile={props.form.profile}
               onSaved={() => props.setForm(null)}
               onCancel={() => props.setForm(null)}
-              onConnect={(connectionId, profileId, database) => {
-                props.setForm(null)
-                props.onConnect(connectionId, profileId, database)
-              }}
             />
           ) : selected ? (
             <ConnectionDetails

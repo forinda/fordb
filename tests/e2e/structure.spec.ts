@@ -22,11 +22,10 @@ test('view structure and add a column (previewed)', async () => {
   win.on('dialog', (d) => void d.accept()) // auto-confirm the DDL preview
 
   await win.getByText('+ New connection').click()
-  await win.getByRole('combobox', { name: 'Database engine' }).click()
-  await win.getByRole('option', { name: 'SQLite' }).click()
+  await win.getByRole('radio', { name: 'SQLite' }).click()
   await win.getByPlaceholder('Name', { exact: true }).fill('struct-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
-  await win.getByText('Save').click()
+  await win.getByText('Test & Save').click()
   // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('struct-sqlite').click()
   await win.getByText('Connect', { exact: true }).click()
