@@ -7,6 +7,8 @@ import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { DatabaseSwitcher } from './components/DatabaseSwitcher'
 import { TitleBar } from './components/TitleBar'
 import { StatusBar } from './components/StatusBar'
+import { ConnectingOverlay } from './components/ConnectingOverlay'
+import { RunToast } from './components/RunToast'
 import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
@@ -307,10 +309,12 @@ export function App(): React.JSX.Element {
         )}
       </div>
       <StatusBar />
-      <CommandPalette commands={commands} />
+      <CommandPalette commands={commands} onConnect={connectTo} />
       <QueryLibrary />
       <CsvImportDialog />
       <ImportErrorBanner />
+      <ConnectingOverlay />
+      <RunToast />
     </div>
   )
 }
