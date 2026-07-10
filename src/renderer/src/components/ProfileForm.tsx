@@ -17,6 +17,9 @@ export function ProfileForm(props: {
   profile?: ConnectionProfile
   onSaved: () => void
   onCancel: () => void
+  /** When provided, the form offers a primary Connect action: save the
+   *  profile + secrets, open the connection, and hand back the ids. */
+  onConnect?: (connectionId: string, profileId: string, database: string | null) => void
 }): React.JSX.Element {
   const p = props.profile
   // Postgres-only view of the edited profile, used to seed the PG field state.
@@ -187,6 +190,21 @@ export function ProfileForm(props: {
     await window.fordb.profiles.save(build(), secrets())
     invalidateProfiles()
     props.onSaved()
+  }
+  async function saveAndConnect(): Promise<void> {
+    const profile = build()
+    await window.fordb.profiles.save(profile, secrets())
+    invalidateProfiles()
+    try {
+      const connectionId = await window.fordb.connection.open(profile.id)
+      props.onConnect?.(
+        connectionId,
+        profile.id,
+        profile.engine === 'postgres' ? profile.database : null
+      )
+    } catch (err) {
+      setTestMsg(err instanceof Error ? err.message : String(err))
+    }
   }
   async function test(): Promise<void> {
     setTestMsg('testing…')
@@ -469,7 +487,10 @@ export function ProfileForm(props: {
       )}
 
       <div className="flex gap-2 mt-2">
-        <Button onClick={() => void save()}>Save</Button>
+        {props.onConnect && <Button onClick={() => void saveAndConnect()}>Connect</Button>}
+        <Button variant={props.onConnect ? 'outline' : 'default'} onClick={() => void save()}>
+          Save
+        </Button>
         <Button variant="outline" onClick={() => void test()}>
           Test
         </Button>
