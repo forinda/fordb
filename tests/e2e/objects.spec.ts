@@ -29,7 +29,9 @@ test('view definition + create/drop view', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('obj-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('obj-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
   // Expand the Views category folder and open the view's definition.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
-import { ConnectionManager } from './components/ConnectionManager'
+import { ConnectionManager, ConnectionDetails } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
@@ -19,6 +19,8 @@ import { invalidateIntrospection } from './query/introspection'
 import { useServerStatsSupported } from './query/stats'
 import { useMongoStatsSupported } from './query/mongo-stats'
 import { useConnStore } from './store'
+import { useProfiles, useInvalidateProfiles } from './query/profiles'
+import { connectionLabel } from '@shared/connection-label'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
 import { useDialect } from './query/use-dialect'
@@ -35,6 +37,9 @@ export function App(): React.JSX.Element {
   // Profile form overlay on the Connections screen — independent of the
   // connection lifecycle so editing a profile never tears down the session.
   const [form, setForm] = useState<{ profile?: ConnectionProfile } | null>(null)
+  // Selected (not necessarily connected) profile — drives the right details
+  // panel on the Connections screen (Dialect: connect happens there).
+  const [selectedId, setSelectedId] = useState<string | null>(null)
   const setActive = useConnStore((s) => s.setActive)
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
@@ -203,28 +208,13 @@ export function App(): React.JSX.Element {
           /* Connections screen: the manager IS the page; the profile form
              opens as a 340px right panel beside it (Dialect design) with a
              direct Connect action. */
-          <div className="flex h-full min-h-0">
-            <div className="min-w-0 flex-1">
-              <ConnectionManager
-                onNew={() => setForm({})}
-                onEdit={(profile) => setForm({ profile })}
-                onConnect={connectTo}
-              />
-            </div>
-            {form && (
-              <aside className="w-[340px] flex-none overflow-auto border-l border-border bg-card">
-                <ProfileForm
-                  profile={form.profile}
-                  onSaved={() => setForm(null)}
-                  onCancel={() => setForm(null)}
-                  onConnect={(connectionId, profileId, database) => {
-                    setForm(null)
-                    connectTo(connectionId, profileId, database)
-                  }}
-                />
-              </aside>
-            )}
-          </div>
+          <ConnectionsScreen
+            form={form}
+            setForm={setForm}
+            selectedId={selectedId}
+            setSelectedId={setSelectedId}
+            onConnect={connectTo}
+          />
         ) : (
           <ResizablePanelGroup direction="horizontal">
             {/* Editor sidebar: active-connection bar + schema tree. Switching
@@ -313,6 +303,74 @@ export function App(): React.JSX.Element {
       <QueryLibrary />
       <CsvImportDialog />
       <ImportErrorBanner />
+    </div>
+  )
+}
+
+/** Connections screen: manager + a 340px right panel hosting the profile
+ *  form (new/edit) or the selected profile's details (Connect lives there). */
+function ConnectionsScreen(props: {
+  form: { profile?: ConnectionProfile } | null
+  setForm: (f: { profile?: ConnectionProfile } | null) => void
+  selectedId: string | null
+  setSelectedId: (id: string | null) => void
+  onConnect: (connectionId: string, profileId: string, database: string | null) => void
+}): React.JSX.Element {
+  const { data: profiles = [] } = useProfiles()
+  const invalidateProfiles = useInvalidateProfiles()
+  const activeProfileId = useConnStore((s) => s.activeProfileId)
+  const activeConnectionId = useConnStore((s) => s.activeConnectionId)
+  const clearActive = useConnStore((s) => s.clearActive)
+  const selected = profiles.find((p) => p.id === props.selectedId) ?? null
+
+  return (
+    <div className="flex h-full min-h-0">
+      <div className="min-w-0 flex-1">
+        <ConnectionManager
+          selectedId={props.selectedId}
+          onSelect={(p) => {
+            props.setSelectedId(p.id)
+            props.setForm(null)
+          }}
+          onNew={() => props.setForm({})}
+        />
+      </div>
+      {(props.form || selected) && (
+        <aside className="w-[340px] flex-none overflow-auto border-l border-border bg-card">
+          {props.form ? (
+            <ProfileForm
+              profile={props.form.profile}
+              onSaved={() => props.setForm(null)}
+              onCancel={() => props.setForm(null)}
+              onConnect={(connectionId, profileId, database) => {
+                props.setForm(null)
+                props.onConnect(connectionId, profileId, database)
+              }}
+            />
+          ) : selected ? (
+            <ConnectionDetails
+              profile={selected}
+              onConnect={props.onConnect}
+              onEdit={() => props.setForm({ profile: selected })}
+              onDelete={() => {
+                const isActiveProfile = selected.id === activeProfileId
+                const msg = isActiveProfile
+                  ? `Delete "${connectionLabel(selected)}"? This disconnects the current session and removes its stored secrets.`
+                  : `Delete "${connectionLabel(selected)}"? This removes its stored secrets.`
+                if (!window.confirm(msg)) return
+                // Deleting the active profile must not orphan the live session:
+                // close + clear before the profile (and keychain entry) go away.
+                if (isActiveProfile) {
+                  if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+                  clearActive()
+                }
+                props.setSelectedId(null)
+                void window.fordb.profiles.delete(selected.id).then(() => invalidateProfiles())
+              }}
+            />
+          ) : null}
+        </aside>
+      )}
     </div>
   )
 }

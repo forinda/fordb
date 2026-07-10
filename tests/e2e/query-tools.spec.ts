@@ -25,7 +25,9 @@ test('format, save + reopen, explain a query', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('qt-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save', { exact: true }).click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('qt-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   // Type lowercase SQL into the editor, then Format → uppercased keywords.
   const editor = win.locator('.cm-content')

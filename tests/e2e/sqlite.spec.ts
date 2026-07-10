@@ -31,7 +31,9 @@ test('create a sqlite connection, browse, run a query', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('e2e-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('e2e-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   // The schema tree shows the `main` namespace; expand it to reveal the table.
   await win.getByText('main', { exact: true }).click()

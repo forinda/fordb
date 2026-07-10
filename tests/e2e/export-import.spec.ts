@@ -45,7 +45,9 @@ test('export a table to SQL and import a CSV', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('ei-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('ei-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
 

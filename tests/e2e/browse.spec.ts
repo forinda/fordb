@@ -29,7 +29,9 @@ test('filter a table in the data grid', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('browse-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('browse-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
   await win.getByText('widgets').click() // single-click opens the data tab

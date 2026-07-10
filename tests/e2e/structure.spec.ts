@@ -27,7 +27,9 @@ test('view structure and add a column (previewed)', async () => {
   await win.getByPlaceholder('Name', { exact: true }).fill('struct-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('struct-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
   await win.getByText('widgets').click({ button: 'right' })

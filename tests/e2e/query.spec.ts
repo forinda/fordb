@@ -17,7 +17,9 @@ test('connect, run a query, see rows', async () => {
   await win.getByText('Test', { exact: true }).click()
   await expect(win.getByText('OK')).toBeVisible({ timeout: 15000 })
   await win.getByText('Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('local-q').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   // Type a query into the CodeMirror editor and run it.
   await win.locator('.cm-content').click()
