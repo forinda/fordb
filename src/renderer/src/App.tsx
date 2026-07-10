@@ -11,10 +11,12 @@ import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
 import { ServerDashboard } from './components/ServerDashboard'
+import { MongoDashboard } from './components/MongoDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
 import { useServerStatsSupported } from './query/stats'
+import { useMongoStatsSupported } from './query/mongo-stats'
 import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
@@ -52,6 +54,10 @@ export function App(): React.JSX.Element {
   const { dialect, sqlLang } = useDialect()
   // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
+  // Mongo has its own server-status dashboard (opcounters/connections/mem/repl)
+  // — mutually exclusive with the PG `statsSupported` gate above.
+  const mongoStatsSupported = useMongoStatsSupported(activeConnectionId).data ?? false
+  const dashboardSupported = statsSupported || mongoStatsSupported
   // Document-mode engines (MongoDB) have no SQL surface — hide the SQL-authoring
   // palette commands (Import SQL file, Explain, default SQL new-tab) so they
   // aren't dead affordances (M7 Phase-1 M3).
@@ -232,7 +238,7 @@ export function App(): React.JSX.Element {
             {view.kind === 'connected' && (
               <div className="flex h-full flex-col">
                 <div className="flex gap-1 border-b border-border p-1">
-                  {statsSupported && (
+                  {dashboardSupported && (
                     <button
                       aria-pressed={mainView === 'dashboard'}
                       className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
@@ -250,7 +256,9 @@ export function App(): React.JSX.Element {
                   </button>
                 </div>
                 <div className="min-h-0 flex-1">
-                  {mainView === 'dashboard' && statsSupported ? (
+                  {mainView === 'dashboard' && mongoStatsSupported ? (
+                    <MongoDashboard />
+                  ) : mainView === 'dashboard' && statsSupported ? (
                     <ServerDashboard />
                   ) : (
                     <QueryWorkbench />
