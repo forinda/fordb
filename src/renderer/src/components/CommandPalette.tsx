@@ -16,8 +16,17 @@ export function CommandPalette(props: { commands: Command[] }): React.JSX.Elemen
         setOpen((v) => !v)
       }
     }
+    // The sidebar's search row (and anything else) can toggle the palette
+    // without synthesizing keystrokes.
+    function onToggle(): void {
+      setOpen((v) => !v)
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('fordb:palette-toggle', onToggle)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('fordb:palette-toggle', onToggle)
+    }
   }, [])
   return (
     <CommandDialog open={open} onOpenChange={setOpen}>
