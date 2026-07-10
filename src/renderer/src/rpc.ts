@@ -32,6 +32,14 @@ declare global {
         open: (profileId: string, database?: string) => Promise<string>
         close: (connectionId: string) => Promise<void>
       }
+      platform: 'darwin' | 'win32' | 'linux'
+      windowControls: {
+        minimize: () => void
+        maximize: () => void
+        close: () => void
+        isMaximized: () => Promise<boolean>
+        onMaximizeChanged: (cb: (max: boolean) => void) => void
+      }
       appearance: {
         initialTheme: 'light' | 'dark'
         getMode: () => Promise<'light' | 'dark' | 'system'>
