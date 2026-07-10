@@ -216,7 +216,12 @@ export function App(): React.JSX.Element {
           <ResizablePanelGroup direction="horizontal">
             {/* Editor sidebar: active-connection bar + schema tree. Switching
             connections happens on the title bar's Connections screen. */}
-            <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
+            <ResizablePanel
+              defaultSize={18}
+              minSize={12}
+              maxSize={40}
+              className="flex flex-col bg-surface-1"
+            >
               {view.kind === 'connected' ? (
                 <>
                   <ActiveConnectionBar
@@ -228,6 +233,15 @@ export function App(): React.JSX.Element {
                     }}
                   />
                   <div className="flex min-h-0 flex-1 flex-col">
+                    <button
+                      className="mx-2 mt-2 flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-1 text-xs text-muted-foreground hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
+                    >
+                      <span>Search…</span>
+                      <span className="rounded border border-border bg-background px-1 text-[10px]">
+                        ⌘K
+                      </span>
+                    </button>
                     <DatabaseSwitcher />
                     <div className="flex justify-end border-b border-border px-2 py-1">
                       <RefreshSchemaButton />
