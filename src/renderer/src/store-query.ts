@@ -11,12 +11,15 @@ import { buildInsert } from '@shared/sql/build-insert'
 import { quoteIdent } from '@shared/mutation/build-edits'
 import { splitStatements } from '@shared/sql/split-statements'
 import { parseCsv } from '@shared/csv/csv'
+import { parseRelaxed } from '@shared/mongo/relaxed-json'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { buildDdl } from '@shared/ddl/build-ddl'
+import { DocumentResultSource } from './query/documents'
 
 const PAGE_SIZE = 1000
+const DOC_PAGE_SIZE = 50
 
 export type TabStatus = 'idle' | 'running' | 'done' | 'error'
 export interface QueryTab {
@@ -45,6 +48,18 @@ export interface QueryTab {
   }
   /** Present on structure tabs — the table whose DDL structure is shown/edited. */
   structure?: { schema: string; table: string }
+  /** Present on document-mode tabs (MongoDB) — the collection + relaxed-JSON
+   *  query text run() parses via parseRelaxed before dispatch. */
+  doc?: {
+    collection: string
+    mode: 'find' | 'aggregate'
+    text: string
+    projection?: string
+    sort?: string
+    limit?: number
+  }
+  /** Accumulates cursor-paged documents for a document-mode tab's run. */
+  docSource?: DocumentResultSource
 }
 
 let seq = 0
@@ -71,6 +86,9 @@ interface QueryState {
   setMainView: (v: 'query' | 'dashboard') => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
+  /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
+  openCollection: (collection: string) => Promise<void>
+  setDoc: (id: string, patch: Partial<NonNullable<QueryTab['doc']>>) => void
   openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
@@ -209,6 +227,23 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       )
     }))
     void get().run(tabId)
+  },
+  openCollection: async (collection) => {
+    const id = tabId()
+    const tab: QueryTab = {
+      id,
+      sql: `${collection}.find()`,
+      status: 'idle',
+      kind: 'query',
+      doc: { collection, mode: 'find', text: '{}' }
+    }
+    set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+    await get().run(id)
+  },
+  setDoc: (id, docPatch) => {
+    set((s) => ({
+      tabs: s.tabs.map((t) => (t.id === id && t.doc ? { ...t, doc: { ...t.doc, ...docPatch } } : t))
+    }))
   },
   openFkTarget: async (schema, refTable, value) => {
     const connId = useConnStore.getState().activeConnectionId
@@ -360,6 +395,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   closeTab: (id) => {
     const tab = get().tabs.find((t) => t.id === id)
     void tab?.source?.dispose()
+    void tab?.docSource?.dispose()
     set((s) => {
       const tabs = s.tabs.filter((t) => t.id !== id)
       return { tabs, activeTabId: s.activeTabId === id ? (tabs[0]?.id ?? null) : s.activeTabId }
@@ -372,8 +408,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const tab = get().tabs.find((t) => t.id === id)
     if (!connId || !tab) return
     void tab.source?.dispose()
+    void tab.docSource?.dispose()
     set((s) => ({
-      tabs: patch(s.tabs, id, { status: 'running', source: undefined, message: undefined })
+      tabs: patch(s.tabs, id, {
+        status: 'running',
+        source: undefined,
+        docSource: undefined,
+        message: undefined
+      })
     }))
     const started = performance.now()
     try {
@@ -410,6 +452,41 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         )
         set((s) => ({ tabs: patch(s.tabs, id, { source }) }))
         await source.ensureLoaded(0)
+        set((s) => ({
+          tabs: patch(s.tabs, id, { status: 'done', elapsedMs: performance.now() - started })
+        }))
+        return
+      }
+      if (tab.doc) {
+        const { collection, mode, text } = tab.doc
+        const parsed = parseRelaxed(text) // throws → caught below, shown as parse error
+        const open =
+          mode === 'find'
+            ? await api.findDocs(
+                connId,
+                collection,
+                parsed as Record<string, unknown>,
+                { limit: tab.doc.limit },
+                DOC_PAGE_SIZE
+              )
+            : await api.aggregateDocs(
+                connId,
+                collection,
+                parsed as Record<string, unknown>[],
+                DOC_PAGE_SIZE
+              )
+        const source = new DocumentResultSource(
+          {
+            fetchDocs: (q) => api.fetchDocs(connId, q),
+            closeDocs: (q) => api.closeDocs(connId, q)
+          },
+          open.queryId
+        )
+        // Store the source on the tab BEFORE awaiting the first page, so that a
+        // rejecting fetchDocs lands in catch with the source reachable (and
+        // therefore disposable) — otherwise the server cursor would leak.
+        set((s) => ({ tabs: patch(s.tabs, id, { docSource: source }) }))
+        await source.loadMore()
         set((s) => ({
           tabs: patch(s.tabs, id, { status: 'done', elapsedMs: performance.now() - started })
         }))
@@ -453,12 +530,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       const profileId = useConnStore.getState().activeProfileId
       if (profileId) void window.fordb.queries.historyAdd(profileId, tab.sql).catch(() => {})
     } catch (err) {
-      const cur = get().tabs.find((t) => t.id === id)?.source
-      void cur?.dispose()
+      const cur = get().tabs.find((t) => t.id === id)
+      void cur?.source?.dispose()
+      void cur?.docSource?.dispose()
       set((s) => ({
         tabs: patch(s.tabs, id, {
           status: 'error',
           source: undefined,
+          docSource: undefined,
           message: err instanceof Error ? err.message : String(err)
         })
       }))
@@ -470,7 +549,10 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     set((s) => ({ tabs: patch(s.tabs, id, { status: 'idle' }) }))
   },
   connectionLost: () => {
-    for (const t of get().tabs) void t.source?.dispose()
+    for (const t of get().tabs) {
+      void t.source?.dispose()
+      void t.docSource?.dispose()
+    }
     // Clear the active connection so connection-scoped polling (the server-stats
     // dashboard's refetchInterval hooks are enabled-gated on connId) stops
     // instead of looping forever against the now-dead db-host connection.
@@ -479,6 +561,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       tabs: s.tabs.map((t) => ({
         ...t,
         source: undefined,
+        docSource: undefined,
         status: 'error' as TabStatus,
         message: 'Connection lost — reconnect'
       }))
