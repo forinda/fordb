@@ -263,6 +263,19 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     }
   }
 
+  // Surface a browse failure (e.g. "Browsing is not supported by this engine"
+  // for a Mongo collection opened via the relational "Open data" path, or any
+  // other openBrowse rejection) instead of silently falling through to the
+  // empty "No data." state below.
+  if (tab.status === 'error')
+    return (
+      <div className="p-4">
+        <div className="rounded bg-destructive/10 p-2 text-sm text-destructive">
+          {tab.message ?? 'Failed to load data.'}
+        </div>
+      </div>
+    )
+
   if (!source || columns.length === 0)
     return <div className="p-4 text-muted-foreground">No data.</div>
 

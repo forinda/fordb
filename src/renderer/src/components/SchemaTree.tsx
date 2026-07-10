@@ -20,6 +20,7 @@ import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
+import { useDocumentQuerySupported } from '../query/documents'
 import {
   buildTree,
   invalidatedNodeId,
@@ -45,6 +46,9 @@ const CATEGORY_LABEL: Record<CategoryKind, string> = {
 export function SchemaTree(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
   const { data: schemas, isLoading, error } = useSchemas(connId)
+  // Document-mode engines (MongoDB) show collections as "table" nodes too, but a
+  // leaf click should open a document-query tab, not the relational data grid.
+  const { data: docSupported = false } = useDocumentQuerySupported(connId)
   const [childrenById, setChildrenById] = useState<Record<string, TreeNode[]>>({})
   // Right-click context menu (table or schema node) + read-only table-info dialog.
   const [menu, setMenu] = useState<
@@ -127,10 +131,17 @@ export function SchemaTree(): React.JSX.Element {
     }
     if (m.kind === 'table') {
       return [
-        {
-          label: 'Open data',
-          run: () => void useQueryStore.getState().openTable(m.schema, m.table)
-        },
+        // Document-mode connections (Mongo) open collections via the primary
+        // click into a document-query tab; the relational "Open data" path
+        // dead-ends there (openBrowse isn't supported), so hide it.
+        ...(docSupported
+          ? []
+          : [
+              {
+                label: 'Open data',
+                run: () => void useQueryStore.getState().openTable(m.schema, m.table)
+              }
+            ]),
         {
           label: 'Structure',
           run: () => useQueryStore.getState().openStructure(m.schema, m.table)
@@ -390,9 +401,10 @@ export function SchemaTree(): React.JSX.Element {
               // Primary click: a table opens its data tab; an object (view/function/
               // trigger) opens its definition; schema/category toggle their children.
               onClick={() => {
-                if (kind === 'table')
-                  void useQueryStore.getState().openTable(node.data.schema, node.data.name)
-                else if (isObject)
+                if (kind === 'table') {
+                  if (docSupported) void useQueryStore.getState().openCollection(node.data.name)
+                  else void useQueryStore.getState().openTable(node.data.schema, node.data.name)
+                } else if (isObject)
                   useQueryStore
                     .getState()
                     .openObjectDefinition(node.data.schema, kind as ObjectKind, node.data.name)

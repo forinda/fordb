@@ -167,7 +167,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   loadIntoEditor: (sql) => {
     const s = get()
     const active = s.tabs.find((t) => t.id === s.activeTabId)
-    if (active && active.kind === 'query') {
+    if (active && active.kind === 'query' && !active.doc) {
       get().setSql(active.id, sql)
       return
     }
@@ -291,8 +291,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   openExplain: async (dialect, analyze) => {
     const src = get().tabs.find((t) => t.id === get().activeTabId)
     // Only explain a real editor's SQL — a data/structure/explain tab's `sql` is
-    // an internal placeholder ("browse s.t", "structure s.t") that isn't runnable.
-    if (!src || src.kind !== 'query' || !src.sql.trim()) return
+    // an internal placeholder ("browse s.t", "structure s.t") that isn't runnable,
+    // and a document-mode tab's `sql` is a display label, not runnable SQL either.
+    if (!src || src.kind !== 'query' || src.doc || !src.sql.trim()) return
     const id = tabId()
     const tab: QueryTab = {
       id,
@@ -372,7 +373,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   formatActive: (sqlLang) => {
     const s = get()
     const tab = s.tabs.find((t) => t.id === s.activeTabId)
-    if (!tab || tab.kind !== 'query' || !tab.sql.trim()) return
+    if (!tab || tab.kind !== 'query' || tab.doc || !tab.sql.trim()) return
     // Lazy import keeps sql-formatter off the initial bundle path. A parse error
     // OR a chunk-load failure leaves the SQL untouched (best-effort prettify).
     void import('sql-formatter')
@@ -460,6 +461,15 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       if (tab.doc) {
         const { collection, mode, text } = tab.doc
         const parsed = parseRelaxed(text) // throws → caught below, shown as parse error
+        if (mode === 'aggregate' && !Array.isArray(parsed)) {
+          set((s) => ({
+            tabs: patch(s.tabs, id, {
+              status: 'error',
+              message: 'Aggregate pipeline must be a JSON array'
+            })
+          }))
+          return
+        }
         const open =
           mode === 'find'
             ? await api.findDocs(
