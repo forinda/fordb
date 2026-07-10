@@ -60,4 +60,7 @@ export interface DbAdapter {
 
   /** Optional server-administration capability (Postgres). */
   readonly serverAdmin?: ServerAdmin
+
+  /** Optional document query capability (MongoDB). */
+  readonly documentQuery?: import('./document-types').DocumentQuery
 }
