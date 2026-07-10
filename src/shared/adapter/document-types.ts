@@ -26,3 +26,13 @@ export interface DocumentQuery {
   fetchDocs(queryId: string): Promise<DocsPage>
   closeDocs(queryId: string): Promise<void>
 }
+
+export interface DocumentMutator {
+  insertOne(coll: string, doc: Record<string, unknown>): Promise<{ insertedId: unknown }>
+  updateById(
+    coll: string,
+    id: unknown,
+    patch: Record<string, unknown>
+  ): Promise<{ matched: number }>
+  deleteById(coll: string, id: unknown): Promise<{ deleted: number }>
+}

@@ -21,6 +21,7 @@ import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectBrowser, ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import type { ServerAdmin, RoleInfo, GrantInfo, SettingRow } from '@shared/adapter/admin-types'
 import type {
+  DocumentMutator,
   DocumentQuery,
   DocsPage,
   FindOptions,
@@ -240,5 +241,32 @@ export class HostApiImpl implements HostApi {
   }
   closeDocs(id: ConnectionId, queryId: string): Promise<void> {
     return this.docq(id).closeDocs(queryId)
+  }
+
+  private docmut(id: ConnectionId): DocumentMutator {
+    const m = this.registry.get(id).documentMutator
+    if (!m) throw new Error('Document writes are not supported by this engine')
+    return m
+  }
+  async documentMutatorSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).documentMutator != null
+  }
+  insertDoc(
+    id: ConnectionId,
+    coll: string,
+    doc: Record<string, unknown>
+  ): Promise<{ insertedId: unknown }> {
+    return this.docmut(id).insertOne(coll, doc)
+  }
+  updateDoc(
+    id: ConnectionId,
+    coll: string,
+    docId: unknown,
+    patch: Record<string, unknown>
+  ): Promise<{ matched: number }> {
+    return this.docmut(id).updateById(coll, docId, patch)
+  }
+  deleteDoc(id: ConnectionId, coll: string, docId: unknown): Promise<{ deleted: number }> {
+    return this.docmut(id).deleteById(coll, docId)
   }
 }
