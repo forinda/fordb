@@ -19,6 +19,7 @@ import { useConnStore } from './store'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
 import { useDialect } from './query/use-dialect'
+import { useDocumentQuerySupported } from './query/documents'
 import type { ConnectionProfile } from '@shared/adapter/types'
 // The global `Window.fordb` type is declared once in ./rpc.ts (imported for
 // its ambient `declare global` augmentation).
@@ -51,6 +52,10 @@ export function App(): React.JSX.Element {
   const { dialect, sqlLang } = useDialect()
   // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
+  // Document-mode engines (MongoDB) have no SQL surface — hide the SQL-authoring
+  // palette commands (Import SQL file, Explain, default SQL new-tab) so they
+  // aren't dead affordances (M7 Phase-1 M3).
+  const docSupported = useDocumentQuerySupported(activeConnectionId).data ?? false
 
   useEffect(() => {
     void useThemeStore.getState().init()
@@ -84,7 +89,18 @@ export function App(): React.JSX.Element {
         if (s.activeTabId) void s.cancel(s.activeTabId)
       }
     },
-    { id: 'new-query-tab', label: 'New query tab', run: () => useQueryStore.getState().newTab() },
+    // The default new-tab is a SQL editor — a dead affordance on a document-mode
+    // (Mongo) connection, which has no SQL surface. New doc tabs open only via
+    // clicking a collection in the schema tree (SchemaTree's openCollection).
+    ...(docSupported
+      ? []
+      : [
+          {
+            id: 'new-query-tab',
+            label: 'New query tab',
+            run: () => useQueryStore.getState().newTab()
+          }
+        ]),
     { id: 'show-dashboard', label: 'Show dashboard', run: () => setMainView('dashboard') },
     { id: 'show-query', label: 'Show query', run: () => setMainView('query') },
     {
@@ -99,22 +115,28 @@ export function App(): React.JSX.Element {
       label: 'Format SQL',
       run: () => useQueryStore.getState().formatActive(sqlLang)
     },
-    {
-      id: 'explain',
-      label: 'Explain',
-      run: () => void useQueryStore.getState().openExplain(dialect, false)
-    },
-    // EXPLAIN ANALYZE is Postgres-only (SQLite has no ANALYZE plan); hide the
-    // command for SQLite so it isn't a dead palette entry.
-    ...(dialect === 'pg'
-      ? [
+    // Explain (and Explain analyze) are SQL-only — hide entirely on a
+    // document-mode (Mongo) connection.
+    ...(docSupported
+      ? []
+      : [
           {
-            id: 'explain-analyze',
-            label: 'Explain analyze',
-            run: () => void useQueryStore.getState().openExplain(dialect, true)
-          }
-        ]
-      : []),
+            id: 'explain',
+            label: 'Explain',
+            run: () => void useQueryStore.getState().openExplain(dialect, false)
+          },
+          // EXPLAIN ANALYZE is Postgres-only (SQLite has no ANALYZE plan); hide the
+          // command for SQLite so it isn't a dead palette entry.
+          ...(dialect === 'pg'
+            ? [
+                {
+                  id: 'explain-analyze',
+                  label: 'Explain analyze',
+                  run: () => void useQueryStore.getState().openExplain(dialect, true)
+                }
+              ]
+            : [])
+        ]),
     {
       id: 'save-query',
       label: 'Save query',
@@ -130,11 +152,17 @@ export function App(): React.JSX.Element {
       label: 'Query history',
       run: () => useQueryStore.getState().setPicker('history')
     },
-    {
-      id: 'import-sql',
-      label: 'Import SQL file',
-      run: () => void useQueryStore.getState().importSqlFile()
-    },
+    // executeScript (SQL statements) has no equivalent on a document-mode
+    // (Mongo) connection — hide rather than surface a dead banner error.
+    ...(docSupported
+      ? []
+      : [
+          {
+            id: 'import-sql',
+            label: 'Import SQL file',
+            run: () => void useQueryStore.getState().importSqlFile()
+          }
+        ]),
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
     { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
