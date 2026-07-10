@@ -150,7 +150,7 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
           <ResizablePanel minSize={20}>
             <div className="h-full min-h-0">
               {tab.docSource ? (
-                <DocumentResults source={tab.docSource} elapsedMs={tab.elapsedMs} />
+                <DocumentResults source={tab.docSource} tabId={tab.id} elapsedMs={tab.elapsedMs} />
               ) : (
                 <div className="p-4 text-muted-foreground">Run a query to see results.</div>
               )}

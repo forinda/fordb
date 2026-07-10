@@ -11,3 +11,15 @@ export function diffSet(
   }
   return patch
 }
+
+/** The $set patch to send for a document edit, or `null` when there's
+ *  nothing to update. An empty `$set` is a silent no-op on the server, so the
+ *  caller (the document Edit UI) should short-circuit on `null` instead of
+ *  issuing the update. Pure — no engine access. */
+export function buildUpdatePatch(
+  original: Record<string, unknown>,
+  edited: Record<string, unknown>
+): Record<string, unknown> | null {
+  const patch = diffSet(original, edited)
+  return Object.keys(patch).length === 0 ? null : patch
+}

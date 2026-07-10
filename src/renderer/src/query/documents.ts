@@ -11,6 +11,17 @@ export function useDocumentQuerySupported(connId: string | null): UseQueryResult
   })
 }
 
+/** Whether the connection's engine exposes document writes (insert/update/
+ *  delete a single document by `_id`) — MongoDB yes, Postgres/SQLite no.
+ *  One-shot — no polling. Gates the Edit/Delete/Insert affordances. */
+export function useDocumentMutatorSupported(connId: string | null): UseQueryResult<boolean> {
+  return useQuery({
+    queryKey: ['conn', connId ?? 'none', 'docMutatorSupported'] as const,
+    queryFn: async () => (await hostApi()).documentMutatorSupported(connId!),
+    enabled: !!connId
+  })
+}
+
 interface DocsApi {
   fetchDocs(queryId: string): Promise<{ docs: Record<string, unknown>[]; done: boolean }>
   closeDocs(queryId: string): Promise<void>
