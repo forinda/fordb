@@ -135,7 +135,7 @@ function DocumentCard(props: {
   }
 
   return (
-    <div className="rounded border border-border p-2">
+    <div className="group rounded-xl border border-border bg-card p-2.5 shadow-[var(--shadow-raised)] hover:border-border-strong">
       <div className="mb-1 flex gap-1">
         <Button
           size="sm"
@@ -179,7 +179,9 @@ function DocumentCard(props: {
       ) : mode === 'tree' ? (
         <JsonView value={doc} />
       ) : (
-        <pre className="overflow-auto text-xs">{JSON.stringify(doc, null, 2)}</pre>
+        <pre className="overflow-auto font-mono text-xs leading-5 text-foreground-soft">
+          {JSON.stringify(doc, null, 2)}
+        </pre>
       )}
     </div>
   )
@@ -208,7 +210,7 @@ function InsertPanel(props: { tabId: string; onClose: () => void }): React.JSX.E
   }
 
   return (
-    <div className="mb-2 rounded border border-border p-2">
+    <div className="mb-2 rounded-xl border border-primary/40 bg-card p-2.5 shadow-[var(--shadow-raised)]">
       {error && <div className="mb-1 text-xs text-destructive">{error}</div>}
       <JsonEditor value={text} onChange={setText} />
       <div className="mt-1 flex gap-1">
@@ -255,7 +257,7 @@ export function DocumentResults(props: {
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex-1 min-h-0 overflow-auto p-2">
+      <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto bg-surface-2 p-3">
         {mutatorSupported && (
           <div className="mb-2">
             {inserting ? (

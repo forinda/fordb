@@ -4,7 +4,6 @@ import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
 import { basicSetup } from 'codemirror'
-import { useConnStore } from '../store'
 import { useQueryStore, type QueryTab } from '../store-query'
 import { SqlEditor } from './SqlEditor'
 import { ResultsGrid } from './ResultsGrid'
@@ -14,6 +13,9 @@ import { StructureView } from './StructureView'
 import { ExplainView } from './ExplainView'
 import { ObjectDefinitionView } from './ObjectDefinitionView'
 import { QueryTabs } from './QueryTabs'
+import { useIndexes } from '../query/introspection'
+import { useProfiles } from '../query/profiles'
+import { useConnStore } from '../store'
 import IconPlay from '~icons/lucide/play'
 import IconX from '~icons/lucide/x'
 import IconAlignLeft from '~icons/lucide/align-left'
@@ -112,6 +114,19 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
   const doc = tab.doc!
   const setDoc = useQueryStore((s) => s.setDoc)
   const run = useQueryStore((s) => s.run)
+  // Indexes side panel (Dialect Mongo view). The collection lives in the
+  // profile's default database — that's what documentQuery targets too.
+  const [showIndexes, setShowIndexes] = useState(false)
+  const connId = useConnStore((s) => s.activeConnectionId)
+  const activeProfileId = useConnStore((s) => s.activeProfileId)
+  const { data: profiles = [] } = useProfiles()
+  const mongoProfile = profiles.find((pr) => pr.id === activeProfileId)
+  const mongoDb = mongoProfile?.engine === 'mongodb' ? (mongoProfile.database ?? null) : null
+  const indexesQ = useIndexes(
+    connId,
+    showIndexes ? mongoDb : null,
+    showIndexes ? doc.collection : null
+  )
 
   return (
     <div className="flex flex-col h-full">
@@ -137,6 +152,15 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
             aggregate
           </Button>
         </div>
+        {mongoDb && (
+          <Button
+            size="sm"
+            variant={showIndexes ? 'default' : 'ghost'}
+            onClick={() => setShowIndexes((v) => !v)}
+          >
+            Indexes
+          </Button>
+        )}
         <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
           Run
         </Button>
@@ -161,7 +185,36 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
           <ResizablePanel minSize={20}>
             <div className="h-full min-h-0">
               {tab.docSource ? (
-                <DocumentResults source={tab.docSource} tabId={tab.id} elapsedMs={tab.elapsedMs} />
+                <>
+                  {showIndexes && (
+                    <div className="border-b border-border-soft bg-surface-1 px-3 py-2">
+                      <div className="mb-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                        Indexes
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        {(indexesQ.data ?? []).map((ix) => (
+                          <div key={ix.name} className="flex items-center gap-2 text-xs">
+                            <span className="font-mono text-foreground-soft">{ix.name}</span>
+                            <span className="text-faint">{ix.columns.join(', ')}</span>
+                            {ix.unique && (
+                              <span className="rounded bg-info/15 px-1 text-[10px] font-semibold uppercase text-info">
+                                unique
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                        {indexesQ.data?.length === 0 && (
+                          <span className="text-xs text-muted-foreground">No indexes.</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <DocumentResults
+                    source={tab.docSource}
+                    tabId={tab.id}
+                    elapsedMs={tab.elapsedMs}
+                  />
+                </>
               ) : (
                 <div className="p-4 text-muted-foreground">Run a query to see results.</div>
               )}
