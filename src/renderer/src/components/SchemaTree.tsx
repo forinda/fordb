@@ -452,7 +452,9 @@ export function SchemaTree(): React.JSX.Element {
                   setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
                 }
               }}
-              className={`flex items-center gap-1 text-sm ${isColumn ? 'cursor-default' : 'cursor-pointer'}`}
+              className={`flex items-center gap-1 rounded px-1 text-sm ${
+                isColumn ? 'cursor-default' : 'cursor-pointer hover:bg-surface-2'
+              }`}
             >
               <span
                 className="w-3.5 shrink-0 text-muted-foreground"
@@ -474,7 +476,14 @@ export function SchemaTree(): React.JSX.Element {
                   ))}
               </span>
               <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              <span className="text-foreground">{node.data.name}</span>
+              {/* Category folders read as 11px uppercase section headers (Dialect). */}
+              {kind === 'category' ? (
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {node.data.name}
+                </span>
+              ) : (
+                <span className="text-foreground">{node.data.name}</span>
+              )}
             </div>
           )
         }}
