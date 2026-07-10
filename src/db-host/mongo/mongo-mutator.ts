@@ -1,6 +1,6 @@
 import { ObjectId, type Db } from 'mongodb'
 import type { DocumentMutator } from '@shared/adapter/document-types'
-import { toJsonSafe } from './ejson'
+import { toJsonSafe, reviveEjson } from './ejson'
 
 /** Coerce a JSON-safe id back to a BSON match value: {$oid} → ObjectId,
  *  {$date} → Date, else the value as-is (numbers/strings match directly). */
@@ -19,7 +19,9 @@ export class MongoDocumentMutator implements DocumentMutator {
     coll: string,
     doc: Record<string, unknown>
   ): Promise<{ insertedId: unknown }> {
-    const r = await this.dbFor(db).collection(coll).insertOne(doc)
+    const r = await this.dbFor(db)
+      .collection(coll)
+      .insertOne(reviveEjson(doc) as Record<string, unknown>)
     // insertedId is a raw BSON value (e.g. ObjectId) when auto-generated; it
     // must be JSON-safe before crossing the RPC boundary (structuredClone
     // drops ObjectId's prototype), or a later update/delete by this id will
@@ -38,7 +40,7 @@ export class MongoDocumentMutator implements DocumentMutator {
     void _drop
     const r = await this.dbFor(db)
       .collection(coll)
-      .updateOne({ _id: toId(id) as never }, { $set: safe })
+      .updateOne({ _id: toId(id) as never }, { $set: reviveEjson(safe) as Record<string, unknown> })
     return { matched: r.matchedCount }
   }
   async deleteById(db: string, coll: string, id: unknown): Promise<{ deleted: number }> {
