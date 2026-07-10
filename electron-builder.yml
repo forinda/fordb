@@ -17,6 +17,7 @@ publish:
   provider: github
   owner: forinda
   repo: fordb
+  releaseType: draft
 linux:
   category: Development
   icon: build/icon.png

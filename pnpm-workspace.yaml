@@ -1,3 +1,5 @@
 allowBuilds:
   electron: true
   esbuild: true
+  cpu-features: true
+  ssh2: true

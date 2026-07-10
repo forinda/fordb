@@ -1,0 +1,19 @@
+# Maintainer: forinda <forinda82@gmail.com>
+pkgname=fordb-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Lean, keyboard-first, multi-engine desktop database client"
+arch=('x86_64')
+url="https://github.com/forinda/fordb"
+license=('MIT')
+provides=('fordb')
+conflicts=('fordb')
+options=(!strip)
+source=("fordb-${pkgver}.AppImage::https://github.com/forinda/fordb/releases/download/v${pkgver}/fordb-${pkgver}-x64.AppImage")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "fordb-${pkgver}.AppImage" "${pkgdir}/opt/fordb/fordb.AppImage"
+  install -dm755 "${pkgdir}/usr/bin"
+  ln -s /opt/fordb/fordb.AppImage "${pkgdir}/usr/bin/fordb"
+}
