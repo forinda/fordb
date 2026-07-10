@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, useMemo } from 'react'
 import {
   DataEditor,
   GridCellKind,
@@ -14,6 +14,8 @@ import type { Cell } from '@shared/adapter/mutation-types'
 import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
 import { buildBrowseSql } from '@shared/browse/build-browse'
 import { useDialect } from '../query/use-dialect'
+import { dialectGlideTheme, liveStyleGetter } from '../query/glide-theme'
+import { useThemeStore } from '../store-theme'
 import { useQueryStore, type QueryTab, PAGE_SIZE } from '../store-query'
 
 type Val = string | null
@@ -32,6 +34,9 @@ const OPS: { v: FilterOp; label: string }[] = [
 const isNullOp = (op: FilterOp): boolean => op === 'isNull' || op === 'isNotNull'
 
 export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
+  const effectiveTheme = useThemeStore((s) => s.effective)
+  // Theme derives from CSS vars; the effective theme keys the re-derive.
+  const gridTheme = useMemo(() => dialectGlideTheme(liveStyleGetter()), [effectiveTheme])
   const { tab } = props
   const source = tab.source
   const data = tab.data
@@ -427,6 +432,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
       {error && <div className="p-1 text-sm text-destructive">{error}</div>}
       <div className="min-h-0 flex-1">
         <DataEditor
+          theme={gridTheme}
           columns={columns}
           rows={totalRows}
           getCellContent={getCellContent}
