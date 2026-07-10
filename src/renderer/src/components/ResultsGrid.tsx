@@ -1,9 +1,14 @@
-import { useCallback, useState } from 'react'
+import { useMemo, useCallback, useState } from 'react'
+import { dialectGlideTheme, liveStyleGetter } from '../query/glide-theme'
+import { useThemeStore } from '../store-theme'
 import { DataEditor, GridCellKind, type GridCell, type Item } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import type { QueryResultSource } from '@shared/query/result-source'
 
 export function ResultsGrid(props: { source: QueryResultSource }): React.JSX.Element {
+  const effectiveTheme = useThemeStore((s) => s.effective)
+  // Theme derives from CSS vars; the effective theme keys the re-derive.
+  const gridTheme = useMemo(() => dialectGlideTheme(liveStyleGetter()), [effectiveTheme])
   const { source } = props
   // Read the loaded count LIVE each render — run() sets the source on the tab
   // before the first page resolves, so a cached count would freeze at 0 until a
@@ -42,6 +47,7 @@ export function ResultsGrid(props: { source: QueryResultSource }): React.JSX.Ele
       rows={rowCount}
       getCellContent={getCellContent}
       onVisibleRegionChanged={onVisibleRegionChanged}
+      theme={gridTheme}
       rowMarkers="number"
       smoothScrollX
       smoothScrollY
