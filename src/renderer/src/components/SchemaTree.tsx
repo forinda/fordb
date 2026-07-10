@@ -116,15 +116,9 @@ export function SchemaTree(): React.JSX.Element {
       if (m.objectKind === 'view')
         items.push({
           label: 'Drop view',
-          run: () => {
-            if (window.confirm(`Drop view "${m.schema}"."${m.name}"?`))
-              void useQueryStore
-                .getState()
-                .dropView(m.schema, m.name, dialect)
-                .catch((err: unknown) =>
-                  setDdlError(err instanceof Error ? err.message : String(err))
-                )
-          }
+          // Preview the generated DROP VIEW (runDdl confirms the SQL), like every
+          // other DDL action.
+          run: () => void runDdl({ kind: 'dropView', schema: m.schema, name: m.name })
         })
       return items
     }
@@ -290,7 +284,7 @@ export function SchemaTree(): React.JSX.Element {
         kind: cat,
         schema
       }))
-    } else {
+    } else if (id.startsWith('t:')) {
       // t:<schema>.<table> → columns.
       const rest = id.slice(2)
       const dot = rest.indexOf('.')
@@ -304,6 +298,9 @@ export function SchemaTree(): React.JSX.Element {
         schema,
         table
       }))
+    } else {
+      // Leaf ids (obj:/c:) have no children — never load.
+      return
     }
     setChildrenById((prev) => ({ ...prev, [id]: kids }))
   }
@@ -323,8 +320,8 @@ export function SchemaTree(): React.JSX.Element {
   }, [connId])
 
   function onToggle(id: string): void {
-    // Column nodes are leaves; guard against re-fetch on collapse/re-expand.
-    if (!connId || id.startsWith('c:') || childrenById[id]) return
+    // Leaf nodes (columns c:, objects obj:) never load children; guard re-fetch.
+    if (!connId || id.startsWith('c:') || id.startsWith('obj:') || childrenById[id]) return
     void loadChildren(id)
   }
 
@@ -354,12 +351,8 @@ export function SchemaTree(): React.JSX.Element {
           onCancel={() => setNewView(null)}
           onSubmit={(name, select) => {
             setNewView(null)
-            void useQueryStore
-              .getState()
-              .createView(newView.schema, name, select, dialect)
-              .catch((err: unknown) =>
-                setDdlError(err instanceof Error ? err.message : String(err))
-              )
+            // runDdl shows the generated CREATE VIEW in a confirm before applying.
+            void runDdl({ kind: 'createView', schema: newView.schema, name, select })
           }}
         />
       )}
@@ -440,14 +433,16 @@ export function SchemaTree(): React.JSX.Element {
               <span
                 className="w-3.5 shrink-0 text-muted-foreground"
                 // Chevron toggles expand/collapse (columns for a table) without
-                // triggering the row's open-data action.
+                // triggering the row's open action. Objects/columns are leaves —
+                // no chevron.
                 onClick={(e) => {
-                  if (isColumn) return
+                  if (isColumn || isObject) return
                   e.stopPropagation()
                   node.toggle()
                 }}
               >
                 {!isColumn &&
+                  !isObject &&
                   (node.isOpen ? (
                     <IconChevronDown className="h-3.5 w-3.5" />
                   ) : (

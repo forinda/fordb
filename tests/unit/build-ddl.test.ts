@@ -127,6 +127,9 @@ describe('buildDdl', () => {
     expect(buildDdl({ kind: 'dropView', schema: 'app', name: 'v' }, 'pg')).toEqual([
       `DROP VIEW "app"."v"`
     ])
+    expect(buildDdl({ kind: 'dropView', schema: 'main', name: 'v' }, 'sqlite')).toEqual([
+      `DROP VIEW "main"."v"`
+    ])
   })
   it('quotes identifiers with embedded quotes', () => {
     expect(buildDdl({ kind: 'dropTable', schema: 'a"b', table: 't"x' }, 'pg')).toEqual([
