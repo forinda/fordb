@@ -5,7 +5,8 @@ import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { DatabaseSwitcher } from './components/DatabaseSwitcher'
-import { ThemeToggle } from './components/ThemeToggle'
+import { TitleBar } from './components/TitleBar'
+import { StatusBar } from './components/StatusBar'
 import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
@@ -175,100 +176,101 @@ export function App(): React.JSX.Element {
   ]
 
   return (
-    <div className="h-screen text-foreground bg-background">
-      <ResizablePanelGroup direction="horizontal">
-        {/* Left sidebar. Not connected: the connection list (landing). Connected:
+    <div className="flex h-screen flex-col overflow-hidden text-foreground bg-background">
+      <TitleBar />
+      <div className="min-h-0 flex-1">
+        <ResizablePanelGroup direction="horizontal">
+          {/* Left sidebar. Not connected: the connection list (landing). Connected:
             a compact active-connection bar + the schema tree; a toggle reveals the
             connection list to switch, without closing the current session. */}
-        <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
-          {view.kind === 'connected' ? (
-            <>
-              <ActiveConnectionBar
-                listOpen={showConnList}
-                onToggleList={() => setShowConnList((v) => !v)}
-                onDisconnect={() => {
-                  if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
-                  clearActive()
-                  setShowConnList(false)
-                  setView({ kind: 'welcome' })
-                }}
-              />
-              {showConnList ? (
-                <ConnectionList
-                  onNew={() => setView({ kind: 'form' })}
-                  onEdit={(profile) => setView({ kind: 'form', profile })}
-                  onConnect={connectTo}
+          <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
+            {view.kind === 'connected' ? (
+              <>
+                <ActiveConnectionBar
+                  listOpen={showConnList}
+                  onToggleList={() => setShowConnList((v) => !v)}
+                  onDisconnect={() => {
+                    if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+                    clearActive()
+                    setShowConnList(false)
+                    setView({ kind: 'welcome' })
+                  }}
                 />
-              ) : (
-                <div className="flex min-h-0 flex-1 flex-col">
-                  <DatabaseSwitcher />
-                  <div className="flex justify-end border-b border-border px-2 py-1">
-                    <RefreshSchemaButton />
+                {showConnList ? (
+                  <ConnectionList
+                    onNew={() => setView({ kind: 'form' })}
+                    onEdit={(profile) => setView({ kind: 'form', profile })}
+                    onConnect={connectTo}
+                  />
+                ) : (
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <DatabaseSwitcher />
+                    <div className="flex justify-end border-b border-border px-2 py-1">
+                      <RefreshSchemaButton />
+                    </div>
+                    <div className="min-h-0 flex-1 overflow-auto">
+                      <SchemaTree />
+                    </div>
                   </div>
-                  <div className="min-h-0 flex-1 overflow-auto">
-                    <SchemaTree />
+                )}
+              </>
+            ) : (
+              <ConnectionList
+                onNew={() => setView({ kind: 'form' })}
+                onEdit={(profile) => setView({ kind: 'form', profile })}
+                onConnect={connectTo}
+              />
+            )}
+          </ResizablePanel>
+          <ResizableHandle withHandle />
+          <ResizablePanel className="min-w-0">
+            <div className="h-full overflow-auto">
+              {view.kind === 'welcome' && (
+                <div className="p-6 text-muted-foreground">Select or create a connection.</div>
+              )}
+              {view.kind === 'form' && (
+                <ProfileForm
+                  profile={view.profile}
+                  onSaved={() => setView({ kind: 'welcome' })}
+                  onCancel={() => setView({ kind: 'welcome' })}
+                />
+              )}
+              {view.kind === 'connected' && (
+                <div className="flex h-full flex-col">
+                  <div className="flex gap-1 border-b border-border p-1">
+                    {dashboardSupported && (
+                      <button
+                        aria-pressed={mainView === 'dashboard'}
+                        className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                        onClick={() => setMainView('dashboard')}
+                      >
+                        Dashboard
+                      </button>
+                    )}
+                    <button
+                      aria-pressed={mainView === 'query'}
+                      className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                      onClick={() => setMainView('query')}
+                    >
+                      Query
+                    </button>
+                  </div>
+                  <div className="min-h-0 flex-1">
+                    {mainView === 'dashboard' && mongoStatsSupported ? (
+                      <MongoDashboard />
+                    ) : mainView === 'dashboard' && statsSupported ? (
+                      <ServerDashboard />
+                    ) : (
+                      <QueryWorkbench />
+                    )}
                   </div>
                 </div>
               )}
-            </>
-          ) : (
-            <ConnectionList
-              onNew={() => setView({ kind: 'form' })}
-              onEdit={(profile) => setView({ kind: 'form', profile })}
-              onConnect={connectTo}
-            />
-          )}
-          <div className="border-t border-border p-2">
-            <ThemeToggle />
-          </div>
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel className="min-w-0">
-          <div className="h-full overflow-auto">
-            {view.kind === 'welcome' && (
-              <div className="p-6 text-muted-foreground">Select or create a connection.</div>
-            )}
-            {view.kind === 'form' && (
-              <ProfileForm
-                profile={view.profile}
-                onSaved={() => setView({ kind: 'welcome' })}
-                onCancel={() => setView({ kind: 'welcome' })}
-              />
-            )}
-            {view.kind === 'connected' && (
-              <div className="flex h-full flex-col">
-                <div className="flex gap-1 border-b border-border p-1">
-                  {dashboardSupported && (
-                    <button
-                      aria-pressed={mainView === 'dashboard'}
-                      className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                      onClick={() => setMainView('dashboard')}
-                    >
-                      Dashboard
-                    </button>
-                  )}
-                  <button
-                    aria-pressed={mainView === 'query'}
-                    className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                    onClick={() => setMainView('query')}
-                  >
-                    Query
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1">
-                  {mainView === 'dashboard' && mongoStatsSupported ? (
-                    <MongoDashboard />
-                  ) : mainView === 'dashboard' && statsSupported ? (
-                    <ServerDashboard />
-                  ) : (
-                    <QueryWorkbench />
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
+      <StatusBar />
       <CommandPalette commands={commands} />
       <QueryLibrary />
       <CsvImportDialog />
