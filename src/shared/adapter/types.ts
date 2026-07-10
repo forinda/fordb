@@ -17,6 +17,9 @@ export interface SshOptions {
 interface BaseProfile {
   id: string
   name: string
+  /** Optional non-secret metadata (Dialect connections manager). */
+  environment?: 'production' | 'staging' | 'local'
+  favorite?: boolean
 }
 
 export interface PostgresProfile extends BaseProfile {
