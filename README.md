@@ -4,7 +4,7 @@
 
 fordb sits between the two extremes: lighter than DataGrip/DBeaver, but multi-engine unlike the single-database clients (pgAdmin, Compass). Fast to open, driven from the keyboard, and honest about your data — every destructive change is previewed as SQL and confirmed before it runs.
 
-> **Status:** early and under active development (`v0.0.1`). No packaged installers are published yet — run it from source (see [Getting started](#getting-started)). The core — Postgres + SQLite, editing, browse, structure/DDL, and query tools — works and is tested.
+> **Status:** active development (`v0.1.0`). Postgres, SQLite, and MongoDB engines; editing, browse, structure/DDL, query tools, and server dashboards work and are tested. Packaged installers (deb / AppImage / NSIS) are built by the [release pipeline](.github/workflows/release.yml) — grab them from [Releases](https://github.com/forinda/fordb/releases), or run from source (see [Getting started](#getting-started)).
 
 ## Why fordb
 
@@ -66,6 +66,17 @@ pnpm dev:sandboxless
 | `pnpm e2e`                    | End-to-end tests (Playwright, headless SQLite)     |
 | `pnpm lint`                   | ESLint + Prettier check                            |
 | `pnpm typecheck`              | TypeScript, both project configs                   |
+
+## Performance
+
+Measured in CI (`perf.yml`, headless Linux) on each `main` push — the lean-client budget:
+
+| metric     | value  | budget  |
+| ---------- | ------ | ------- |
+| cold start | 776 ms | 4000 ms |
+| idle RSS   | 197 MB | 400 MB  |
+
+_(Cold start = spawn to renderer ready; idle RSS = main-process resident set after settle. CI fails the perf job if either exceeds its budget.)_
 
 ## Architecture
 
