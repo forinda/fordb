@@ -232,9 +232,42 @@ describe('HostApi over RPC', () => {
       name: 'HostApi Z'
     })
     expect(ins.insertedId).toBe(999998)
+
     const up = await client.updateDoc(mid, 'users', 999998, { name: 'HostApi Z2' })
     expect(up.matched).toBe(1)
+    // Verify the field actually changed, not just that a doc matched.
+    const afterUpdate = await client.findDocs(mid, 'users', { _id: 999998 }, {}, 1)
+    const updatedPage = await client.fetchDocs(mid, afterUpdate.queryId)
+    expect(updatedPage.docs[0]?.name).toBe('HostApi Z2')
+
     const del = await client.deleteDoc(mid, 'users', 999998)
+    expect(del.deleted).toBe(1)
+    // Verify the doc is actually gone, not just that a count of 1 was reported.
+    const afterDelete = await client.findDocs(mid, 'users', { _id: 999998 }, {}, 1)
+    const deletedPage = await client.fetchDocs(mid, afterDelete.queryId)
+    expect(deletedPage.docs.length).toBe(0)
+
+    await client.closeConnection(mid)
+  })
+
+  // Catches the bug where insertOne's auto-generated ObjectId insertedId
+  // fails to survive the RPC structuredClone transport (loses its prototype
+  // → becomes {buffer:...}), so a later update/delete by that id silently
+  // matches 0 docs. Insert with no explicit _id, so Mongo auto-generates an
+  // ObjectId, and check the round trip via the actual RPC transport.
+  it('documentMutator insertDoc without _id returns a JSON-safe insertedId that round-trips over RPC', async () => {
+    const mid = await client.openConnection(mongoProfile)
+    const ins = await client.insertDoc(mid, 'users', { email: 'autoid-hostapi@z', name: 'AutoId' })
+    const id = ins.insertedId
+    const isJsonSafeOid =
+      typeof id === 'object' &&
+      id !== null &&
+      '$oid' in id &&
+      typeof (id as { $oid: unknown }).$oid === 'string'
+    const isPrimitive = typeof id === 'string' || typeof id === 'number'
+    expect(isJsonSafeOid || isPrimitive).toBe(true)
+
+    const del = await client.deleteDoc(mid, 'users', id)
     expect(del.deleted).toBe(1)
     await client.closeConnection(mid)
   })

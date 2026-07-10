@@ -92,15 +92,49 @@ export function runDocumentAdapterContractTests(
     // the read-only assertions above (which pin exact counts/pages).
     it('documentMutator: insert → update → delete round-trip', async () => {
       if (!adapter.documentMutator || !adapter.documentQuery) return
-      const ins = await adapter.documentMutator.insertOne('users', {
+      const dm = adapter.documentMutator
+      const dq = adapter.documentQuery
+      const ins = await dm.insertOne('users', {
         _id: 999999,
         email: 'z@z',
         name: 'Z'
       })
       expect(ins.insertedId).toBe(999999)
-      const up = await adapter.documentMutator.updateById('users', 999999, { name: 'Z2' })
+
+      const up = await dm.updateById('users', 999999, { name: 'Z2' })
       expect(up.matched).toBe(1)
-      const del = await adapter.documentMutator.deleteById('users', 999999)
+      // Verify the field actually changed, not just that a doc matched.
+      const afterUpdate = await dq.find('users', { _id: 999999 }, {}, 1)
+      const updatedPage = await dq.fetchDocs(afterUpdate.queryId)
+      expect(updatedPage.docs[0]?.name).toBe('Z2')
+
+      const del = await dm.deleteById('users', 999999)
+      expect(del.deleted).toBe(1)
+      // Verify the doc is actually gone, not just that a count of 1 was reported.
+      const afterDelete = await dq.find('users', { _id: 999999 }, {}, 1)
+      const deletedPage = await dq.fetchDocs(afterDelete.queryId)
+      expect(deletedPage.docs.length).toBe(0)
+    })
+
+    // Catches the bug where insertOne's auto-generated ObjectId insertedId
+    // fails to survive the RPC structuredClone transport (loses its
+    // prototype → becomes {buffer:...}), so a later update/delete by that id
+    // silently matches 0 docs. Here we insert with NO explicit _id, so Mongo
+    // auto-generates an ObjectId, and check the round trip end to end.
+    it('documentMutator: insert without _id returns a JSON-safe insertedId that round-trips', async () => {
+      if (!adapter.documentMutator) return
+      const dm = adapter.documentMutator
+      const ins = await dm.insertOne('users', { email: 'autoid@z', name: 'AutoId' })
+      const id = ins.insertedId
+      const isJsonSafeOid =
+        typeof id === 'object' &&
+        id !== null &&
+        '$oid' in id &&
+        typeof (id as { $oid: unknown }).$oid === 'string'
+      const isPrimitive = typeof id === 'string' || typeof id === 'number'
+      expect(isJsonSafeOid || isPrimitive).toBe(true)
+
+      const del = await dm.deleteById('users', id)
       expect(del.deleted).toBe(1)
     })
   })
