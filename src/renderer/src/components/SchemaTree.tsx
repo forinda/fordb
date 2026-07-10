@@ -131,10 +131,17 @@ export function SchemaTree(): React.JSX.Element {
     }
     if (m.kind === 'table') {
       return [
-        {
-          label: 'Open data',
-          run: () => void useQueryStore.getState().openTable(m.schema, m.table)
-        },
+        // Document-mode connections (Mongo) open collections via the primary
+        // click into a document-query tab; the relational "Open data" path
+        // dead-ends there (openBrowse isn't supported), so hide it.
+        ...(docSupported
+          ? []
+          : [
+              {
+                label: 'Open data',
+                run: () => void useQueryStore.getState().openTable(m.schema, m.table)
+              }
+            ]),
         {
           label: 'Structure',
           run: () => useQueryStore.getState().openStructure(m.schema, m.table)

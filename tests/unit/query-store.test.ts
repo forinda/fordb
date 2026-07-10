@@ -103,12 +103,23 @@ describe('useQueryStore document-tab guards', () => {
     await s.openCollection('users')
     const docTabId = useQueryStore.getState().activeTabId!
     const before = useQueryStore.getState().tabs.length
+    const docTabBefore = useQueryStore.getState().tabs.find((t) => t.id === docTabId)!
+    const sqlBefore = docTabBefore.sql
+    const docTextBefore = docTabBefore.doc?.text
 
     s.formatActive('postgresql')
     await s.openExplain('pg', false)
+    // Give the event loop time so a (incorrectly) unguarded formatActive's
+    // dynamic sql-formatter import + reformat would have landed by now —
+    // 'users.find()' reformats to 'users.find ()', so this actually
+    // distinguishes guard-present from guard-absent.
+    await new Promise((resolve) => setTimeout(resolve, 200))
 
     const after = useQueryStore.getState()
     expect(after.tabs.length).toBe(before) // openExplain didn't open a new tab
     expect(after.activeTabId).toBe(docTabId)
+    const docTabAfter = after.tabs.find((t) => t.id === docTabId)!
+    expect(docTabAfter.sql).toBe(sqlBefore) // formatActive left the doc tab's sql untouched
+    expect(docTabAfter.doc?.text).toBe(docTextBefore) // and its query text untouched
   })
 })
