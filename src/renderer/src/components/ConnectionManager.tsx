@@ -196,12 +196,26 @@ export function ConnectionManager(props: {
                     )}
                   </div>
                 </div>
-                {p.favorite && (
+                <button
+                  aria-label={p.favorite ? 'unfavorite' : 'favorite'}
+                  aria-pressed={Boolean(p.favorite)}
+                  title={p.favorite ? 'Unfavorite' : 'Favorite'}
+                  className="flex-none rounded p-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => {
+                    // Metadata-only save: empty secretFields → keychain untouched.
+                    void window.fordb.profiles
+                      .save({ ...p, favorite: !p.favorite || undefined }, {})
+                      .then(() => invalidateProfiles())
+                  }}
+                >
                   <IconStar
-                    className="h-4 w-4 flex-none fill-warning text-warning"
-                    aria-label="favorite"
+                    className={`h-4 w-4 ${
+                      p.favorite
+                        ? 'fill-warning text-warning'
+                        : 'text-faint opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 hover:text-warning'
+                    }`}
                   />
-                )}
+                </button>
                 <div className="flex flex-none gap-1 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100">
                   <button
                     className="rounded px-1 text-xs text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
