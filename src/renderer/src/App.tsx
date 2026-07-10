@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
-import { ConnectionList } from './components/ConnectionList'
 import { ConnectionManager } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
@@ -39,9 +38,6 @@ export function App(): React.JSX.Element {
   // Profile form overlay on the Connections screen — independent of the
   // connection lifecycle so editing a profile never tears down the session.
   const [form, setForm] = useState<{ profile?: ConnectionProfile } | null>(null)
-  // When connected, whether the connection list is revealed (to switch) over the
-  // schema tree. Collapsed by default so the active connection gets the room.
-  const [showConnList, setShowConnList] = useState(false)
   const setActive = useConnStore((s) => s.setActive)
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
@@ -54,7 +50,6 @@ export function App(): React.JSX.Element {
     setActive(connectionId, profileId, database)
     setView({ kind: 'connected' })
     setScreen('editor')
-    setShowConnList(false)
     if (prev && prev !== connectionId) void window.fordb.connection.close(prev)
   }
   const mainView = useQueryStore((s) => s.mainView)
@@ -219,46 +214,28 @@ export function App(): React.JSX.Element {
           )
         ) : (
           <ResizablePanelGroup direction="horizontal">
-            {/* Left sidebar. Not connected: the connection list (landing). Connected:
-            a compact active-connection bar + the schema tree; a toggle reveals the
-            connection list to switch, without closing the current session. */}
+            {/* Editor sidebar: active-connection bar + schema tree. Switching
+            connections happens on the title bar's Connections screen. */}
             <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
               {view.kind === 'connected' ? (
                 <>
                   <ActiveConnectionBar
-                    listOpen={showConnList}
-                    onToggleList={() => setShowConnList((v) => !v)}
                     onDisconnect={() => {
                       if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
                       clearActive()
-                      setShowConnList(false)
                       setView({ kind: 'welcome' })
                       setScreen('connections')
                     }}
                   />
-                  {showConnList ? (
-                    <ConnectionList
-                      onNew={() => {
-                        setScreen('connections')
-                        setForm({})
-                      }}
-                      onEdit={(profile) => {
-                        setScreen('connections')
-                        setForm({ profile })
-                      }}
-                      onConnect={connectTo}
-                    />
-                  ) : (
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <DatabaseSwitcher />
-                      <div className="flex justify-end border-b border-border px-2 py-1">
-                        <RefreshSchemaButton />
-                      </div>
-                      <div className="min-h-0 flex-1 overflow-auto">
-                        <SchemaTree />
-                      </div>
+                  <div className="flex min-h-0 flex-1 flex-col">
+                    <DatabaseSwitcher />
+                    <div className="flex justify-end border-b border-border px-2 py-1">
+                      <RefreshSchemaButton />
                     </div>
-                  )}
+                    <div className="min-h-0 flex-1 overflow-auto">
+                      <SchemaTree />
+                    </div>
+                  </div>
                 </>
               ) : (
                 <div className="flex-1 p-3 text-sm text-muted-foreground">
