@@ -20,6 +20,7 @@ import type {
   FindOptions,
   OpenDocsResult
 } from '../adapter/document-types'
+import type { MongoSnapshot } from '../adapter/mongo-stats-types'
 
 export type ConnectionId = string
 
@@ -118,4 +119,7 @@ export interface HostApi {
     coll: string,
     docId: unknown
   ): ReturnType<DocumentMutator['deleteById']>
+
+  mongoStatsSupported(id: ConnectionId): Promise<boolean>
+  mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot>
 }

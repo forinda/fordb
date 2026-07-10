@@ -27,6 +27,7 @@ import type {
   FindOptions,
   OpenDocsResult
 } from '@shared/adapter/document-types'
+import type { MongoSnapshot, MongoStats } from '@shared/adapter/mongo-stats-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -268,5 +269,17 @@ export class HostApiImpl implements HostApi {
   }
   deleteDoc(id: ConnectionId, coll: string, docId: unknown): Promise<{ deleted: number }> {
     return this.docmut(id).deleteById(coll, docId)
+  }
+
+  private mstats(id: ConnectionId): MongoStats {
+    const s = this.registry.get(id).mongoStats
+    if (!s) throw new Error('Server stats are not supported by this engine')
+    return s
+  }
+  async mongoStatsSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).mongoStats != null
+  }
+  mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot> {
+    return this.mstats(id).serverStatus()
   }
 }

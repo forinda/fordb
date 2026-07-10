@@ -11,9 +11,11 @@ import type {
   QueryResult,
   TableInfo
 } from '@shared/adapter/types'
+import type { MongoStats } from '@shared/adapter/mongo-stats-types'
 import { buildMongoUri } from './mongo-config'
 import { MongoDocumentQuery } from './mongo-query'
 import { MongoDocumentMutator } from './mongo-mutator'
+import { MongoServerStats } from './mongo-stats'
 
 const SAMPLE = 100
 const NO_SQL = 'MongoDB uses the document query surface, not SQL'
@@ -23,6 +25,7 @@ export class MongoAdapter implements DbAdapter {
   private dbName = ''
   readonly documentQuery: DocumentQuery = new MongoDocumentQuery(() => this.database())
   readonly documentMutator: DocumentMutator = new MongoDocumentMutator(() => this.database())
+  readonly mongoStats: MongoStats = new MongoServerStats(() => this.database())
 
   constructor(
     private readonly makeClient: (uri: string) => MongoClient = (u) => new MongoClient(u)
