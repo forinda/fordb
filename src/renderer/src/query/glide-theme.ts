@@ -6,10 +6,20 @@ export interface StyleGetter {
 
 /** Dialect theme for the Glide DataEditor, derived from the live CSS tokens
  *  so it tracks light/dark. Pure given a style getter (unit-testable). */
+/** #rrggbb → rgba(). Canvas2D fillStyle silently no-ops on color strings it
+ *  can't parse (color-mix() support is not guaranteed there), so the accent
+ *  wash ships as plain rgba. Non-hex input falls back to the raw string. */
+function hexAlpha(hex: string, alpha: number): string {
+  const m = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (!m) return hex
+  const n = parseInt(m[1]!, 16)
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
+}
+
 export function dialectGlideTheme(get: StyleGetter): Partial<Theme> {
   return {
     accentColor: get('--primary'),
-    accentLight: `color-mix(in srgb, ${get('--primary')} 12%, transparent)`,
+    accentLight: hexAlpha(get('--primary'), 0.12),
     textDark: get('--foreground'),
     textMedium: get('--muted-foreground'),
     textLight: get('--faint'),
