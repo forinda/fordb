@@ -23,6 +23,8 @@ import { PgDataMutator } from './postgres-mutator'
 import { PgDataBrowser } from './postgres-browser'
 import { PgSchemaEditor } from './postgres-schema'
 import { PgObjectBrowser } from './postgres-objects'
+import { PgServerAdmin } from './postgres-admin'
+import type { ServerAdmin } from '@shared/adapter/admin-types'
 
 // pg's built-in type parsers don't cover `name[]` (OID 1003) — the array type
 // Postgres reports for `ARRAY(SELECT a.attname ...)` in the key/index
@@ -67,6 +69,7 @@ export class PostgresAdapter implements DbAdapter {
     return new pg.Client(PostgresAdapter.clientConfig(this.profile))
   })
   readonly objects: ObjectBrowser = new PgObjectBrowser(() => this.conn)
+  readonly serverAdmin: ServerAdmin = new PgServerAdmin(() => this.conn)
 
   private get conn(): pg.Client {
     if (!this.client) throw new Error('Not connected')

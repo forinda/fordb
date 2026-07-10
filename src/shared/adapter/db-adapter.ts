@@ -13,6 +13,7 @@ import type { DataMutator } from './mutation-types'
 import type { DataBrowser } from './browse-types'
 import type { SchemaEditor } from './schema-types'
 import type { ObjectBrowser } from './object-types'
+import type { ServerAdmin } from './admin-types'
 
 /**
  * Contract implemented by every engine adapter (db-host side) and by the
@@ -56,4 +57,7 @@ export interface DbAdapter {
 
   /** Optional object browser (views/functions/triggers). */
   readonly objects?: ObjectBrowser
+
+  /** Optional server-administration capability (Postgres). */
+  readonly serverAdmin?: ServerAdmin
 }
