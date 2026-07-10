@@ -14,7 +14,12 @@ import type { BrowseOptions } from '../adapter/browse-types'
 import type { SchemaOps } from '../adapter/schema-types'
 import type { ObjectKind, ObjectSummary } from '../adapter/object-types'
 import type { RoleInfo, GrantInfo, SettingRow } from '../adapter/admin-types'
-import type { DocsPage, FindOptions, OpenDocsResult } from '../adapter/document-types'
+import type {
+  DocsPage,
+  DocumentMutator,
+  FindOptions,
+  OpenDocsResult
+} from '../adapter/document-types'
 
 export type ConnectionId = string
 
@@ -95,4 +100,22 @@ export interface HostApi {
   ): Promise<OpenDocsResult>
   fetchDocs(id: ConnectionId, queryId: string): Promise<DocsPage>
   closeDocs(id: ConnectionId, queryId: string): Promise<void>
+
+  documentMutatorSupported(id: ConnectionId): Promise<boolean>
+  insertDoc(
+    id: ConnectionId,
+    coll: string,
+    doc: Record<string, unknown>
+  ): ReturnType<DocumentMutator['insertOne']>
+  updateDoc(
+    id: ConnectionId,
+    coll: string,
+    docId: unknown,
+    patch: Record<string, unknown>
+  ): ReturnType<DocumentMutator['updateById']>
+  deleteDoc(
+    id: ConnectionId,
+    coll: string,
+    docId: unknown
+  ): ReturnType<DocumentMutator['deleteById']>
 }
