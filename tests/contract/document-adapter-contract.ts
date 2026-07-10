@@ -87,5 +87,21 @@ export function runDocumentAdapterContractTests(
       expect(page.docs.length).toBe(5)
       await adapter.documentQuery.closeDocs(again.queryId)
     })
+
+    // Runs last: mutates the `users` collection, so it must not run before
+    // the read-only assertions above (which pin exact counts/pages).
+    it('documentMutator: insert → update → delete round-trip', async () => {
+      if (!adapter.documentMutator || !adapter.documentQuery) return
+      const ins = await adapter.documentMutator.insertOne('users', {
+        _id: 999999,
+        email: 'z@z',
+        name: 'Z'
+      })
+      expect(ins.insertedId).toBe(999999)
+      const up = await adapter.documentMutator.updateById('users', 999999, { name: 'Z2' })
+      expect(up.matched).toBe(1)
+      const del = await adapter.documentMutator.deleteById('users', 999999)
+      expect(del.deleted).toBe(1)
+    })
   })
 }

@@ -221,4 +221,21 @@ describe('HostApi over RPC', () => {
     await client.closeDocs(mid, open.queryId)
     await client.closeConnection(mid)
   })
+
+  // Runs last: mutates the `users` collection shared with the seed above.
+  it('exposes documentMutator over the HostApi when supported (insert/update/delete)', async () => {
+    const mid = await client.openConnection(mongoProfile)
+    expect(await client.documentMutatorSupported(mid)).toBe(true)
+    const ins = await client.insertDoc(mid, 'users', {
+      _id: 999998,
+      email: 'hostapi@z',
+      name: 'HostApi Z'
+    })
+    expect(ins.insertedId).toBe(999998)
+    const up = await client.updateDoc(mid, 'users', 999998, { name: 'HostApi Z2' })
+    expect(up.matched).toBe(1)
+    const del = await client.deleteDoc(mid, 'users', 999998)
+    expect(del.deleted).toBe(1)
+    await client.closeConnection(mid)
+  })
 })

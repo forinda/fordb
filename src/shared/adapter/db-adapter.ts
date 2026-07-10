@@ -63,4 +63,7 @@ export interface DbAdapter {
 
   /** Optional document query capability (MongoDB). */
   readonly documentQuery?: import('./document-types').DocumentQuery
+
+  /** Optional document write capability (MongoDB). */
+  readonly documentMutator?: import('./document-types').DocumentMutator
 }
