@@ -104,6 +104,10 @@ function createWindow(): void {
   const win = new BrowserWindow({
     width: 1200,
     height: 800,
+    minWidth: 720,
+    minHeight: 480,
+    frame: false,
+    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
@@ -111,9 +115,24 @@ function createWindow(): void {
       sandbox: false
     }
   })
+  win.on('maximize', () => win.webContents.send('window:maximize-changed', true))
+  win.on('unmaximize', () => win.webContents.send('window:maximize-changed', false))
   if (process.env['ELECTRON_RENDERER_URL']) void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
+
+// Frameless window controls, addressed to the sender's window (multi-window safe).
+ipcMain.on('window:minimize', (e) => BrowserWindow.fromWebContents(e.sender)?.minimize())
+ipcMain.on('window:maximize', (e) => {
+  const w = BrowserWindow.fromWebContents(e.sender)
+  if (!w) return
+  if (w.isMaximized()) w.unmaximize()
+  else w.maximize()
+})
+ipcMain.on('window:close', (e) => BrowserWindow.fromWebContents(e.sender)?.close())
+ipcMain.handle('window:is-maximized', (e) =>
+  Boolean(BrowserWindow.fromWebContents(e.sender)?.isMaximized())
+)
 
 ipcMain.handle('db-host:request-port', (event) => {
   const { port1, port2 } = new MessageChannelMain()
