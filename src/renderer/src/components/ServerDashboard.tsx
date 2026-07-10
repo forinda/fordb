@@ -11,6 +11,10 @@ import { Gauges } from './dashboard/Gauges'
 import { SessionsTable } from './dashboard/SessionsTable'
 import { LocksPanel } from './dashboard/LocksPanel'
 import { ControlsBar } from './dashboard/ControlsBar'
+import { RolesPanel } from './dashboard/RolesPanel'
+import { SettingsPanel } from './dashboard/SettingsPanel'
+
+type DashTab = 'sessions' | 'roles' | 'settings'
 
 export function ServerDashboard(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
@@ -24,6 +28,9 @@ export function ServerDashboard(): React.JSX.Element {
   const adminSupported = useServerAdminSupported(connId).data ?? false
   const queryClient = useQueryClient()
   const [adminError, setAdminError] = useState<string | null>(null)
+  const [tab, setTab] = useState<DashTab>('sessions')
+  // Switching to a non-admin engine (SQLite) must not strand us on a hidden tab.
+  const activeTab: DashTab = adminSupported ? tab : 'sessions'
 
   const admin =
     connId && adminSupported
@@ -101,23 +108,56 @@ export function ServerDashboard(): React.JSX.Element {
           data={connData}
         />
       </div>
-      <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
-        Sessions
+      <div className="flex gap-1 border-t border-border px-2 pt-2">
+        {(
+          ['sessions', ...(adminSupported ? (['roles', 'settings'] as const) : [])] as DashTab[]
+        ).map((id) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            className={`rounded-t px-3 py-1 text-sm capitalize ${
+              activeTab === id
+                ? 'bg-muted font-medium text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {id}
+          </button>
+        ))}
       </div>
-      {panelError(sessionsQ) && (
-        <div className="p-2 text-sm text-destructive">Sessions {panelError(sessionsQ)}</div>
+
+      {activeTab === 'sessions' && (
+        <>
+          <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
+            Sessions
+          </div>
+          {panelError(sessionsQ) && (
+            <div className="p-2 text-sm text-destructive">Sessions {panelError(sessionsQ)}</div>
+          )}
+          {adminError && (
+            <div className="p-2 text-sm text-destructive">Action failed: {adminError}</div>
+          )}
+          {sessionsQ.data && <SessionsTable rows={sessionsQ.data} admin={admin} />}
+          <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
+            Locks
+          </div>
+          {panelError(locksQ) && (
+            <div className="p-2 text-sm text-destructive">Locks {panelError(locksQ)}</div>
+          )}
+          {locksQ.data && <LocksPanel rows={locksQ.data} />}
+        </>
       )}
-      {adminError && (
-        <div className="p-2 text-sm text-destructive">Action failed: {adminError}</div>
+
+      {activeTab === 'roles' && adminSupported && (
+        <div className="min-h-0 flex-1 border-t border-border">
+          <RolesPanel connId={connId} />
+        </div>
       )}
-      {sessionsQ.data && <SessionsTable rows={sessionsQ.data} admin={admin} />}
-      <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
-        Locks
-      </div>
-      {panelError(locksQ) && (
-        <div className="p-2 text-sm text-destructive">Locks {panelError(locksQ)}</div>
+      {activeTab === 'settings' && adminSupported && (
+        <div className="min-h-0 flex-1 border-t border-border">
+          <SettingsPanel connId={connId} />
+        </div>
       )}
-      {locksQ.data && <LocksPanel rows={locksQ.data} />}
     </div>
   )
 }
