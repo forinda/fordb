@@ -235,9 +235,11 @@ function Section(props: {
   children: React.ReactNode
 }): React.JSX.Element {
   return (
-    <div className="mb-3">
-      <div className="mb-1 flex items-center gap-2 border-b border-border pb-0.5">
-        <span className="font-medium">{props.title}</span>
+    <div className="mb-4">
+      <div className="mb-1.5 flex items-center gap-2 border-b border-border-soft pb-1">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {props.title}
+        </span>
         {props.action && (
           <button
             className="ml-auto rounded px-2 py-0.5 text-xs hover:bg-muted"
@@ -247,13 +249,15 @@ function Section(props: {
           </button>
         )}
       </div>
-      {props.children}
+      <div className="divide-y divide-border-soft rounded-lg border border-border bg-card px-2">
+        {props.children}
+      </div>
     </div>
   )
 }
 
 function Row(props: { children: React.ReactNode }): React.JSX.Element {
-  return <div className="flex items-center gap-3 py-0.5">{props.children}</div>
+  return <div className="flex items-center gap-3 py-1 hover:bg-surface-1">{props.children}</div>
 }
 
 const input = 'rounded border border-border bg-background px-1 py-0.5'
