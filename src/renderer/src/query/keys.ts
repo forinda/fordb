@@ -32,5 +32,7 @@ export const qk = {
     ['conn', connId, 'serverSnapshot'] as const,
   sessions: (connId: string): readonly ['conn', string, 'sessions'] =>
     ['conn', connId, 'sessions'] as const,
-  locks: (connId: string): readonly ['conn', string, 'locks'] => ['conn', connId, 'locks'] as const
+  locks: (connId: string): readonly ['conn', string, 'locks'] => ['conn', connId, 'locks'] as const,
+  mongoSnapshot: (connId: string): readonly ['conn', string, 'mongoSnapshot'] =>
+    ['conn', connId, 'mongoSnapshot'] as const
 }
