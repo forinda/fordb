@@ -50,6 +50,10 @@ jobs:
     needs: build
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
+    # secrets can't be used in step-level `if:`; surface them as env first.
+    env:
+      AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - name: Checksums
@@ -70,21 +74,20 @@ jobs:
           REPO: ${{ github.repository }}
         run: gh release edit "$TAG" --repo "$REPO" --draft=false
       - name: Publish to AUR
-        if: ${{ secrets.AUR_SSH_KEY != '' }}
+        if: ${{ env.AUR_SSH_KEY != '' }}
         uses: KSXGitHub/github-actions-deploy-aur@v3
         with:
           pkgname: fordb-bin
           pkgbuild: packaging/aur/PKGBUILD
           commit_username: fordb-ci
           commit_email: forinda82@gmail.com
-          ssh_private_key: ${{ secrets.AUR_SSH_KEY }}
+          ssh_private_key: ${{ env.AUR_SSH_KEY }}
           commit_message: Update to ${{ github.ref_name }}
       - name: Submit to winget
-        if: ${{ secrets.WINGET_TOKEN != '' }}
+        if: ${{ env.WINGET_TOKEN != '' }}
         env:
           TAG: ${{ github.ref_name }}
           REPO: ${{ github.repository }}
-          WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
         run: |
           # Live winget submission needs a maintainer PAT + a winget-pkgs fork.
           # With WINGET_TOKEN set, submit via komac; otherwise this step is
