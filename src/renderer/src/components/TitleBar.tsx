@@ -5,6 +5,7 @@ import IconCopy from '~icons/lucide/copy'
 import IconX from '~icons/lucide/x'
 import IconDatabase from '~icons/lucide/database'
 import IconTerminal from '~icons/lucide/terminal'
+import IconPanelLeft from '~icons/lucide/panel-left'
 import { controlMode } from '@shared/window-controls'
 import { connectionLabel } from '@shared/connection-label'
 import { useProfiles } from '../query/profiles'
@@ -32,7 +33,7 @@ function ControlButton(props: {
       title={props.label}
       style={noDrag}
       onClick={props.onClick}
-      className={`flex h-11 w-[46px] items-center justify-center text-chrome-foreground/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+      className={`flex h-9 w-[42px] items-center justify-center text-chrome-foreground/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
         props.danger
           ? 'hover:bg-destructive hover:text-destructive-foreground'
           : 'hover:bg-white/10 hover:text-chrome-foreground'
@@ -51,6 +52,9 @@ export function TitleBar(props: {
   screen: 'connections' | 'editor'
   onScreenChange: (screen: 'connections' | 'editor') => void
   editorEnabled: boolean
+  /** Editor-screen sidebar collapse toggle (panels get out of the way). */
+  onToggleSidebar?: () => void
+  sidebarVisible?: boolean
 }): React.JSX.Element {
   const platform = window.fordb.platform
   const custom = controlMode(platform) === 'custom'
@@ -72,10 +76,19 @@ export function TitleBar(props: {
   return (
     <div
       style={{ ...drag, background: 'linear-gradient(180deg, var(--chrome), var(--chrome-2))' }}
-      className="flex h-11 flex-none items-center gap-4 border-b border-black/35 px-3 text-chrome-foreground"
+      className="flex h-9 flex-none items-center gap-3 border-b border-black/35 px-3 text-chrome-foreground"
     >
-      {/* macOS native traffic-lights occupy the left inset. */}
-      {platform === 'darwin' && <div className="w-[70px] flex-none" />}
+      {/* macOS: native traffic-lights occupy the left inset. Elsewhere: the
+          Dialect decorative dots (real controls live on the right). */}
+      {platform === 'darwin' ? (
+        <div className="w-[70px] flex-none" />
+      ) : (
+        <div className="flex flex-none items-center gap-2" aria-hidden="true">
+          <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+          <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+          <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+        </div>
+      )}
 
       {/* Screen toggle (segmented pills). */}
       <div
@@ -88,7 +101,7 @@ export function TitleBar(props: {
             disabled={!t.enabled}
             aria-pressed={props.screen === t.id}
             onClick={() => props.onScreenChange(t.id)}
-            className={`flex items-center gap-1.5 rounded-md px-3 py-1 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
+            className={`flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
               props.screen === t.id
                 ? 'bg-primary text-primary-foreground'
                 : 'text-chrome-foreground/70 hover:text-chrome-foreground'
@@ -99,6 +112,21 @@ export function TitleBar(props: {
           </button>
         ))}
       </div>
+
+      {props.onToggleSidebar && props.screen === 'editor' && (
+        <button
+          style={noDrag}
+          aria-label="Toggle sidebar"
+          aria-pressed={props.sidebarVisible}
+          title="Toggle sidebar"
+          onClick={props.onToggleSidebar}
+          className={`rounded p-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+            props.sidebarVisible ? 'text-chrome-foreground/80' : 'text-chrome-foreground/40'
+          } hover:bg-white/10`}
+        >
+          <IconPanelLeft className="h-4 w-4" />
+        </button>
+      )}
 
       {/* Current connection, centered. */}
       <div className="flex min-w-0 flex-1 items-center justify-center gap-2 text-xs font-semibold tracking-wide">

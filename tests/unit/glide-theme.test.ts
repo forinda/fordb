@@ -27,7 +27,7 @@ describe('dialectGlideTheme', () => {
     expect(theme.baseFontStyle).toBe('12px')
     expect(theme.fontFamily).toContain('ui-monospace')
   })
-  it('derives the accent-light wash from the accent token', () => {
-    expect(theme.accentLight).toContain('#2563eb')
+  it('derives the accent-light wash as Canvas2D-safe rgba', () => {
+    expect(theme.accentLight).toBe('rgba(37, 99, 235, 0.12)')
   })
 })

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap } from '@codemirror/commands'
@@ -22,6 +22,8 @@ import IconSave from '~icons/lucide/save'
 import IconBookmark from '~icons/lucide/bookmark'
 import IconClock from '~icons/lucide/clock'
 import IconDownload from '~icons/lucide/download'
+import IconChevronUp from '~icons/lucide/chevron-up'
+import IconChevronDown from '~icons/lucide/chevron-down'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
@@ -191,6 +193,10 @@ export function QueryWorkbench(): React.JSX.Element {
   const formatActive = useQueryStore((s) => s.formatActive)
   const openExplain = useQueryStore((s) => s.openExplain)
   const setPicker = useQueryStore((s) => s.setPicker)
+  // Panel visibility: collapse the editor or results pane to give the other
+  // the full height (Dialect: controls to get panels out of the way).
+  const [showEditorPane, setShowEditorPane] = useState(true)
+  const [showResultsPane, setShowResultsPane] = useState(true)
   const { dialect, sqlLang } = useDialect()
   const docSupported = useDocumentQuerySupported(connId).data ?? false
   const tab = tabs.find((t) => t.id === activeId)
@@ -373,39 +379,67 @@ export function QueryWorkbench(): React.JSX.Element {
       </div>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="vertical">
-          <ResizablePanel defaultSize={50} minSize={20}>
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Query editor
-              </div>
-              <div className="min-h-0 flex-1">
-                {/* key by tab so switching tabs remounts the editor with that tab's
+          {showEditorPane && (
+            <ResizablePanel defaultSize={50} minSize={20}>
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Query editor
+                  <button
+                    aria-label={showResultsPane ? 'Hide results pane' : 'Show results pane'}
+                    title={showResultsPane ? 'Hide results pane' : 'Show results pane'}
+                    className="ml-auto rounded p-0.5 hover:bg-surface-2 hover:text-foreground"
+                    onClick={() => setShowResultsPane((v) => !v)}
+                  >
+                    {showResultsPane ? (
+                      <IconChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <IconChevronUp className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1">
+                  {/* key by tab so switching tabs remounts the editor with that tab's
                   text (the editor is uncontrolled — value is the initial doc). */}
-                <SqlEditor
-                  key={tab.id}
-                  value={tab.sql}
-                  onChange={(v) => setSql(tab.id, v)}
-                  onRun={() => void run(tab.id)}
-                  connectionId={connId}
-                />
+                  <SqlEditor
+                    key={tab.id}
+                    value={tab.sql}
+                    onChange={(v) => setSql(tab.id, v)}
+                    onRun={() => void run(tab.id)}
+                    connectionId={connId}
+                  />
+                </div>
               </div>
-            </div>
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel minSize={20}>
-            <div className="flex h-full min-h-0 flex-col">
-              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                Results
+            </ResizablePanel>
+          )}
+          {showEditorPane && showResultsPane && <ResizableHandle withHandle />}
+          {showResultsPane && (
+            <ResizablePanel minSize={20}>
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Results
+                  <button
+                    aria-label={showEditorPane ? 'Hide editor pane' : 'Show editor pane'}
+                    title={showEditorPane ? 'Hide editor pane' : 'Show editor pane'}
+                    className="ml-auto rounded p-0.5 hover:bg-surface-2 hover:text-foreground"
+                    onClick={() => setShowEditorPane((v) => !v)}
+                  >
+                    {showEditorPane ? (
+                      <IconChevronUp className="h-3.5 w-3.5" />
+                    ) : (
+                      <IconChevronDown className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
+                <div className="min-h-0 flex-1">
+                  {tab.source ? (
+                    <ResultsGrid source={tab.source} />
+                  ) : (
+                    <div className="p-4 text-muted-foreground">Run a query to see results.</div>
+                  )}
+                </div>
               </div>
-              <div className="min-h-0 flex-1">
-                {tab.source ? (
-                  <ResultsGrid source={tab.source} />
-                ) : (
-                  <div className="p-4 text-muted-foreground">Run a query to see results.</div>
-                )}
-              </div>
-            </div>
-          </ResizablePanel>
+            </ResizablePanel>
+          )}
         </ResizablePanelGroup>
       </div>
     </div>
