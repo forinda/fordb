@@ -40,18 +40,18 @@ MongoDB does not fit the relational contract (SQL-string in, positional `unknown
 
 ### Navigation core (`MongoAdapter` fills these so SchemaTree/HostApi work unchanged)
 
-| `DbAdapter` method     | MongoDB mapping                                                                                                  |
-| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `connect/disconnect`   | `MongoClient` connect/close.                                                                                     |
-| `listDatabases()`      | `admin().listDatabases()` → names.                                                                               |
-| `listSchemas()`        | = `listDatabases()` (Mongo has no schema layer; collapses like SQLite).                                          |
-| `listTables(db)`       | `db.listCollections()` → `TableInfo{schema:db,name,type}`; type `'view'` for Mongo views else `'table'`.        |
-| `getColumns(db, coll)` | **sample N docs** (default 100), union top-level keys → `ColumnInfo{name,dataType:BSON-type,nullable:true,ordinal:i}`. Feeds tree + filter hints. |
-| `getKeys(db, coll)`    | `[{ name:'_id_', kind:'unique', columns:['_id'] }]` — `_id` is the stable key for browse/edit; no FKs.           |
-| `getIndexes(db, coll)` | `coll.listIndexes()` → `IndexInfo{name,columns,unique}`.                                                         |
-| `executeQuery/openQuery(sql)` | **throw** `Error('MongoDB uses the document query surface, not SQL')`. The renderer never routes a document tab here. |
-| `fetchPage/closeQuery` | throw as above (document paging lives on `documentQuery`).                                                       |
-| `cancel()`             | close the active document cursor (no-op if none).                                                               |
+| `DbAdapter` method            | MongoDB mapping                                                                                                                                   |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connect/disconnect`          | `MongoClient` connect/close.                                                                                                                      |
+| `listDatabases()`             | `admin().listDatabases()` → names.                                                                                                                |
+| `listSchemas()`               | = `listDatabases()` (Mongo has no schema layer; collapses like SQLite).                                                                           |
+| `listTables(db)`              | `db.listCollections()` → `TableInfo{schema:db,name,type}`; type `'view'` for Mongo views else `'table'`.                                          |
+| `getColumns(db, coll)`        | **sample N docs** (default 100), union top-level keys → `ColumnInfo{name,dataType:BSON-type,nullable:true,ordinal:i}`. Feeds tree + filter hints. |
+| `getKeys(db, coll)`           | `[{ name:'_id_', kind:'unique', columns:['_id'] }]` — `_id` is the stable key for browse/edit; no FKs.                                            |
+| `getIndexes(db, coll)`        | `coll.listIndexes()` → `IndexInfo{name,columns,unique}`.                                                                                          |
+| `executeQuery/openQuery(sql)` | **throw** `Error('MongoDB uses the document query surface, not SQL')`. The renderer never routes a document tab here.                             |
+| `fetchPage/closeQuery`        | throw as above (document paging lives on `documentQuery`).                                                                                        |
+| `cancel()`                    | close the active document cursor (no-op if none).                                                                                                 |
 
 `getColumns` type inference is best-effort: sample docs, for each top-level key record the first non-null BSON type seen (`string`, `int`, `double`, `objectId`, `date`, `bool`, `array`, `object`, `null`). Heterogeneous fields report the first-seen type; this is a hint, not a guarantee.
 
@@ -72,8 +72,17 @@ export interface DocsPage {
   done: boolean
 }
 export interface DocumentQuery {
-  find(coll: string, filter: Record<string, unknown>, opts: FindOptions, pageSize: number): Promise<OpenDocsResult>
-  aggregate(coll: string, pipeline: Record<string, unknown>[], pageSize: number): Promise<OpenDocsResult>
+  find(
+    coll: string,
+    filter: Record<string, unknown>,
+    opts: FindOptions,
+    pageSize: number
+  ): Promise<OpenDocsResult>
+  aggregate(
+    coll: string,
+    pipeline: Record<string, unknown>[],
+    pageSize: number
+  ): Promise<OpenDocsResult>
   fetchDocs(queryId: string): Promise<DocsPage>
   closeDocs(queryId: string): Promise<void>
 }
@@ -86,7 +95,11 @@ export interface DocumentQuery {
 ```ts
 export interface DocumentMutator {
   insertOne(coll: string, doc: Record<string, unknown>): Promise<{ insertedId: unknown }>
-  updateById(coll: string, id: unknown, patch: Record<string, unknown>): Promise<{ matched: number }>
+  updateById(
+    coll: string,
+    id: unknown,
+    patch: Record<string, unknown>
+  ): Promise<{ matched: number }>
   deleteById(coll: string, id: unknown): Promise<{ deleted: number }>
 }
 ```
@@ -237,7 +250,7 @@ v0.3.0 — connect to MongoDB (URI or fields); browse databases/collections in t
 
 One spec; the plan runs three phases, each a run of per-task PRs against `main` with a phase review (MA-milestone discipline):
 
-1. **Phase 1 — Browse.** MongoProfile + `mongo-config` (+ unit); `MongoAdapter` nav core; EJSON serialize/relaxed-JSON parse (+ unit); `documentQuery`; document-variant contract; Docker mongo + fixture; HostApi routing; connection form; JSON-mode query tab; document-list results (Tree/Raw); tree mapping. *Ships the read wedge (v0.3-preview).*
+1. **Phase 1 — Browse.** MongoProfile + `mongo-config` (+ unit); `MongoAdapter` nav core; EJSON serialize/relaxed-JSON parse (+ unit); `documentQuery`; document-variant contract; Docker mongo + fixture; HostApi routing; connection form; JSON-mode query tab; document-list results (Tree/Raw); tree mapping. _Ships the read wedge (v0.3-preview)._
 2. **Phase 2 — Edit.** `documentMutator` + contract; `$set`-diff builder (+ unit); card Edit/Delete + collection Insert with patch preview/confirm.
 3. **Phase 3 — Stats.** `mongoStats` + contract; `MongoDashboard`.
 

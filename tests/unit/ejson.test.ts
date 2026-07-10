@@ -33,4 +33,7 @@ describe('parseRelaxed', () => {
   it('throws a readable error on malformed input', () => {
     expect(() => parseRelaxed('{ a: }')).toThrow()
   })
+  it('does not corrupt string values containing commas and colons', () => {
+    expect(parseRelaxed('{ note: "a, b: c" }')).toEqual({ note: 'a, b: c' })
+  })
 })
