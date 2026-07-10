@@ -83,6 +83,10 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
       const s = await secrets.get(id)
       return { ...profile, authToken: s.authToken }
     }
+    if (profile.engine === 'mongodb') {
+      const s = await secrets.get(id)
+      return { ...profile, uri: s.uri, password: s.password }
+    }
     return profile
   }
 
