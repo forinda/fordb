@@ -14,6 +14,7 @@ import type { BrowseOptions } from '../adapter/browse-types'
 import type { SchemaOps } from '../adapter/schema-types'
 import type { ObjectKind, ObjectSummary } from '../adapter/object-types'
 import type { RoleInfo, GrantInfo, SettingRow } from '../adapter/admin-types'
+import type { DocsPage, FindOptions, OpenDocsResult } from '../adapter/document-types'
 
 export type ConnectionId = string
 
@@ -77,4 +78,21 @@ export interface HostApi {
   listRoles(id: ConnectionId): Promise<RoleInfo[]>
   roleGrants(id: ConnectionId, role: string): Promise<GrantInfo[]>
   serverSettings(id: ConnectionId): Promise<SettingRow[]>
+
+  documentQuerySupported(id: ConnectionId): Promise<boolean>
+  findDocs(
+    id: ConnectionId,
+    coll: string,
+    filter: Record<string, unknown>,
+    opts: FindOptions,
+    pageSize: number
+  ): Promise<OpenDocsResult>
+  aggregateDocs(
+    id: ConnectionId,
+    coll: string,
+    pipeline: Record<string, unknown>[],
+    pageSize: number
+  ): Promise<OpenDocsResult>
+  fetchDocs(id: ConnectionId, queryId: string): Promise<DocsPage>
+  closeDocs(id: ConnectionId, queryId: string): Promise<void>
 }
