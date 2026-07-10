@@ -12,6 +12,7 @@ import { quoteIdent } from '@shared/mutation/build-edits'
 import { splitStatements } from '@shared/sql/split-statements'
 import { parseCsv } from '@shared/csv/csv'
 import { parseRelaxed } from '@shared/mongo/relaxed-json'
+import { noMatchWarning } from '@shared/mongo/mutation-warnings'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
@@ -258,19 +259,32 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     await (await hostApi()).insertDoc(connId, tab.doc.collection, doc)
     await get().run(tabId) // refresh the document view
   },
-  updateDoc: async (tabId, docId, patch) => {
+  updateDoc: async (tabId, docId, edit) => {
     const connId = useConnStore.getState().activeConnectionId
     const tab = get().tabs.find((t) => t.id === tabId)
     if (!connId || !tab?.doc) return
-    await (await hostApi()).updateDoc(connId, tab.doc.collection, docId, patch)
+    const { matched } = await (await hostApi()).updateDoc(connId, tab.doc.collection, docId, edit)
     await get().run(tabId) // refresh the document view
+    // matched===0: the confirmed update silently touched nothing (exotic _id
+    // type toId() can't coerce, or a concurrent delete/change) — surface it
+    // rather than let the refetch quietly look like success.
+    if (matched === 0) {
+      set((s) => ({
+        tabs: patch(s.tabs, tabId, { status: 'error', message: noMatchWarning(docId) })
+      }))
+    }
   },
   deleteDoc: async (tabId, docId) => {
     const connId = useConnStore.getState().activeConnectionId
     const tab = get().tabs.find((t) => t.id === tabId)
     if (!connId || !tab?.doc) return
-    await (await hostApi()).deleteDoc(connId, tab.doc.collection, docId)
+    const { deleted } = await (await hostApi()).deleteDoc(connId, tab.doc.collection, docId)
     await get().run(tabId) // refresh the document view
+    if (deleted === 0) {
+      set((s) => ({
+        tabs: patch(s.tabs, tabId, { status: 'error', message: noMatchWarning(docId) })
+      }))
+    }
   },
   openFkTarget: async (schema, refTable, value) => {
     const connId = useConnStore.getState().activeConnectionId
