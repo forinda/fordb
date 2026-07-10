@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { useConnStore } from '../store'
 import { useServerSnapshot, useSessions, useLocks } from '../query/stats'
+import { useServerAdminSupported } from '../query/admin'
+import { hostApi } from '../rpc'
+import { qk } from '../query/keys'
 import { useRateHistory } from '../query/use-rate-history'
 import { TimeSeriesChart } from './charts/TimeSeriesChart'
 import { Gauges } from './dashboard/Gauges'
@@ -17,6 +21,29 @@ export function ServerDashboard(): React.JSX.Element {
   const snapshotQ = useServerSnapshot(connId, opts)
   const sessionsQ = useSessions(connId, opts)
   const locksQ = useLocks(connId, opts)
+  const adminSupported = useServerAdminSupported(connId).data ?? false
+  const queryClient = useQueryClient()
+  const [adminError, setAdminError] = useState<string | null>(null)
+
+  const admin =
+    connId && adminSupported
+      ? {
+          onCancel: (pid: number) => runAdmin((a) => a.cancelBackend(connId, pid)),
+          onTerminate: (pid: number) => runAdmin((a) => a.terminateBackend(connId, pid))
+        }
+      : undefined
+
+  async function runAdmin(
+    action: (a: Awaited<ReturnType<typeof hostApi>>) => Promise<boolean>
+  ): Promise<void> {
+    setAdminError(null)
+    try {
+      await action(await hostApi())
+      await queryClient.invalidateQueries({ queryKey: qk.sessions(connId!) })
+    } catch (e) {
+      setAdminError(e instanceof Error ? e.message : 'Action failed')
+    }
+  }
   const { rates, connections } = useRateHistory(connId, snapshotQ.data)
 
   const t = useMemo(() => rates.map((r) => r.tMs / 1000), [rates])
@@ -80,7 +107,10 @@ export function ServerDashboard(): React.JSX.Element {
       {panelError(sessionsQ) && (
         <div className="p-2 text-sm text-destructive">Sessions {panelError(sessionsQ)}</div>
       )}
-      {sessionsQ.data && <SessionsTable rows={sessionsQ.data} />}
+      {adminError && (
+        <div className="p-2 text-sm text-destructive">Action failed: {adminError}</div>
+      )}
+      {sessionsQ.data && <SessionsTable rows={sessionsQ.data} admin={admin} />}
       <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
         Locks
       </div>

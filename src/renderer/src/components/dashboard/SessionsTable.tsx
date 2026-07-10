@@ -9,7 +9,15 @@ function durationMs(r: SessionRow): number {
   return performance.timeOrigin + performance.now() - r.queryStartMs
 }
 
-export function SessionsTable(props: { rows: SessionRow[] }): React.JSX.Element {
+interface AdminActions {
+  onCancel(pid: number): void
+  onTerminate(pid: number): void
+}
+
+export function SessionsTable(props: {
+  rows: SessionRow[]
+  admin?: AdminActions
+}): React.JSX.Element {
   const [sort, setSort] = useState<SortKey>('duration')
   const rows = [...props.rows].sort((a, b) => {
     if (sort === 'duration') return durationMs(b) - durationMs(a)
@@ -33,6 +41,7 @@ export function SessionsTable(props: { rows: SessionRow[] }): React.JSX.Element 
             {th('state', 'State')}
             {th('duration', 'Duration')}
             <th className="px-2 py-1 text-left font-medium">Query</th>
+            {props.admin && <th className="px-2 py-1 text-right font-medium">Actions</th>}
           </tr>
         </thead>
         <tbody>
@@ -52,6 +61,25 @@ export function SessionsTable(props: { rows: SessionRow[] }): React.JSX.Element 
                   {r.queryStartMs == null ? '—' : `${Math.round(durationMs(r) / 1000)}s`}
                 </td>
                 <td className="max-w-md truncate px-2 py-1 font-mono text-xs">{r.query ?? '—'}</td>
+                {props.admin && (
+                  <td className="whitespace-nowrap px-2 py-1 text-right">
+                    <button
+                      className="rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-muted hover:text-foreground"
+                      onClick={() => props.admin!.onCancel(r.pid)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="ml-1 rounded px-1.5 py-0.5 text-xs text-destructive hover:bg-destructive/10"
+                      onClick={() => {
+                        if (window.confirm(`Terminate backend ${r.pid}? This forcibly closes it.`))
+                          props.admin!.onTerminate(r.pid)
+                      }}
+                    >
+                      Terminate
+                    </button>
+                  </td>
+                )}
               </tr>
             )
           })}
