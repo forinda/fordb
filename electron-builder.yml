@@ -1,0 +1,38 @@
+appId: io.github.forinda.fordb
+productName: fordb
+directories:
+  output: dist
+  buildResources: build
+files:
+  - out/**
+  - package.json
+  - '!**/*.map'
+asarUnpack:
+  - '**/*.node'
+  - '**/node_modules/@libsql/**'
+  - '**/node_modules/cpu-features/**'
+  - '**/node_modules/ssh2/**'
+npmRebuild: false
+publish:
+  provider: github
+  owner: forinda
+  repo: fordb
+linux:
+  category: Development
+  icon: build/icon.png
+  target:
+    - AppImage
+    - deb
+appImage:
+  artifactName: fordb-${version}-${arch}.AppImage
+deb:
+  artifactName: fordb_${version}_${arch}.deb
+win:
+  icon: build/icon.ico
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  artifactName: fordb-${version}-setup.${ext}

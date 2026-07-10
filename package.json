@@ -1,6 +1,6 @@
 {
   "name": "fordb",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Lean, keyboard-first, multi-engine database client",
   "license": "MIT",
   "private": true,
@@ -13,6 +13,9 @@
     "dev": "electron-vite dev",
     "dev:sandboxless": "ELECTRON_DISABLE_SANDBOX=1 electron-vite dev",
     "build": "pnpm typecheck && electron-vite build",
+    "package": "pnpm build && electron-builder --linux",
+    "package:win": "pnpm build && electron-builder --win",
+    "package:all": "pnpm build && electron-builder -lw",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
@@ -36,6 +39,7 @@
     "@types/ssh2": "^1.15.5",
     "@vitejs/plugin-react": "^5",
     "electron": "^39.8.10",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^5.0.0",
     "eslint": "^9.39.4",
     "prettier": "^3.9.4",
@@ -82,5 +86,14 @@
     "tunnel-ssh": "^5.2.0",
     "uplot": "^1.6.32",
     "zustand": "^5.0.14"
+  },
+  "author": {
+    "name": "forinda",
+    "email": "forinda82@gmail.com"
+  },
+  "homepage": "https://github.com/forinda/fordb",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/forinda/fordb.git"
   }
 }
