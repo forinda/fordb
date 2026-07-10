@@ -14,7 +14,7 @@ import type { Cell } from '@shared/adapter/mutation-types'
 import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
 import { buildBrowseSql } from '@shared/browse/build-browse'
 import { useDialect } from '../query/use-dialect'
-import { useQueryStore, type QueryTab } from '../store-query'
+import { useQueryStore, type QueryTab, PAGE_SIZE } from '../store-query'
 
 type Val = string | null
 
@@ -289,7 +289,9 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           table: data.table,
           filters: data.browse.filters,
           sort: data.browse.sort,
-          pageSize: 200
+          // The real page size the store browses with — buildBrowseSql doesn't
+          // emit LIMIT today, but a fake value here becomes a lie if it ever does.
+          pageSize: PAGE_SIZE
         },
         dialect
       ).sql.replace(/\s+/g, ' ')
