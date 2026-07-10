@@ -36,6 +36,10 @@ export function ProfileForm(props: {
   )
   const [authToken, setAuthToken] = useState('')
   const [name, setName] = useState(p?.name ?? '')
+  const [environment, setEnvironment] = useState<'none' | 'production' | 'staging' | 'local'>(
+    p?.environment ?? 'none'
+  )
+  const [favorite, setFavorite] = useState(p?.favorite ?? false)
   const [host, setHost] = useState(pg?.host ?? 'localhost')
   const [port, setPort] = useState(String(pg?.port ?? 5432))
   const [database, setDatabase] = useState(pg?.database ?? '')
@@ -104,6 +108,11 @@ export function ProfileForm(props: {
   }
 
   function build(): ConnectionProfile {
+    // Non-secret Dialect metadata, shared by every engine branch below.
+    const meta = {
+      environment: environment === 'none' ? undefined : environment,
+      favorite: favorite || undefined
+    }
     if (engine === 'sqlite') {
       const id = p?.id ?? newId()
       let base: SqliteProfile
@@ -111,7 +120,7 @@ export function ProfileForm(props: {
       else if (kind === 'replica')
         base = { id, name, engine: 'sqlite', kind: 'replica', file, syncUrl }
       else base = { id, name, engine: 'sqlite', kind: 'local', file }
-      return { ...base, name: name.trim() || connectionLabel(base) }
+      return { ...base, ...meta, name: name.trim() || connectionLabel(base) }
     }
     if (engine === 'mongodb') {
       const parsedMongoPort = Number(mongoPort)
@@ -129,7 +138,7 @@ export function ProfileForm(props: {
             tls: mongoTls || undefined,
             database: mongoDatabase || undefined
           }
-      return { ...base, name: name.trim() || connectionLabel(base) }
+      return { ...base, ...meta, name: name.trim() || connectionLabel(base) }
     }
     const parsedPort = Number(port)
     const parsedSshPort = Number(sshPort)
@@ -153,7 +162,7 @@ export function ProfileForm(props: {
         : undefined
     }
     // Never persist a blank name — derive one so the sidebar row isn't empty.
-    return { ...base, name: name.trim() || connectionLabel(base) }
+    return { ...base, ...meta, name: name.trim() || connectionLabel(base) }
   }
 
   function secrets(): {
@@ -206,6 +215,27 @@ export function ProfileForm(props: {
         </Select>
       </Label>
       <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="flex items-center gap-2">
+        <select
+          aria-label="Environment"
+          className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
+          value={environment}
+          onChange={(e) => setEnvironment(e.target.value as typeof environment)}
+        >
+          <option value="none">No environment</option>
+          <option value="production">Production</option>
+          <option value="staging">Staging</option>
+          <option value="local">Local</option>
+        </select>
+        <label className="flex items-center gap-1 text-sm text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={favorite}
+            onChange={(e) => setFavorite(e.target.checked)}
+          />
+          Favorite
+        </label>
+      </div>
       {engine === 'sqlite' && (
         <>
           <Label>
