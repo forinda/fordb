@@ -179,7 +179,10 @@ describe('HostApi over RPC', () => {
     expect(await client.serverAdminSupported(id)).toBe(true)
     expect((await client.listRoles(id)).some((r) => r.name === 'fordb')).toBe(true)
     expect((await client.serverSettings(id)).some((s) => s.name === 'max_connections')).toBe(true)
-    expect(Array.isArray(await client.roleGrants(id, 'fordb'))).toBe(true)
+    const grants = await client.roleGrants(id, 'fordb')
+    expect(
+      grants.some((g) => g.schema === 'app' && g.table === 'users' && g.privilege === 'SELECT')
+    ).toBe(true)
     expect(await client.cancelBackend(id, 0)).toBe(false)
     expect(await client.terminateBackend(id, 0)).toBe(false)
     await client.closeConnection(id)

@@ -33,6 +33,10 @@ CREATE TRIGGER users_touch
   BEFORE UPDATE ON app.users
   FOR EACH ROW EXECUTE FUNCTION app.touch_users();
 
+-- A deterministic self-grant so the roleGrants contract can assert a concrete
+-- {schema,table,privilege} row (fordb is the connected/owning role).
+GRANT SELECT ON app.users TO fordb;
+
 INSERT INTO app.users (email, name)
 SELECT 'user' || i || '@example.com', 'User ' || i
 FROM generate_series(1, 1000) AS i;
