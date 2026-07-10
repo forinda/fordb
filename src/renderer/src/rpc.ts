@@ -15,6 +15,7 @@ declare global {
             sshPassword?: string
             sshPassphrase?: string
             authToken?: string
+            uri?: string
           }
         ) => Promise<void>
         delete: (id: string) => Promise<void>

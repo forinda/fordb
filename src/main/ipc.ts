@@ -42,6 +42,7 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
         sshPassword?: string
         sshPassphrase?: string
         authToken?: string
+        uri?: string
       }
     ) => {
       await profiles.save(profile)
@@ -49,7 +50,8 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
         secretFields.password ||
         secretFields.sshPassword ||
         secretFields.sshPassphrase ||
-        secretFields.authToken
+        secretFields.authToken ||
+        secretFields.uri
       ) {
         await secrets.set(profile.id, secretFields)
       }
