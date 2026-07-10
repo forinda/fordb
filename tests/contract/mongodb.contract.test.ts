@@ -13,6 +13,11 @@ const profile: MongoProfile = {
   database: 'app'
 }
 
+// NOTE (T5): this seed shares the `app` database with
+// host-api.contract.test.ts's seed of the same DB. That's only safe because
+// vitest.contract.config.ts sets `fileParallelism: false` — these files never
+// run concurrently. If parallelism is ever revisited, make this seed
+// idempotent-safe (or give each file its own DB) first.
 beforeAll(async () => {
   await seedMongoFixture(buildMongoUri(profile))
 })

@@ -43,7 +43,9 @@ export class HostApiImpl implements HostApi {
     let tunnel: TunnelHandle | undefined
     try {
       ;({ adapter, tunnel } = await connectAdapter((engine) => adapterForEngine(engine), profile))
-      await adapter.executeQuery('SELECT 1')
+      // Engine-agnostic liveness probe: every adapter implements listDatabases(),
+      // unlike executeQuery() (SQL-only — MongoAdapter rejects it unconditionally).
+      await adapter.listDatabases()
       return { ok: true }
     } catch (err) {
       return { ok: false, error: err instanceof Error ? err.message : String(err) }

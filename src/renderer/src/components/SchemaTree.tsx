@@ -15,7 +15,7 @@ import { useQueryStore } from '../store-query'
 import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
 import { buildDdl } from '@shared/ddl/build-ddl'
-import type { DdlChange } from '@shared/adapter/schema-types'
+import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { queryClient } from '../query/client'
@@ -83,7 +83,10 @@ export function SchemaTree(): React.JSX.Element {
     profiles.find((p) => p.id === profileId)?.engine === 'postgres' ? 'pg' : 'sqlite'
   const { data: ops } = useQuery({
     queryKey: connId ? ['conn', connId, 'schemaOps'] : ['conn', 'none', 'schemaOps'],
-    queryFn: async () => (await hostApi()).schemaOps(connId!),
+    queryFn: async (): Promise<SchemaOps | undefined> => {
+      const api = await hostApi()
+      return (await api.schemaEditSupported(connId!)) ? api.schemaOps(connId!) : undefined
+    },
     enabled: !!connId
   })
   const { data: objectKinds = [] } = useQuery({
@@ -142,15 +145,21 @@ export function SchemaTree(): React.JSX.Element {
                 run: () => void useQueryStore.getState().openTable(m.schema, m.table)
               }
             ]),
-        {
-          label: 'Structure',
-          run: () => useQueryStore.getState().openStructure(m.schema, m.table)
-        },
+        // Structure reconstructs a CREATE TABLE, which is nonsensical for a
+        // document-mode (Mongo) collection — relational-only, gate on docSupported.
+        ...(docSupported
+          ? []
+          : [
+              {
+                label: 'Structure',
+                run: () => useQueryStore.getState().openStructure(m.schema, m.table)
+              }
+            ]),
         { label: 'Show columns', run: () => m.toggle() },
         { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
         // Export/CSV-import reconstruct a CREATE TABLE + rows — only meaningful for
-        // real tables, not views.
-        ...(m.isView
+        // real (relational) tables, not views, and not Mongo collections.
+        ...(m.isView || docSupported
           ? []
           : [
               {
@@ -230,13 +239,16 @@ export function SchemaTree(): React.JSX.Element {
             onSubmit: (name) => void runDdl({ kind: 'dropDatabase', name })
           })
       })
-    items.push({
-      label: 'Export database (SQL)',
-      run: () =>
-        void useQueryStore
-          .getState()
-          .exportSql({ kind: 'database', schema: m.schema }, false, dialect)
-    })
+    // Relational-only (reconstructs a SQL dump) — hide on a Mongo (document-mode)
+    // connection.
+    if (!docSupported)
+      items.push({
+        label: 'Export database (SQL)',
+        run: () =>
+          void useQueryStore
+            .getState()
+            .exportSql({ kind: 'database', schema: m.schema }, false, dialect)
+      })
     return items
   }
 

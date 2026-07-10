@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { ObjectId } from 'mongodb'
+import { ObjectId, Decimal128, Long, Binary, UUID, Timestamp, BSONRegExp } from 'mongodb'
 import { toJsonSafe } from '../../src/db-host/mongo/ejson'
 import { parseRelaxed } from '../../src/shared/mongo/relaxed-json'
 
@@ -11,6 +11,33 @@ describe('toJsonSafe', () => {
   it('renders Date as { $date } ISO', () => {
     const d = new Date('2026-07-10T00:00:00.000Z')
     expect(toJsonSafe({ at: d })).toEqual({ at: { $date: '2026-07-10T00:00:00.000Z' } })
+  })
+  it('renders Decimal128 as { $numberDecimal }', () => {
+    const amount = Decimal128.fromString('12.34')
+    expect(toJsonSafe({ amount })).toEqual({ amount: { $numberDecimal: '12.34' } })
+  })
+  it('renders Long as { $numberLong }', () => {
+    const n = Long.fromNumber(9007199254740993)
+    expect(toJsonSafe({ n })).toEqual({ n: { $numberLong: n.toString() } })
+  })
+  it('renders Binary as { $binary } base64', () => {
+    const bin = new Binary(Buffer.from('hello'), 0)
+    expect(toJsonSafe({ bin })).toEqual({ bin: { $binary: bin.toString('base64') } })
+  })
+  it('renders UUID as { $binary } with its string form (not the raw Binary buffer)', () => {
+    const id = new UUID('01696ac5-0f8c-4de6-9218-9f4a08e78d69')
+    expect(toJsonSafe({ id })).toEqual({ id: { $binary: '01696ac5-0f8c-4de6-9218-9f4a08e78d69' } })
+  })
+  it('renders Timestamp as { $timestamp }', () => {
+    const ts = Timestamp.fromNumber(123)
+    expect(toJsonSafe({ ts })).toEqual({ ts: { $timestamp: ts.toString() } })
+  })
+  it('renders a BSONRegExp as { $regex, $options }', () => {
+    const re = new BSONRegExp('^a', 'i')
+    expect(toJsonSafe({ re })).toEqual({ re: { $regex: '^a', $options: 'i' } })
+  })
+  it('renders a JS RegExp as { $regex, $options }', () => {
+    expect(toJsonSafe({ re: /^a/i })).toEqual({ re: { $regex: '^a', $options: 'i' } })
   })
   it('recurses arrays and nested docs, passes scalars through', () => {
     expect(toJsonSafe({ a: [1, 'x', { b: true }], n: null })).toEqual({

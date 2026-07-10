@@ -51,6 +51,11 @@ beforeAll(async () => {
   await c.end()
   // Seed the Mongo fixture too, so this file's documentQuery assertions pass
   // when run in isolation (not just as part of the full `test:contract` run).
+  // NOTE (T5): this shares the `app` database with mongodb.contract.test.ts's
+  // seed. That's only safe because vitest.contract.config.ts sets
+  // `fileParallelism: false` — these files never run concurrently. If
+  // parallelism is ever revisited, make this seed idempotent-safe (or give
+  // each file its own DB) first.
   await seedMongoFixture(buildMongoUri(mongoProfile))
 })
 
@@ -82,6 +87,10 @@ describe('HostApi over RPC', () => {
   it('testConnection reports error on bad credentials without throwing', async () => {
     const r = await client.testConnection(badProfile)
     expect(r.ok).toBe(false)
+  })
+
+  it('testConnection ok on a good Mongo profile (I1: engine-agnostic probe)', async () => {
+    expect(await client.testConnection(mongoProfile)).toEqual({ ok: true })
   })
 
   it('open then introspect by connectionId', async () => {
