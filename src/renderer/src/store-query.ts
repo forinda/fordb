@@ -89,6 +89,12 @@ interface QueryState {
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
   openCollection: (collection: string) => Promise<void>
   setDoc: (id: string, patch: Partial<NonNullable<QueryTab['doc']>>) => void
+  /** Inserts a new document into the tab's collection, then refetches the tab. */
+  insertDoc: (tabId: string, doc: Record<string, unknown>) => Promise<void>
+  /** Applies a $set patch to a document by `_id`, then refetches the tab. */
+  updateDoc: (tabId: string, docId: unknown, patch: Record<string, unknown>) => Promise<void>
+  /** Deletes a document by `_id`, then refetches the tab. */
+  deleteDoc: (tabId: string, docId: unknown) => Promise<void>
   openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
@@ -244,6 +250,27 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     set((s) => ({
       tabs: s.tabs.map((t) => (t.id === id && t.doc ? { ...t, doc: { ...t.doc, ...docPatch } } : t))
     }))
+  },
+  insertDoc: async (tabId, doc) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !tab?.doc) return
+    await (await hostApi()).insertDoc(connId, tab.doc.collection, doc)
+    await get().run(tabId) // refresh the document view
+  },
+  updateDoc: async (tabId, docId, patch) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !tab?.doc) return
+    await (await hostApi()).updateDoc(connId, tab.doc.collection, docId, patch)
+    await get().run(tabId) // refresh the document view
+  },
+  deleteDoc: async (tabId, docId) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !tab?.doc) return
+    await (await hostApi()).deleteDoc(connId, tab.doc.collection, docId)
+    await get().run(tabId) // refresh the document view
   },
   openFkTarget: async (schema, refTable, value) => {
     const connId = useConnStore.getState().activeConnectionId
