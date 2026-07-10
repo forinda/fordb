@@ -13,12 +13,14 @@ export interface DocsPage {
 }
 export interface DocumentQuery {
   find(
+    db: string,
     coll: string,
     filter: Record<string, unknown>,
     opts: FindOptions,
     pageSize: number
   ): Promise<OpenDocsResult>
   aggregate(
+    db: string,
     coll: string,
     pipeline: Record<string, unknown>[],
     pageSize: number
@@ -28,11 +30,16 @@ export interface DocumentQuery {
 }
 
 export interface DocumentMutator {
-  insertOne(coll: string, doc: Record<string, unknown>): Promise<{ insertedId: unknown }>
+  insertOne(
+    db: string,
+    coll: string,
+    doc: Record<string, unknown>
+  ): Promise<{ insertedId: unknown }>
   updateById(
+    db: string,
     coll: string,
     id: unknown,
     patch: Record<string, unknown>
   ): Promise<{ matched: number }>
-  deleteById(coll: string, id: unknown): Promise<{ deleted: number }>
+  deleteById(db: string, coll: string, id: unknown): Promise<{ deleted: number }>
 }
