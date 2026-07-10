@@ -19,7 +19,7 @@ import type { ObjectKind } from '@shared/adapter/object-types'
 import { buildDdl } from '@shared/ddl/build-ddl'
 import { DocumentResultSource } from './query/documents'
 
-const PAGE_SIZE = 1000
+export const PAGE_SIZE = 1000
 const DOC_PAGE_SIZE = 50
 
 export type TabStatus = 'idle' | 'running' | 'done' | 'error'

@@ -293,7 +293,7 @@ export function QueryWorkbench(): React.JSX.Element {
       <QueryTabs />
       <div className="flex items-center gap-1.5 border-b border-border bg-surface-1 p-2">
         <button
-          className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
           onClick={() => void run(tab.id)}
           disabled={tab.status === 'running'}
         >
@@ -305,7 +305,7 @@ export function QueryWorkbench(): React.JSX.Element {
           </span>
         </button>
         <button
-          className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
           onClick={() => void cancel(tab.id)}
           disabled={tab.status !== 'running'}
         >
@@ -421,7 +421,7 @@ function GhostButton(props: {
 }): React.JSX.Element {
   return (
     <button
-      className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+      className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
       onClick={props.onClick}
       disabled={props.disabled}
     >
