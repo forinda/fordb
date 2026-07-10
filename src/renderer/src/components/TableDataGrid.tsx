@@ -303,7 +303,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     : null
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       {/* Compact query bar (Dialect): documents the SQL the grid is showing. */}
       {browseSqlLine && (
         <div className="flex flex-none items-center gap-2 border-b border-border-soft bg-surface-1 px-2 py-1">
@@ -329,21 +329,6 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
             </button>
             <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={setNull}>
               Set NULL
-            </button>
-            <span className="ml-auto text-muted-foreground">{dirty} pending</span>
-            <button
-              className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
-              disabled={dirty === 0}
-              onClick={() => void review()}
-            >
-              Review &amp; apply
-            </button>
-            <button
-              className="rounded px-2 py-0.5 hover:bg-muted disabled:opacity-50"
-              disabled={dirty === 0}
-              onClick={discard}
-            >
-              Discard
             </button>
           </>
         ) : (
@@ -449,6 +434,51 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           height="100%"
         />
       </div>
+      {/* Pending-changes tray (Dialect): floats over the grid bottom. Always
+          mounted for editable tabs so the apply affordance is discoverable
+          (and e2e-visible) even at 0 pending. */}
+      {editable && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
+          <div
+            className="pointer-events-auto flex max-w-[92%] items-center gap-3 rounded-xl px-3 py-2 text-xs text-chrome-foreground shadow-[var(--shadow-pop)]"
+            style={{ background: 'linear-gradient(180deg, var(--chrome), var(--chrome-2))' }}
+          >
+            <span className="flex items-center gap-1.5 whitespace-nowrap">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${dirty > 0 ? 'bg-warning' : 'bg-success'}`}
+              />
+              {dirty} pending
+            </span>
+            <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
+              {dirty > 0 &&
+                previewEdits(buildEdits(toPending()))
+                  .slice(0, 3)
+                  .map((sql, i) => (
+                    <span
+                      key={i}
+                      className="whitespace-nowrap rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-chrome-foreground/80"
+                    >
+                      {sql.length > 60 ? `${sql.slice(0, 60)}…` : sql}
+                    </span>
+                  ))}
+            </div>
+            <button
+              className="rounded px-2 py-1 text-chrome-foreground/80 hover:bg-white/10 disabled:opacity-40"
+              disabled={dirty === 0}
+              onClick={discard}
+            >
+              Discard
+            </button>
+            <button
+              className="whitespace-nowrap rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-40"
+              disabled={dirty === 0}
+              onClick={() => void review()}
+            >
+              Review &amp; apply
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
