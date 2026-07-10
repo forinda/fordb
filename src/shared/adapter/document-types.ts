@@ -1,0 +1,28 @@
+export interface FindOptions {
+  projection?: Record<string, unknown>
+  sort?: Record<string, 1 | -1>
+  limit?: number
+  skip?: number
+}
+export interface OpenDocsResult {
+  queryId: string
+}
+export interface DocsPage {
+  docs: Record<string, unknown>[]
+  done: boolean
+}
+export interface DocumentQuery {
+  find(
+    coll: string,
+    filter: Record<string, unknown>,
+    opts: FindOptions,
+    pageSize: number
+  ): Promise<OpenDocsResult>
+  aggregate(
+    coll: string,
+    pipeline: Record<string, unknown>[],
+    pageSize: number
+  ): Promise<OpenDocsResult>
+  fetchDocs(queryId: string): Promise<DocsPage>
+  closeDocs(queryId: string): Promise<void>
+}
