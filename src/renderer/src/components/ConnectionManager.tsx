@@ -38,10 +38,10 @@ function RailRow(props: {
   )
 }
 
-/** Dialect connections manager. `full` = landing page with the filter rail;
- *  `slim` (T3) = compact single-column switcher for the connected sidebar. */
+/** Dialect connections manager: the top-level Connections screen (filter
+ *  rail + search + cards). Doubles as the connection switcher — the title
+ *  bar's screen toggle brings it up any time. */
 export function ConnectionManager(props: {
-  variant: 'full'
   onConnect: (connectionId: string, profileId: string, database: string | null) => void
   onEdit: (profile: ConnectionProfile) => void
   onNew: () => void
@@ -49,6 +49,8 @@ export function ConnectionManager(props: {
   const { data: profiles = [] } = useProfiles()
   const invalidateProfiles = useInvalidateProfiles()
   const activeProfileId = useConnStore((s) => s.activeProfileId)
+  const activeConnectionId = useConnStore((s) => s.activeConnectionId)
+  const clearActive = useConnStore((s) => s.clearActive)
   const [engine, setEngine] = useState<ConnectionProfile['engine'] | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [environment, setEnvironment] = useState<Environment | null>(null)
@@ -116,7 +118,10 @@ export function ConnectionManager(props: {
           <RailRow
             label="Favorites"
             active={favoritesOnly}
-            onClick={() => setFavoritesOnly((v) => !v)}
+            onClick={() => {
+              setFavoritesOnly((v) => !v)
+              setEngine(null) // one selection within the Engines group (M3)
+            }}
           />
         </div>
         <div>
@@ -226,6 +231,19 @@ export function ConnectionManager(props: {
                   <button
                     className="rounded px-1 text-xs text-muted-foreground hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => {
+                      const isActiveProfile = p.id === activeProfileId
+                      const msg = isActiveProfile
+                        ? `Delete "${connectionLabel(p)}"? This disconnects the current session and removes its stored secrets.`
+                        : `Delete "${connectionLabel(p)}"? This removes its stored secrets.`
+                      if (!window.confirm(msg)) return
+                      // Deleting the active profile must not orphan the live
+                      // session (I1): close + clear before the profile (and its
+                      // keychain entry) disappear.
+                      if (isActiveProfile) {
+                        if (activeConnectionId)
+                          void window.fordb.connection.close(activeConnectionId)
+                        clearActive()
+                      }
                       void window.fordb.profiles.delete(p.id).then(() => invalidateProfiles())
                     }}
                   >
