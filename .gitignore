@@ -6,3 +6,4 @@ dist/
 .superpowers/
 test-results/
 playwright-report/
+perf-results.json
