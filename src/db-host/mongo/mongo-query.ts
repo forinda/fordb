@@ -5,7 +5,7 @@ import type {
   FindOptions,
   OpenDocsResult
 } from '@shared/adapter/document-types'
-import { toJsonSafe } from './ejson'
+import { toJsonSafe, reviveEjson } from './ejson'
 
 interface OpenCursor {
   cursor: FindCursor | AggregationCursor
@@ -44,7 +44,7 @@ export class MongoDocumentQuery implements DocumentQuery {
   ): Promise<OpenDocsResult> {
     const c = this.dbFor(db)
       .collection(coll)
-      .find(filter, {
+      .find(reviveEjson(filter) as Record<string, unknown>, {
         projection: opts.projection,
         sort: opts.sort as never,
         limit: opts.limit,
@@ -59,7 +59,9 @@ export class MongoDocumentQuery implements DocumentQuery {
     pipeline: Record<string, unknown>[],
     pageSize: number
   ): Promise<OpenDocsResult> {
-    const c = this.dbFor(db).collection(coll).aggregate(pipeline)
+    const c = this.dbFor(db)
+      .collection(coll)
+      .aggregate(reviveEjson(pipeline) as Record<string, unknown>[])
     return Promise.resolve(this.open(c, pageSize))
   }
 

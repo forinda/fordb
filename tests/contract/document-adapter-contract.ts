@@ -122,6 +122,23 @@ export function runDocumentAdapterContractTests(
     // prototype → becomes {buffer:...}), so a later update/delete by that id
     // silently matches 0 docs. Here we insert with NO explicit _id, so Mongo
     // auto-generates an ObjectId, and check the round trip end to end.
+    it('documentMutator: an {$oid} _id inserts as a real ObjectId and round-trips', async () => {
+      if (!adapter.documentMutator || !adapter.documentQuery) return
+      const dm = adapter.documentMutator
+      const dq = adapter.documentQuery
+      const oid = '64b7e12000000000000000ab'
+      const ins = await dm.insertOne('app', 'users', { _id: { $oid: oid }, email: 'oid@z' })
+      // Stored as a genuine ObjectId → the returned id is the same {$oid}.
+      expect(ins.insertedId).toEqual({ $oid: oid })
+      // find by the same {$oid} matches the inserted doc (not a subdocument _id).
+      const back = await dq.find('app', 'users', { _id: { $oid: oid } }, {}, 1)
+      const page = await dq.fetchDocs(back.queryId)
+      expect(page.docs.length).toBe(1)
+      expect((page.docs[0] as { email: string }).email).toBe('oid@z')
+      const del = await dm.deleteById('app', 'users', { $oid: oid })
+      expect(del.deleted).toBe(1)
+    })
+
     it('documentMutator: insert without _id returns a JSON-safe insertedId that round-trips', async () => {
       if (!adapter.documentMutator) return
       const dm = adapter.documentMutator

@@ -64,3 +64,23 @@ describe('parseRelaxed', () => {
     expect(parseRelaxed('{ note: "a, b: c" }')).toEqual({ note: 'a, b: c' })
   })
 })
+
+describe('reviveEjson', () => {
+  it('revives $oid to an ObjectId and $date to a Date', async () => {
+    const { reviveEjson } = await import('../../src/db-host/mongo/ejson')
+    const { ObjectId } = await import('mongodb')
+    const out = reviveEjson({
+      _id: { $oid: '64b7e12000000000000000ab' },
+      at: { $date: '2026-07-10T00:00:00.000Z' },
+      name: 'x',
+      nested: { a: [{ $oid: '64b7e12000000000000000ac' }] }
+    }) as Record<string, unknown>
+    expect(out._id).toBeInstanceOf(ObjectId)
+    expect((out._id as InstanceType<typeof ObjectId>).toHexString()).toBe(
+      '64b7e12000000000000000ab'
+    )
+    expect(out.at).toBeInstanceOf(Date)
+    expect(out.name).toBe('x')
+    expect((out.nested as { a: unknown[] }).a[0]).toBeInstanceOf(ObjectId)
+  })
+})
