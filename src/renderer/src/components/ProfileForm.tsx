@@ -21,10 +21,10 @@ export function ProfileForm(props: {
   const p = props.profile
   // Postgres-only view of the edited profile, used to seed the PG field state.
   const pg = p?.engine === 'postgres' ? p : undefined
-  // MongoDB profiles aren't editable in this form yet (M7); default to postgres
-  // rather than widen this form's engine union for a profile it can't render.
-  const [engine, setEngine] = useState<'postgres' | 'sqlite'>(
-    p?.engine === 'sqlite' ? 'sqlite' : 'postgres'
+  // MongoDB-only view of the edited profile, used to seed the Mongo field state.
+  const mongo = p?.engine === 'mongodb' ? p : undefined
+  const [engine, setEngine] = useState<'postgres' | 'sqlite' | 'mongodb'>(
+    p?.engine === 'sqlite' ? 'sqlite' : p?.engine === 'mongodb' ? 'mongodb' : 'postgres'
   )
   const [kind, setKind] = useState<'local' | 'remote' | 'replica'>(
     p?.engine === 'sqlite' ? p.kind : 'local'
@@ -57,6 +57,18 @@ export function ProfileForm(props: {
   const [sshPassword, setSshPassword] = useState('')
   const [privateKeyPath, setPrivateKeyPath] = useState(pg?.ssh?.privateKeyPath ?? '')
   const [sshPassphrase, setSshPassphrase] = useState('')
+
+  // Mongo — URI path (primary) is the default unless editing a profile that
+  // was saved with discrete fields (recognizable by a persisted `host`).
+  const [mongoUseUri, setMongoUseUri] = useState(mongo?.host === undefined)
+  const [mongoUri, setMongoUri] = useState('')
+  const [mongoHost, setMongoHost] = useState(mongo?.host ?? 'localhost')
+  const [mongoPort, setMongoPort] = useState(String(mongo?.port ?? 27017))
+  const [mongoUser, setMongoUser] = useState(mongo?.user ?? '')
+  const [mongoPassword, setMongoPassword] = useState('')
+  const [mongoAuthSource, setMongoAuthSource] = useState(mongo?.authSource ?? '')
+  const [mongoTls, setMongoTls] = useState(mongo?.tls ?? false)
+  const [mongoDatabase, setMongoDatabase] = useState(mongo?.database ?? '')
 
   const [testMsg, setTestMsg] = useState('')
   const invalidateProfiles = useInvalidateProfiles()
@@ -101,6 +113,24 @@ export function ProfileForm(props: {
       else base = { id, name, engine: 'sqlite', kind: 'local', file }
       return { ...base, name: name.trim() || connectionLabel(base) }
     }
+    if (engine === 'mongodb') {
+      const parsedMongoPort = Number(mongoPort)
+      const id = p?.id ?? newId()
+      const base: ConnectionProfile = mongoUseUri
+        ? { id, name, engine: 'mongodb', database: mongoDatabase || undefined }
+        : {
+            id,
+            name,
+            engine: 'mongodb',
+            host: mongoHost,
+            port: Number.isNaN(parsedMongoPort) ? 27017 : parsedMongoPort,
+            user: mongoUser || undefined,
+            authSource: mongoAuthSource || undefined,
+            tls: mongoTls || undefined,
+            database: mongoDatabase || undefined
+          }
+      return { ...base, name: name.trim() || connectionLabel(base) }
+    }
     const parsedPort = Number(port)
     const parsedSshPort = Number(sshPort)
     const base: ConnectionProfile = {
@@ -131,9 +161,12 @@ export function ProfileForm(props: {
     sshPassword?: string
     sshPassphrase?: string
     authToken?: string
+    uri?: string
   } {
     if (engine === 'sqlite')
       return kind === 'remote' || kind === 'replica' ? { authToken: authToken || undefined } : {}
+    if (engine === 'mongodb')
+      return mongoUseUri ? { uri: mongoUri || undefined } : { password: mongoPassword || undefined }
     return {
       password: password || undefined,
       sshPassword: useSsh && authMethod === 'password' ? sshPassword || undefined : undefined,
@@ -158,13 +191,17 @@ export function ProfileForm(props: {
     <div className="flex flex-col gap-2 p-4 max-w-md">
       <Label>
         Engine
-        <Select value={engine} onValueChange={(v) => setEngine(v as 'postgres' | 'sqlite')}>
+        <Select
+          value={engine}
+          onValueChange={(v) => setEngine(v as 'postgres' | 'sqlite' | 'mongodb')}
+        >
           <SelectTrigger aria-label="Database engine">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="postgres">PostgreSQL</SelectItem>
             <SelectItem value="sqlite">SQLite</SelectItem>
+            <SelectItem value="mongodb">MongoDB</SelectItem>
           </SelectContent>
         </Select>
       </Label>
@@ -343,6 +380,61 @@ export function ProfileForm(props: {
               )}
             </div>
           )}
+        </>
+      )}
+      {engine === 'mongodb' && (
+        <>
+          <Label className="mt-2">
+            <Checkbox checked={mongoUseUri} onCheckedChange={(v) => setMongoUseUri(v === true)} />
+            Use connection URI
+          </Label>
+          {mongoUseUri ? (
+            <Input
+              type="password"
+              placeholder="mongodb://user:pass@host:27017/db"
+              value={mongoUri}
+              onChange={(e) => setMongoUri(e.target.value)}
+            />
+          ) : (
+            <div className="flex flex-col gap-2 pl-6 border-l border-border">
+              <Input
+                placeholder="Host"
+                value={mongoHost}
+                onChange={(e) => setMongoHost(e.target.value)}
+              />
+              <Input
+                type="number"
+                placeholder="Port"
+                value={mongoPort}
+                onChange={(e) => setMongoPort(e.target.value)}
+              />
+              <Input
+                placeholder="User"
+                value={mongoUser}
+                onChange={(e) => setMongoUser(e.target.value)}
+              />
+              <Input
+                type="password"
+                placeholder="Password"
+                value={mongoPassword}
+                onChange={(e) => setMongoPassword(e.target.value)}
+              />
+              <Input
+                placeholder="Auth source"
+                value={mongoAuthSource}
+                onChange={(e) => setMongoAuthSource(e.target.value)}
+              />
+              <Label>
+                <Checkbox checked={mongoTls} onCheckedChange={(v) => setMongoTls(v === true)} />
+                Use TLS
+              </Label>
+            </div>
+          )}
+          <Input
+            placeholder="Database (optional)"
+            value={mongoDatabase}
+            onChange={(e) => setMongoDatabase(e.target.value)}
+          />
         </>
       )}
 
