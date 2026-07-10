@@ -25,3 +25,12 @@ services:
       interval: 2s
       timeout: 2s
       retries: 20
+  mongo:
+    image: mongo:7
+    ports:
+      - '27027:27017'
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', 'db.adminCommand("ping")']
+      interval: 2s
+      timeout: 2s
+      retries: 20
