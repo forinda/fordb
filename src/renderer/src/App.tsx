@@ -28,10 +28,7 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 // its ambient `declare global` augmentation).
 import './rpc'
 
-type View = { kind: 'welcome' } | { kind: 'connected' }
-
 export function App(): React.JSX.Element {
-  const [view, setView] = useState<View>({ kind: 'welcome' })
   // Top-level screen per the Dialect design: Connections (manager) vs Editor,
   // toggled from the title bar; Editor needs a live connection.
   const [screen, setScreen] = useState<'connections' | 'editor'>('connections')
@@ -41,6 +38,9 @@ export function App(): React.JSX.Element {
   const setActive = useConnStore((s) => s.setActive)
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
+  // Single source of truth for "connected" (I2): the store. view-based gating
+  // diverged from connectionLost(), which can only clear the store.
+  const connected = activeConnectionId !== null
   const setMode = useThemeStore((s) => s.setMode)
 
   // Connect (or switch): closes the previously-open connection so switching from
@@ -48,7 +48,6 @@ export function App(): React.JSX.Element {
   function connectTo(connectionId: string, profileId: string, database: string | null): void {
     const prev = activeConnectionId
     setActive(connectionId, profileId, database)
-    setView({ kind: 'connected' })
     setScreen('editor')
     if (prev && prev !== connectionId) void window.fordb.connection.close(prev)
   }
@@ -70,6 +69,11 @@ export function App(): React.JSX.Element {
     void useThemeStore.getState().init()
     window.fordb.onDbHostRestarted(() => useQueryStore.getState().connectionLost())
   }, [])
+  // Losing the connection (restart, active-profile delete) strands the editor
+  // screen — fall back to Connections.
+  useEffect(() => {
+    if (!connected) setScreen('connections')
+  }, [connected])
 
   const commands = [
     {
@@ -86,7 +90,6 @@ export function App(): React.JSX.Element {
       run: () => {
         if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
         clearActive()
-        setView({ kind: 'welcome' })
         setScreen('connections')
       }
     },
@@ -189,8 +192,11 @@ export function App(): React.JSX.Element {
     <div className="flex h-screen flex-col overflow-hidden text-foreground bg-background">
       <TitleBar
         screen={screen}
-        onScreenChange={setScreen}
-        editorEnabled={view.kind === 'connected'}
+        onScreenChange={(next) => {
+          setScreen(next)
+          if (next === 'editor') setForm(null) // don't resurface a stale form later (M4)
+        }}
+        editorEnabled={connected}
       />
       <div className="min-h-0 flex-1">
         {screen === 'connections' ? (
@@ -206,7 +212,6 @@ export function App(): React.JSX.Element {
             </div>
           ) : (
             <ConnectionManager
-              variant="full"
               onNew={() => setForm({})}
               onEdit={(profile) => setForm({ profile })}
               onConnect={connectTo}
@@ -222,13 +227,12 @@ export function App(): React.JSX.Element {
               maxSize={40}
               className="flex flex-col bg-surface-1"
             >
-              {view.kind === 'connected' ? (
+              {connected ? (
                 <>
                   <ActiveConnectionBar
                     onDisconnect={() => {
                       if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
                       clearActive()
-                      setView({ kind: 'welcome' })
                       setScreen('connections')
                     }}
                   />
@@ -239,7 +243,7 @@ export function App(): React.JSX.Element {
                     >
                       <span>Search…</span>
                       <span className="rounded border border-border bg-background px-1 text-[10px]">
-                        ⌘K
+                        {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
                       </span>
                     </button>
                     <DatabaseSwitcher />
@@ -260,7 +264,7 @@ export function App(): React.JSX.Element {
             <ResizableHandle withHandle />
             <ResizablePanel className="min-w-0">
               <div className="h-full overflow-auto">
-                {view.kind === 'connected' && (
+                {connected && (
                   <div className="flex h-full flex-col">
                     <div className="flex gap-1 border-b border-border p-1">
                       {dashboardSupported && (
