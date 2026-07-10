@@ -414,7 +414,8 @@ export function SchemaTree(): React.JSX.Element {
               // trigger) opens its definition; schema/category toggle their children.
               onClick={() => {
                 if (kind === 'table') {
-                  if (docSupported) void useQueryStore.getState().openCollection(node.data.name)
+                  if (docSupported)
+                    void useQueryStore.getState().openCollection(node.data.schema, node.data.name)
                   else void useQueryStore.getState().openTable(node.data.schema, node.data.name)
                 } else if (isObject)
                   useQueryStore

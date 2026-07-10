@@ -58,7 +58,7 @@ describe('useQueryStore.run cursor lifecycle', () => {
 describe('useQueryStore.run document-mode aggregate validation', () => {
   it('rejects a non-array aggregate pipeline without calling the engine', async () => {
     const s = useQueryStore.getState()
-    await s.openCollection('users') // find tab, runs once against findDocs
+    await s.openCollection('app', 'users') // find tab, runs once against findDocs
     const id = useQueryStore.getState().activeTabId!
     s.setDoc(id, { mode: 'aggregate', text: '{ foo: 1 }' }) // object, not an array
     await s.run(id)
@@ -71,21 +71,21 @@ describe('useQueryStore.run document-mode aggregate validation', () => {
 
   it('runs an array aggregate pipeline against the engine', async () => {
     const s = useQueryStore.getState()
-    await s.openCollection('users')
+    await s.openCollection('app', 'users')
     const id = useQueryStore.getState().activeTabId!
     s.setDoc(id, { mode: 'aggregate', text: '[{ $match: {} }]' })
     await s.run(id)
 
     const tab = useQueryStore.getState().tabs.find((t) => t.id === id)!
     expect(tab.status).toBe('done')
-    expect(h.aggregateDocs).toHaveBeenCalledWith('conn1', 'users', [{ $match: {} }], 50)
+    expect(h.aggregateDocs).toHaveBeenCalledWith('conn1', 'app', 'users', [{ $match: {} }], 50)
   })
 })
 
 describe('useQueryStore document-tab guards', () => {
   it('loadIntoEditor opens a fresh tab instead of overwriting a document tab', async () => {
     const s = useQueryStore.getState()
-    await s.openCollection('users')
+    await s.openCollection('app', 'users')
     const docTabId = useQueryStore.getState().activeTabId!
     const before = useQueryStore.getState().tabs.length
 
@@ -100,7 +100,7 @@ describe('useQueryStore document-tab guards', () => {
 
   it('formatActive and openExplain no-op on a document tab', async () => {
     const s = useQueryStore.getState()
-    await s.openCollection('users')
+    await s.openCollection('app', 'users')
     const docTabId = useQueryStore.getState().activeTabId!
     const before = useQueryStore.getState().tabs.length
     const docTabBefore = useQueryStore.getState().tabs.find((t) => t.id === docTabId)!

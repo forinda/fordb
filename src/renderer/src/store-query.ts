@@ -53,6 +53,7 @@ export interface QueryTab {
   /** Present on document-mode tabs (MongoDB) — the collection + relaxed-JSON
    *  query text run() parses via parseRelaxed before dispatch. */
   doc?: {
+    database: string
     collection: string
     mode: 'find' | 'aggregate'
     text: string
@@ -89,7 +90,7 @@ interface QueryState {
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
-  openCollection: (collection: string) => Promise<void>
+  openCollection: (database: string, collection: string) => Promise<void>
   setDoc: (id: string, patch: Partial<NonNullable<QueryTab['doc']>>) => void
   /** Inserts a new document into the tab's collection, then refetches the tab. */
   insertDoc: (tabId: string, doc: Record<string, unknown>) => Promise<void>
@@ -236,14 +237,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     }))
     void get().run(tabId)
   },
-  openCollection: async (collection) => {
+  openCollection: async (database, collection) => {
     const id = tabId()
     const tab: QueryTab = {
       id,
-      sql: `${collection}.find()`,
+      sql: `${database}.${collection}.find()`,
       status: 'idle',
       kind: 'query',
-      doc: { collection, mode: 'find', text: '{}' }
+      doc: { database, collection, mode: 'find', text: '{}' }
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
     await get().run(id)
@@ -257,14 +258,16 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const connId = useConnStore.getState().activeConnectionId
     const tab = get().tabs.find((t) => t.id === tabId)
     if (!connId || !tab?.doc) return
-    await (await hostApi()).insertDoc(connId, tab.doc.collection, doc)
+    await (await hostApi()).insertDoc(connId, tab.doc.database, tab.doc.collection, doc)
     await get().run(tabId) // refresh the document view
   },
   updateDoc: async (tabId, docId, edit) => {
     const connId = useConnStore.getState().activeConnectionId
     const tab = get().tabs.find((t) => t.id === tabId)
     if (!connId || !tab?.doc) return
-    const { matched } = await (await hostApi()).updateDoc(connId, tab.doc.collection, docId, edit)
+    const { matched } = await (
+      await hostApi()
+    ).updateDoc(connId, tab.doc.database, tab.doc.collection, docId, edit)
     await get().run(tabId) // refresh the document view
     // matched===0: the confirmed update silently touched nothing (exotic _id
     // type toId() can't coerce, or a concurrent delete/change) — surface it
@@ -279,7 +282,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const connId = useConnStore.getState().activeConnectionId
     const tab = get().tabs.find((t) => t.id === tabId)
     if (!connId || !tab?.doc) return
-    const { deleted } = await (await hostApi()).deleteDoc(connId, tab.doc.collection, docId)
+    const { deleted } = await (
+      await hostApi()
+    ).deleteDoc(connId, tab.doc.database, tab.doc.collection, docId)
     await get().run(tabId) // refresh the document view
     if (deleted === 0) {
       set((s) => ({
@@ -501,7 +506,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         return
       }
       if (tab.doc) {
-        const { collection, mode, text } = tab.doc
+        const { database, collection, mode, text } = tab.doc
         const parsed = parseRelaxed(text) // throws → caught below, shown as parse error
         if (mode === 'aggregate' && !Array.isArray(parsed)) {
           set((s) => ({
@@ -516,6 +521,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
           mode === 'find'
             ? await api.findDocs(
                 connId,
+                database,
                 collection,
                 parsed as Record<string, unknown>,
                 { limit: tab.doc.limit },
@@ -523,6 +529,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
               )
             : await api.aggregateDocs(
                 connId,
+                database,
                 collection,
                 parsed as Record<string, unknown>[],
                 DOC_PAGE_SIZE

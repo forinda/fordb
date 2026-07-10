@@ -13,9 +13,13 @@ function toId(id: unknown): unknown {
 }
 
 export class MongoDocumentMutator implements DocumentMutator {
-  constructor(private readonly db: () => Db) {}
-  async insertOne(coll: string, doc: Record<string, unknown>): Promise<{ insertedId: unknown }> {
-    const r = await this.db().collection(coll).insertOne(doc)
+  constructor(private readonly dbFor: (name: string) => Db) {}
+  async insertOne(
+    db: string,
+    coll: string,
+    doc: Record<string, unknown>
+  ): Promise<{ insertedId: unknown }> {
+    const r = await this.dbFor(db).collection(coll).insertOne(doc)
     // insertedId is a raw BSON value (e.g. ObjectId) when auto-generated; it
     // must be JSON-safe before crossing the RPC boundary (structuredClone
     // drops ObjectId's prototype), or a later update/delete by this id will
@@ -23,6 +27,7 @@ export class MongoDocumentMutator implements DocumentMutator {
     return { insertedId: toJsonSafe(r.insertedId) }
   }
   async updateById(
+    db: string,
     coll: string,
     id: unknown,
     patch: Record<string, unknown>
@@ -31,13 +36,13 @@ export class MongoDocumentMutator implements DocumentMutator {
     // upstream already excludes it.
     const { _id: _drop, ...safe } = patch
     void _drop
-    const r = await this.db()
+    const r = await this.dbFor(db)
       .collection(coll)
       .updateOne({ _id: toId(id) as never }, { $set: safe })
     return { matched: r.matchedCount }
   }
-  async deleteById(coll: string, id: unknown): Promise<{ deleted: number }> {
-    const r = await this.db()
+  async deleteById(db: string, coll: string, id: unknown): Promise<{ deleted: number }> {
+    const r = await this.dbFor(db)
       .collection(coll)
       .deleteOne({ _id: toId(id) as never })
     return { deleted: r.deletedCount }

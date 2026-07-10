@@ -23,8 +23,8 @@ const NO_SQL = 'MongoDB uses the document query surface, not SQL'
 export class MongoAdapter implements DbAdapter {
   private client: MongoClient | null = null
   private dbName = ''
-  readonly documentQuery: DocumentQuery = new MongoDocumentQuery(() => this.database())
-  readonly documentMutator: DocumentMutator = new MongoDocumentMutator(() => this.database())
+  readonly documentQuery: DocumentQuery = new MongoDocumentQuery((name) => this.dbFor(name))
+  readonly documentMutator: DocumentMutator = new MongoDocumentMutator((name) => this.dbFor(name))
   readonly mongoStats: MongoStats = new MongoServerStats(() => this.database())
 
   constructor(
@@ -37,6 +37,11 @@ export class MongoAdapter implements DbAdapter {
   }
   private database(): Db {
     return this.conn.db(this.dbName || undefined)
+  }
+  /** A Db by explicit name (the collection's own database); falls back to the
+   *  connection's default when the caller passes an empty name. */
+  private dbFor(name: string): Db {
+    return this.conn.db(name || this.dbName || undefined)
   }
 
   async connect(profile: ConnectionProfile): Promise<void> {

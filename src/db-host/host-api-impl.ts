@@ -222,20 +222,22 @@ export class HostApiImpl implements HostApi {
   }
   findDocs(
     id: ConnectionId,
+    db: string,
     coll: string,
     filter: Record<string, unknown>,
     opts: FindOptions,
     pageSize: number
   ): Promise<OpenDocsResult> {
-    return this.docq(id).find(coll, filter, opts, pageSize)
+    return this.docq(id).find(db, coll, filter, opts, pageSize)
   }
   aggregateDocs(
     id: ConnectionId,
+    db: string,
     coll: string,
     pipeline: Record<string, unknown>[],
     pageSize: number
   ): Promise<OpenDocsResult> {
-    return this.docq(id).aggregate(coll, pipeline, pageSize)
+    return this.docq(id).aggregate(db, coll, pipeline, pageSize)
   }
   fetchDocs(id: ConnectionId, queryId: string): Promise<DocsPage> {
     return this.docq(id).fetchDocs(queryId)
@@ -254,21 +256,28 @@ export class HostApiImpl implements HostApi {
   }
   insertDoc(
     id: ConnectionId,
+    db: string,
     coll: string,
     doc: Record<string, unknown>
   ): Promise<{ insertedId: unknown }> {
-    return this.docmut(id).insertOne(coll, doc)
+    return this.docmut(id).insertOne(db, coll, doc)
   }
   updateDoc(
     id: ConnectionId,
+    db: string,
     coll: string,
     docId: unknown,
     patch: Record<string, unknown>
   ): Promise<{ matched: number }> {
-    return this.docmut(id).updateById(coll, docId, patch)
+    return this.docmut(id).updateById(db, coll, docId, patch)
   }
-  deleteDoc(id: ConnectionId, coll: string, docId: unknown): Promise<{ deleted: number }> {
-    return this.docmut(id).deleteById(coll, docId)
+  deleteDoc(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    docId: unknown
+  ): Promise<{ deleted: number }> {
+    return this.docmut(id).deleteById(db, coll, docId)
   }
 
   private mstats(id: ConnectionId): MongoStats {

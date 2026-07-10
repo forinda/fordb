@@ -9,8 +9,7 @@ const profile: MongoProfile = {
   id: 'm',
   name: 'mongo-contract',
   engine: 'mongodb',
-  uri: 'mongodb://localhost:27027/',
-  database: 'app'
+  uri: 'mongodb://localhost:27027/'
 }
 
 // NOTE (T5): this seed shares the `app` database with

@@ -44,7 +44,7 @@ export function runDocumentAdapterContractTests(
 
     it('documentQuery: find with a filter + paging', async () => {
       if (!adapter.documentQuery) return
-      const open = await adapter.documentQuery.find('orders', { status: 'open' }, {}, 500)
+      const open = await adapter.documentQuery.find('app', 'orders', { status: 'open' }, {}, 500)
       let total = 0
       let done = false
       const q = open.queryId
@@ -58,6 +58,7 @@ export function runDocumentAdapterContractTests(
     it('documentQuery: aggregate $group', async () => {
       if (!adapter.documentQuery) return
       const open = await adapter.documentQuery.aggregate(
+        'app',
         'orders',
         [{ $group: { _id: '$status', n: { $sum: 1 } } }],
         100
@@ -68,21 +69,21 @@ export function runDocumentAdapterContractTests(
     })
     it('documentQuery: close a cursor early without error', async () => {
       if (!adapter.documentQuery) return
-      const open = await adapter.documentQuery.find('orders', {}, {}, 10)
+      const open = await adapter.documentQuery.find('app', 'orders', {}, {}, 10)
       await adapter.documentQuery.closeDocs(open.queryId)
       await adapter.documentQuery.closeDocs(open.queryId) // idempotent
     })
 
     it('cancel closes in-flight cursors; stale id rejects, fresh query still works', async () => {
       if (!adapter.documentQuery) return
-      const open = await adapter.documentQuery.find('orders', {}, {}, 10)
+      const open = await adapter.documentQuery.find('app', 'orders', {}, {}, 10)
       await adapter.cancel()
       // The cancelled cursor's id is evicted → fetchDocs on it rejects.
       await expect(adapter.documentQuery.fetchDocs(open.queryId)).rejects.toThrow(
         /Unknown queryId/i
       )
       // A fresh query still works after cancel.
-      const again = await adapter.documentQuery.find('users', {}, {}, 5)
+      const again = await adapter.documentQuery.find('app', 'users', {}, {}, 5)
       const page = await adapter.documentQuery.fetchDocs(again.queryId)
       expect(page.docs.length).toBe(5)
       await adapter.documentQuery.closeDocs(again.queryId)
@@ -94,24 +95,24 @@ export function runDocumentAdapterContractTests(
       if (!adapter.documentMutator || !adapter.documentQuery) return
       const dm = adapter.documentMutator
       const dq = adapter.documentQuery
-      const ins = await dm.insertOne('users', {
+      const ins = await dm.insertOne('app', 'users', {
         _id: 999999,
         email: 'z@z',
         name: 'Z'
       })
       expect(ins.insertedId).toBe(999999)
 
-      const up = await dm.updateById('users', 999999, { name: 'Z2' })
+      const up = await dm.updateById('app', 'users', 999999, { name: 'Z2' })
       expect(up.matched).toBe(1)
       // Verify the field actually changed, not just that a doc matched.
-      const afterUpdate = await dq.find('users', { _id: 999999 }, {}, 1)
+      const afterUpdate = await dq.find('app', 'users', { _id: 999999 }, {}, 1)
       const updatedPage = await dq.fetchDocs(afterUpdate.queryId)
       expect(updatedPage.docs[0]?.name).toBe('Z2')
 
-      const del = await dm.deleteById('users', 999999)
+      const del = await dm.deleteById('app', 'users', 999999)
       expect(del.deleted).toBe(1)
       // Verify the doc is actually gone, not just that a count of 1 was reported.
-      const afterDelete = await dq.find('users', { _id: 999999 }, {}, 1)
+      const afterDelete = await dq.find('app', 'users', { _id: 999999 }, {}, 1)
       const deletedPage = await dq.fetchDocs(afterDelete.queryId)
       expect(deletedPage.docs.length).toBe(0)
     })
@@ -124,7 +125,7 @@ export function runDocumentAdapterContractTests(
     it('documentMutator: insert without _id returns a JSON-safe insertedId that round-trips', async () => {
       if (!adapter.documentMutator) return
       const dm = adapter.documentMutator
-      const ins = await dm.insertOne('users', { email: 'autoid@z', name: 'AutoId' })
+      const ins = await dm.insertOne('app', 'users', { email: 'autoid@z', name: 'AutoId' })
       const id = ins.insertedId
       const isJsonSafeOid =
         typeof id === 'object' &&
@@ -134,7 +135,7 @@ export function runDocumentAdapterContractTests(
       const isPrimitive = typeof id === 'string' || typeof id === 'number'
       expect(isJsonSafeOid || isPrimitive).toBe(true)
 
-      const del = await dm.deleteById('users', id)
+      const del = await dm.deleteById('app', 'users', id)
       expect(del.deleted).toBe(1)
     })
 

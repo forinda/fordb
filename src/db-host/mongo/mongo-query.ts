@@ -19,7 +19,9 @@ interface OpenCursor {
 export class MongoDocumentQuery implements DocumentQuery {
   private cursors = new Map<string, OpenCursor>()
   private next = 1
-  constructor(private readonly db: () => Db) {}
+  // Resolve a Db by name so each query targets the collection's own
+  // database (the tree lists all databases; the connection default isn't it).
+  constructor(private readonly dbFor: (name: string) => Db) {}
 
   async closeAll(): Promise<void> {
     const open = [...this.cursors.values()]
@@ -34,12 +36,13 @@ export class MongoDocumentQuery implements DocumentQuery {
   }
 
   find(
+    db: string,
     coll: string,
     filter: Record<string, unknown>,
     opts: FindOptions,
     pageSize: number
   ): Promise<OpenDocsResult> {
-    const c = this.db()
+    const c = this.dbFor(db)
       .collection(coll)
       .find(filter, {
         projection: opts.projection,
@@ -51,11 +54,12 @@ export class MongoDocumentQuery implements DocumentQuery {
   }
 
   aggregate(
+    db: string,
     coll: string,
     pipeline: Record<string, unknown>[],
     pageSize: number
   ): Promise<OpenDocsResult> {
-    const c = this.db().collection(coll).aggregate(pipeline)
+    const c = this.dbFor(db).collection(coll).aggregate(pipeline)
     return Promise.resolve(this.open(c, pageSize))
   }
 
