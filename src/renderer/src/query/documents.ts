@@ -21,12 +21,22 @@ interface DocsApi {
 export class DocumentResultSource {
   docs: Record<string, unknown>[] = []
   done = false
+  // Serializes overlapping loadMore() calls (e.g. a double-click on Load more)
+  // onto a single in-flight fetch, mirroring QueryResultSource's inflight guard.
+  private inflight: Promise<void> | null = null
   constructor(
     private readonly api: DocsApi,
     private readonly queryId: string
   ) {}
   async loadMore(): Promise<void> {
     if (this.done) return
+    if (this.inflight) return this.inflight
+    this.inflight = this.fetchOne().finally(() => {
+      this.inflight = null
+    })
+    return this.inflight
+  }
+  private async fetchOne(): Promise<void> {
     const page = await this.api.fetchDocs(this.queryId)
     this.docs = this.docs.concat(page.docs)
     this.done = page.done
