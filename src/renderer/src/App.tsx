@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
 import { ConnectionList } from './components/ConnectionList'
+import { ConnectionManager } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
@@ -215,18 +216,21 @@ export function App(): React.JSX.Element {
                 )}
               </>
             ) : (
-              <ConnectionList
-                onNew={() => setView({ kind: 'form' })}
-                onEdit={(profile) => setView({ kind: 'form', profile })}
-                onConnect={connectTo}
-              />
+              <div className="flex-1 p-3 text-sm text-muted-foreground">
+                Select a connection to get started.
+              </div>
             )}
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel className="min-w-0">
             <div className="h-full overflow-auto">
               {view.kind === 'welcome' && (
-                <div className="p-6 text-muted-foreground">Select or create a connection.</div>
+                <ConnectionManager
+                  variant="full"
+                  onNew={() => setView({ kind: 'form' })}
+                  onEdit={(profile) => setView({ kind: 'form', profile })}
+                  onConnect={connectTo}
+                />
               )}
               {view.kind === 'form' && (
                 <ProfileForm
