@@ -22,6 +22,7 @@
     "tests/unit/introspection-invalidate.test.ts",
     "tests/unit/schema-tree-model.test.ts",
     "tests/unit/document-result-source.test.ts",
-    "tests/unit/glide-theme.test.ts"
+    "tests/unit/glide-theme.test.ts",
+    "tests/unit/objectid.test.ts"
   ]
 }

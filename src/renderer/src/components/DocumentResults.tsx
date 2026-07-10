@@ -14,6 +14,7 @@ import { buildUpdatePatch } from '@shared/mongo/patch-diff'
 import { cmTheme, editorHighlight } from '../query/cm-theme'
 import { useThemeStore } from '../store-theme'
 import { Button } from './ui/button'
+import { seedInsertJson, cloneDocJson } from '@shared/mongo/objectid'
 
 type ViewMode = 'tree' | 'raw'
 
@@ -69,6 +70,7 @@ function DocumentCard(props: {
   doc: Record<string, unknown>
   tabId: string
   mutatorSupported: boolean
+  onClone: (json: string) => void
 }): React.JSX.Element {
   const { doc, tabId, mutatorSupported } = props
   const [mode, setMode] = useState<ViewMode>('tree')
@@ -156,6 +158,13 @@ function DocumentCard(props: {
             <Button size="sm" variant="outline" className="ml-auto" onClick={startEdit}>
               Edit
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => props.onClone(cloneDocJson(props.doc))}
+            >
+              Clone
+            </Button>
             <Button size="sm" variant="outline" onClick={() => void remove()}>
               Delete
             </Button>
@@ -187,9 +196,15 @@ function DocumentCard(props: {
   )
 }
 
-function InsertPanel(props: { tabId: string; onClose: () => void }): React.JSX.Element {
+function InsertPanel(props: {
+  tabId: string
+  onClose: () => void
+  initial?: string
+}): React.JSX.Element {
   const insertDoc = useQueryStore((s) => s.insertDoc)
-  const [text, setText] = useState('{\n  \n}')
+  // Compass-style: seed a fresh {$oid} _id (or the cloned document) so the
+  // user sees/controls the id before inserting.
+  const [text, setText] = useState(() => props.initial ?? seedInsertJson())
   const [error, setError] = useState<string | null>(null)
 
   async function handleInsert(): Promise<void> {
@@ -240,7 +255,7 @@ export function DocumentResults(props: {
   const { source, tabId } = props
   const [, setTick] = useState(0)
   const [loading, setLoading] = useState(false)
-  const [inserting, setInserting] = useState(false)
+  const [insertSeed, setInsertSeed] = useState<string | null>(null)
   const connId = useConnStore((s) => s.activeConnectionId)
   const mutatorSupported = useDocumentMutatorSupported(connId).data ?? false
 
@@ -260,10 +275,10 @@ export function DocumentResults(props: {
       <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-auto bg-surface-2 p-3">
         {mutatorSupported && (
           <div className="mb-2">
-            {inserting ? (
-              <InsertPanel tabId={tabId} onClose={() => setInserting(false)} />
+            {insertSeed !== null ? (
+              <InsertPanel tabId={tabId} initial={insertSeed} onClose={() => setInsertSeed(null)} />
             ) : (
-              <Button size="sm" variant="outline" onClick={() => setInserting(true)}>
+              <Button size="sm" variant="outline" onClick={() => setInsertSeed(seedInsertJson())}>
                 + Insert document
               </Button>
             )}
@@ -274,7 +289,13 @@ export function DocumentResults(props: {
         ) : (
           <div className="flex flex-col gap-2">
             {source.docs.map((doc, i) => (
-              <DocumentCard key={i} doc={doc} tabId={tabId} mutatorSupported={mutatorSupported} />
+              <DocumentCard
+                key={i}
+                doc={doc}
+                tabId={tabId}
+                mutatorSupported={mutatorSupported}
+                onClone={(json) => setInsertSeed(json)}
+              />
             ))}
           </div>
         )}
