@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { diffSet } from '../../src/shared/mongo/patch-diff'
+import { diffSet, buildUpdatePatch } from '../../src/shared/mongo/patch-diff'
 
 describe('diffSet', () => {
   it('returns only changed/added top-level fields, excludes _id', () => {
@@ -9,5 +9,14 @@ describe('diffSet', () => {
   })
   it('is empty when nothing changed', () => {
     expect(diffSet({ _id: 1, a: 1 }, { _id: 1, a: 1 })).toEqual({})
+  })
+})
+
+describe('buildUpdatePatch', () => {
+  it('returns null when nothing changed (empty-diff short-circuit)', () => {
+    expect(buildUpdatePatch({ _id: 1, a: 1 }, { _id: 1, a: 1 })).toBeNull()
+  })
+  it('returns the patch when something changed', () => {
+    expect(buildUpdatePatch({ _id: 1, a: 1 }, { _id: 1, a: 2 })).toEqual({ a: 2 })
   })
 })
