@@ -22,16 +22,21 @@ export function StatusBar(): React.JSX.Element {
         {profile ? (
           <>
             <span className="truncate">{connectionLabel(profile)}</span>
-            <span className="uppercase text-faint">{profile.engine}</span>
+            {/* Real info stays muted-foreground (AA); --faint is placeholder-only. */}
+            <span className="uppercase">{profile.engine}</span>
           </>
         ) : (
           'Not connected'
         )}
       </span>
-      <span className="min-w-0 flex-1 truncate text-center">
+      <span
+        className={`min-w-0 flex-1 truncate text-center ${
+          activeTab?.status === 'error' ? 'text-destructive' : ''
+        }`}
+      >
         {activeTab?.message}
-        {activeTab?.elapsedMs != null && (
-          <span className="text-faint"> · {Math.round(activeTab.elapsedMs)} ms</span>
+        {activeTab?.elapsedMs != null && activeTab.status !== 'error' && (
+          <span> · {Math.round(activeTab.elapsedMs)} ms</span>
         )}
       </span>
       <ThemeToggle />

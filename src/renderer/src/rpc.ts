@@ -38,7 +38,7 @@ declare global {
         maximize: () => void
         close: () => void
         isMaximized: () => Promise<boolean>
-        onMaximizeChanged: (cb: (max: boolean) => void) => void
+        onMaximizeChanged: (cb: (max: boolean) => void) => () => void
       }
       appearance: {
         initialTheme: 'light' | 'dark'

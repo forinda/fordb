@@ -106,8 +106,13 @@ function createWindow(): void {
     height: 800,
     minWidth: 720,
     minHeight: 480,
-    frame: false,
-    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
+    // macOS: hiddenInset ALONE — it hides the bar but keeps native traffic
+    // lights. Combining it with frame:false suppresses the lights too, which
+    // (with our custom controls hidden on darwin) left the window closable
+    // only via Cmd+Q. Elsewhere: frame:false + our own controls.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const }
+      : { frame: false }),
     webPreferences: {
       preload: join(__dirname, '../preload/index.mjs'),
       contextIsolation: true,
