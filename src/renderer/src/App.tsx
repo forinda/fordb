@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { CommandPalette } from './components/CommandPalette'
 import { ConnectionList } from './components/ConnectionList'
+import { ConnectionManager } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
@@ -28,11 +29,16 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 // its ambient `declare global` augmentation).
 import './rpc'
 
-type View =
-  { kind: 'welcome' } | { kind: 'form'; profile?: ConnectionProfile } | { kind: 'connected' }
+type View = { kind: 'welcome' } | { kind: 'connected' }
 
 export function App(): React.JSX.Element {
   const [view, setView] = useState<View>({ kind: 'welcome' })
+  // Top-level screen per the Dialect design: Connections (manager) vs Editor,
+  // toggled from the title bar; Editor needs a live connection.
+  const [screen, setScreen] = useState<'connections' | 'editor'>('connections')
+  // Profile form overlay on the Connections screen — independent of the
+  // connection lifecycle so editing a profile never tears down the session.
+  const [form, setForm] = useState<{ profile?: ConnectionProfile } | null>(null)
   // When connected, whether the connection list is revealed (to switch) over the
   // schema tree. Collapsed by default so the active connection gets the room.
   const [showConnList, setShowConnList] = useState(false)
@@ -47,6 +53,7 @@ export function App(): React.JSX.Element {
     const prev = activeConnectionId
     setActive(connectionId, profileId, database)
     setView({ kind: 'connected' })
+    setScreen('editor')
     setShowConnList(false)
     if (prev && prev !== connectionId) void window.fordb.connection.close(prev)
   }
@@ -70,7 +77,14 @@ export function App(): React.JSX.Element {
   }, [])
 
   const commands = [
-    { id: 'new', label: 'New connection', run: () => setView({ kind: 'form' }) },
+    {
+      id: 'new',
+      label: 'New connection',
+      run: () => {
+        setScreen('connections')
+        setForm({})
+      }
+    },
     {
       id: 'disconnect',
       label: 'Disconnect',
@@ -78,6 +92,7 @@ export function App(): React.JSX.Element {
         if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
         clearActive()
         setView({ kind: 'welcome' })
+        setScreen('connections')
       }
     },
     {
@@ -177,98 +192,118 @@ export function App(): React.JSX.Element {
 
   return (
     <div className="flex h-screen flex-col overflow-hidden text-foreground bg-background">
-      <TitleBar />
+      <TitleBar
+        screen={screen}
+        onScreenChange={setScreen}
+        editorEnabled={view.kind === 'connected'}
+      />
       <div className="min-h-0 flex-1">
-        <ResizablePanelGroup direction="horizontal">
-          {/* Left sidebar. Not connected: the connection list (landing). Connected:
+        {screen === 'connections' ? (
+          /* Connections screen: the manager IS the page (its rail is the side
+             panel per the Dialect design); the form overlays it while editing. */
+          form ? (
+            <div className="h-full overflow-auto">
+              <ProfileForm
+                profile={form.profile}
+                onSaved={() => setForm(null)}
+                onCancel={() => setForm(null)}
+              />
+            </div>
+          ) : (
+            <ConnectionManager
+              variant="full"
+              onNew={() => setForm({})}
+              onEdit={(profile) => setForm({ profile })}
+              onConnect={connectTo}
+            />
+          )
+        ) : (
+          <ResizablePanelGroup direction="horizontal">
+            {/* Left sidebar. Not connected: the connection list (landing). Connected:
             a compact active-connection bar + the schema tree; a toggle reveals the
             connection list to switch, without closing the current session. */}
-          <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
-            {view.kind === 'connected' ? (
-              <>
-                <ActiveConnectionBar
-                  listOpen={showConnList}
-                  onToggleList={() => setShowConnList((v) => !v)}
-                  onDisconnect={() => {
-                    if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
-                    clearActive()
-                    setShowConnList(false)
-                    setView({ kind: 'welcome' })
-                  }}
-                />
-                {showConnList ? (
-                  <ConnectionList
-                    onNew={() => setView({ kind: 'form' })}
-                    onEdit={(profile) => setView({ kind: 'form', profile })}
-                    onConnect={connectTo}
+            <ResizablePanel defaultSize={18} minSize={12} maxSize={40} className="flex flex-col">
+              {view.kind === 'connected' ? (
+                <>
+                  <ActiveConnectionBar
+                    listOpen={showConnList}
+                    onToggleList={() => setShowConnList((v) => !v)}
+                    onDisconnect={() => {
+                      if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+                      clearActive()
+                      setShowConnList(false)
+                      setView({ kind: 'welcome' })
+                      setScreen('connections')
+                    }}
                   />
-                ) : (
-                  <div className="flex min-h-0 flex-1 flex-col">
-                    <DatabaseSwitcher />
-                    <div className="flex justify-end border-b border-border px-2 py-1">
-                      <RefreshSchemaButton />
+                  {showConnList ? (
+                    <ConnectionList
+                      onNew={() => {
+                        setScreen('connections')
+                        setForm({})
+                      }}
+                      onEdit={(profile) => {
+                        setScreen('connections')
+                        setForm({ profile })
+                      }}
+                      onConnect={connectTo}
+                    />
+                  ) : (
+                    <div className="flex min-h-0 flex-1 flex-col">
+                      <DatabaseSwitcher />
+                      <div className="flex justify-end border-b border-border px-2 py-1">
+                        <RefreshSchemaButton />
+                      </div>
+                      <div className="min-h-0 flex-1 overflow-auto">
+                        <SchemaTree />
+                      </div>
                     </div>
-                    <div className="min-h-0 flex-1 overflow-auto">
-                      <SchemaTree />
+                  )}
+                </>
+              ) : (
+                <div className="flex-1 p-3 text-sm text-muted-foreground">
+                  Select a connection to get started.
+                </div>
+              )}
+            </ResizablePanel>
+            <ResizableHandle withHandle />
+            <ResizablePanel className="min-w-0">
+              <div className="h-full overflow-auto">
+                {view.kind === 'connected' && (
+                  <div className="flex h-full flex-col">
+                    <div className="flex gap-1 border-b border-border p-1">
+                      {dashboardSupported && (
+                        <button
+                          aria-pressed={mainView === 'dashboard'}
+                          className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                          onClick={() => setMainView('dashboard')}
+                        >
+                          Dashboard
+                        </button>
+                      )}
+                      <button
+                        aria-pressed={mainView === 'query'}
+                        className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                        onClick={() => setMainView('query')}
+                      >
+                        Query
+                      </button>
+                    </div>
+                    <div className="min-h-0 flex-1">
+                      {mainView === 'dashboard' && mongoStatsSupported ? (
+                        <MongoDashboard />
+                      ) : mainView === 'dashboard' && statsSupported ? (
+                        <ServerDashboard />
+                      ) : (
+                        <QueryWorkbench />
+                      )}
                     </div>
                   </div>
                 )}
-              </>
-            ) : (
-              <ConnectionList
-                onNew={() => setView({ kind: 'form' })}
-                onEdit={(profile) => setView({ kind: 'form', profile })}
-                onConnect={connectTo}
-              />
-            )}
-          </ResizablePanel>
-          <ResizableHandle withHandle />
-          <ResizablePanel className="min-w-0">
-            <div className="h-full overflow-auto">
-              {view.kind === 'welcome' && (
-                <div className="p-6 text-muted-foreground">Select or create a connection.</div>
-              )}
-              {view.kind === 'form' && (
-                <ProfileForm
-                  profile={view.profile}
-                  onSaved={() => setView({ kind: 'welcome' })}
-                  onCancel={() => setView({ kind: 'welcome' })}
-                />
-              )}
-              {view.kind === 'connected' && (
-                <div className="flex h-full flex-col">
-                  <div className="flex gap-1 border-b border-border p-1">
-                    {dashboardSupported && (
-                      <button
-                        aria-pressed={mainView === 'dashboard'}
-                        className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                        onClick={() => setMainView('dashboard')}
-                      >
-                        Dashboard
-                      </button>
-                    )}
-                    <button
-                      aria-pressed={mainView === 'query'}
-                      className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                      onClick={() => setMainView('query')}
-                    >
-                      Query
-                    </button>
-                  </div>
-                  <div className="min-h-0 flex-1">
-                    {mainView === 'dashboard' && mongoStatsSupported ? (
-                      <MongoDashboard />
-                    ) : mainView === 'dashboard' && statsSupported ? (
-                      <ServerDashboard />
-                    ) : (
-                      <QueryWorkbench />
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
       </div>
       <StatusBar />
       <CommandPalette commands={commands} />
