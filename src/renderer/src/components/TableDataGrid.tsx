@@ -12,6 +12,8 @@ import '@glideapps/glide-data-grid/dist/index.css'
 import { buildEdits, previewEdits, type PendingEdits } from '@shared/mutation/build-edits'
 import type { Cell } from '@shared/adapter/mutation-types'
 import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
+import { buildBrowseSql } from '@shared/browse/build-browse'
+import { useDialect } from '../query/use-dialect'
 import { useQueryStore, type QueryTab } from '../store-query'
 
 type Val = string | null
@@ -36,6 +38,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   const applyEdits = useQueryStore((s) => s.applyEdits)
   const setBrowse = useQueryStore((s) => s.setBrowse)
   const openFkTarget = useQueryStore((s) => s.openFkTarget)
+  const { dialect } = useDialect()
 
   // Pending change set (component-local; cleared on apply/discard).
   const [edits, setEdits] = useState<Record<string, Val>>({}) // `${row}:${colName}` → new value
@@ -279,8 +282,32 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   if (!source || columns.length === 0)
     return <div className="p-4 text-muted-foreground">No data.</div>
 
+  const browseSqlLine = data
+    ? buildBrowseSql(
+        {
+          schema: data.schema,
+          table: data.table,
+          filters: data.browse.filters,
+          sort: data.browse.sort,
+          pageSize: 200
+        },
+        dialect
+      ).sql.replace(/\s+/g, ' ')
+    : null
+
   return (
     <div className="flex h-full flex-col">
+      {/* Compact query bar (Dialect): documents the SQL the grid is showing. */}
+      {browseSqlLine && (
+        <div className="flex flex-none items-center gap-2 border-b border-border-soft bg-surface-1 px-2 py-1">
+          <span className="flex-none rounded bg-primary/10 px-1 text-[10px] font-semibold uppercase text-primary">
+            SQL
+          </span>
+          <span className="min-w-0 flex-1 truncate font-mono text-xs text-muted-foreground">
+            {browseSqlLine}
+          </span>
+        </div>
+      )}
       <div className="flex items-center gap-2 border-b border-border p-1 text-sm">
         {editable ? (
           <>

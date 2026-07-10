@@ -14,6 +14,14 @@ import { StructureView } from './StructureView'
 import { ExplainView } from './ExplainView'
 import { ObjectDefinitionView } from './ObjectDefinitionView'
 import { QueryTabs } from './QueryTabs'
+import IconPlay from '~icons/lucide/play'
+import IconX from '~icons/lucide/x'
+import IconAlignLeft from '~icons/lucide/align-left'
+import IconSearch from '~icons/lucide/search'
+import IconSave from '~icons/lucide/save'
+import IconBookmark from '~icons/lucide/bookmark'
+import IconClock from '~icons/lucide/clock'
+import IconDownload from '~icons/lucide/download'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
@@ -283,51 +291,77 @@ export function QueryWorkbench(): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
-      <div className="flex items-center gap-2 p-2 border-b border-border">
-        <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
-          Run
-        </Button>
-        <Button
-          variant="outline"
+      <div className="flex items-center gap-1.5 border-b border-border bg-surface-1 p-2">
+        <button
+          className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+          onClick={() => void run(tab.id)}
+          disabled={tab.status === 'running'}
+        >
+          <IconPlay className="h-3 w-3" />
+          {/* Own span so getByText('Run', {exact:true}) still resolves (e2e). */}
+          <span>Run</span>
+          <span className="text-[10px] opacity-70">
+            {window.fordb.platform === 'darwin' ? '⌘⏎' : 'Ctrl ⏎'}
+          </span>
+        </button>
+        <button
+          className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
           onClick={() => void cancel(tab.id)}
           disabled={tab.status !== 'running'}
         >
+          <IconX className="h-3 w-3" />
           Cancel
-        </Button>
-        <Button variant="ghost" onClick={() => formatActive(sqlLang)} disabled={!tab.sql.trim()}>
+        </button>
+        <GhostButton
+          icon={<IconAlignLeft className="h-3 w-3" />}
+          onClick={() => formatActive(sqlLang)}
+          disabled={!tab.sql.trim()}
+        >
           Format
-        </Button>
-        <Button
-          variant="ghost"
+        </GhostButton>
+        <GhostButton
+          icon={<IconSearch className="h-3 w-3" />}
           onClick={() => void openExplain(dialect, false)}
           disabled={!tab.sql.trim()}
         >
           Explain
-        </Button>
+        </GhostButton>
         {dialect === 'pg' && (
-          <Button
-            variant="ghost"
+          <GhostButton
+            icon={<IconSearch className="h-3 w-3" />}
             onClick={() => void openExplain(dialect, true)}
             disabled={!tab.sql.trim()}
           >
             Explain analyze
-          </Button>
+          </GhostButton>
         )}
-        <Button variant="ghost" onClick={() => setPicker('save')} disabled={!tab.sql.trim()}>
+        <GhostButton
+          icon={<IconSave className="h-3 w-3" />}
+          onClick={() => setPicker('save')}
+          disabled={!tab.sql.trim()}
+        >
           Save
-        </Button>
-        <Button variant="ghost" onClick={() => setPicker('saved')}>
+        </GhostButton>
+        <GhostButton icon={<IconBookmark className="h-3 w-3" />} onClick={() => setPicker('saved')}>
           Saved
-        </Button>
-        <Button variant="ghost" onClick={() => setPicker('history')}>
+        </GhostButton>
+        <GhostButton icon={<IconClock className="h-3 w-3" />} onClick={() => setPicker('history')}>
           History
-        </Button>
-        <Button variant="ghost" onClick={() => void exportData('csv')} disabled={!tab.source}>
+        </GhostButton>
+        <GhostButton
+          icon={<IconDownload className="h-3 w-3" />}
+          onClick={() => void exportData('csv')}
+          disabled={!tab.source}
+        >
           Export CSV
-        </Button>
-        <Button variant="ghost" onClick={() => void exportData('json')} disabled={!tab.source}>
+        </GhostButton>
+        <GhostButton
+          icon={<IconDownload className="h-3 w-3" />}
+          onClick={() => void exportData('json')}
+          disabled={!tab.source}
+        >
           Export JSON
-        </Button>
+        </GhostButton>
         <span className="text-sm text-muted-foreground ml-auto">
           {tab.status === 'running' && 'running…'}
           {tab.status === 'done' &&
@@ -340,30 +374,59 @@ export function QueryWorkbench(): React.JSX.Element {
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="vertical">
           <ResizablePanel defaultSize={50} minSize={20}>
-            <div className="h-full min-h-0">
-              {/* key by tab so switching tabs remounts the editor with that tab's
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Query editor
+              </div>
+              <div className="min-h-0 flex-1">
+                {/* key by tab so switching tabs remounts the editor with that tab's
                   text (the editor is uncontrolled — value is the initial doc). */}
-              <SqlEditor
-                key={tab.id}
-                value={tab.sql}
-                onChange={(v) => setSql(tab.id, v)}
-                onRun={() => void run(tab.id)}
-                connectionId={connId}
-              />
+                <SqlEditor
+                  key={tab.id}
+                  value={tab.sql}
+                  onChange={(v) => setSql(tab.id, v)}
+                  onRun={() => void run(tab.id)}
+                  connectionId={connId}
+                />
+              </div>
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel minSize={20}>
-            <div className="h-full min-h-0">
-              {tab.source ? (
-                <ResultsGrid source={tab.source} />
-              ) : (
-                <div className="p-4 text-muted-foreground">Run a query to see results.</div>
-              )}
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Results
+              </div>
+              <div className="min-h-0 flex-1">
+                {tab.source ? (
+                  <ResultsGrid source={tab.source} />
+                ) : (
+                  <div className="p-4 text-muted-foreground">Run a query to see results.</div>
+                )}
+              </div>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
     </div>
+  )
+}
+
+/** Dialect ghost toolbar button: 12px, icon + label, hairline hover. */
+function GhostButton(props: {
+  icon: React.ReactNode
+  onClick: () => void
+  disabled?: boolean
+  children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <button
+      className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+      onClick={props.onClick}
+      disabled={props.disabled}
+    >
+      {props.icon}
+      {props.children}
+    </button>
   )
 }
