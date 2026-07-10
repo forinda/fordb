@@ -1,0 +1,13 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.6.0.schema.json
+PackageIdentifier: io.github.forinda.fordb
+PackageVersion: 0.1.0
+InstallerType: nsis
+Scope: user
+Installers:
+  - Architecture: x64
+    # InstallerUrl + InstallerSha256 are filled at submission time from the
+    # published release asset (fordb-<version>-setup.exe). Left templated here.
+    InstallerUrl: https://github.com/forinda/fordb/releases/download/v0.1.0/fordb-0.1.0-setup.exe
+    InstallerSha256: 0000000000000000000000000000000000000000000000000000000000000000
+ManifestType: installer
+ManifestVersion: 1.6.0

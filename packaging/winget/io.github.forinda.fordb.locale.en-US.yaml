@@ -1,0 +1,20 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.6.0.schema.json
+PackageIdentifier: io.github.forinda.fordb
+PackageVersion: 0.1.0
+PackageLocale: en-US
+Publisher: forinda
+PublisherUrl: https://github.com/forinda
+PackageName: fordb
+PackageUrl: https://github.com/forinda/fordb
+License: MIT
+LicenseUrl: https://github.com/forinda/fordb/blob/main/LICENSE
+ShortDescription: Lean, keyboard-first, multi-engine desktop database client
+Moniker: fordb
+Tags:
+  - database
+  - postgres
+  - sqlite
+  - mongodb
+  - sql
+ManifestType: defaultLocale
+ManifestVersion: 1.6.0
