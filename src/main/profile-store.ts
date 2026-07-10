@@ -34,6 +34,11 @@ export class ProfileStore {
       void _sp
       void _pp
       safe = rest
+    } else if (profile.engine === 'mongodb') {
+      const { uri: _u, password: _pw, ...rest } = profile
+      void _u
+      void _pw
+      safe = rest
     } else if (profile.kind === 'remote' || profile.kind === 'replica') {
       const { authToken: _at, ...rest } = profile
       void _at

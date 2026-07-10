@@ -21,7 +21,11 @@ export function ProfileForm(props: {
   const p = props.profile
   // Postgres-only view of the edited profile, used to seed the PG field state.
   const pg = p?.engine === 'postgres' ? p : undefined
-  const [engine, setEngine] = useState<'postgres' | 'sqlite'>(p?.engine ?? 'postgres')
+  // MongoDB profiles aren't editable in this form yet (M7); default to postgres
+  // rather than widen this form's engine union for a profile it can't render.
+  const [engine, setEngine] = useState<'postgres' | 'sqlite'>(
+    p?.engine === 'sqlite' ? 'sqlite' : 'postgres'
+  )
   const [kind, setKind] = useState<'local' | 'remote' | 'replica'>(
     p?.engine === 'sqlite' ? p.kind : 'local'
   )

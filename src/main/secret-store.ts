@@ -12,6 +12,7 @@ export interface StoredSecrets {
   sshPassword?: string
   sshPassphrase?: string
   authToken?: string
+  uri?: string
 }
 
 /** On-disk shape: id → base64 of the encrypted JSON of StoredSecrets. */
