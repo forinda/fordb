@@ -14,7 +14,7 @@
 
 - TypeScript strict, no `any`. Secrets/db unaffected — no db-host or contract impact in this phase.
 - Preserve the working light/dark theme toggle (`store-theme.ts` / `window.fordb.appearance`); dark values are derived, not dropped.
-- **Real OS window, not a floating card** — implement window *contents*; no outer backdrop/radius/shadow.
+- **Real OS window, not a floating card** — implement window _contents_; no outer backdrop/radius/shadow.
 - Keep current token names (`--muted`, `--card`, etc.) as **compat aliases** to the nearest Dialect token so existing components don't break mid-reskin.
 - Cross-platform: our own min/max/close controls on Linux/Windows; macOS uses `titleBarStyle:'hiddenInset'` native traffic-lights (hide our controls on `darwin`).
 - No headless e2e for window controls (keychain/headless gap) — pure logic is unit-tested; window behavior is manual-smoke on Linux.
@@ -37,9 +37,11 @@
 ### Task 1: Dialect token layer
 
 **Files:**
+
 - Modify: `src/renderer/src/index.css`
 
 **Interfaces:**
+
 - Produces: the Dialect CSS-var token set on `:root` (light) and `.dark` (derived), mapped through `@theme inline`; compat aliases `--muted`/`--card` retained. Tailwind utilities (`bg-background`, `text-foreground`, `border-border`, `bg-primary`, etc.) resolve to Dialect values.
 
 - [ ] **Step 1: Replace the `:root` block** in `src/renderer/src/index.css` with the Dialect light tokens (keeping `--muted`/`--card` as compat aliases):
@@ -169,11 +171,13 @@
 ### Task 2: Frameless window + window-controls IPC
 
 **Files:**
+
 - Modify: `src/main/index.ts`, `src/preload/index.ts`, `src/renderer/src/rpc.ts`
 - Create: `src/shared/window-controls.ts`
 - Test: `tests/unit/window-controls.test.ts`
 
 **Interfaces:**
+
 - Produces: `window.fordb.platform: 'darwin'|'win32'|'linux'`; `window.fordb.windowControls: { minimize(): void; maximize(): void; close(): void; isMaximized(): Promise<boolean>; onMaximizeChanged(cb: (max: boolean) => void): void }`. Pure `controlMode(platform)` → `'native'|'custom'` in `src/shared/window-controls.ts`.
 
 - [ ] **Step 1: Write the failing test** — `tests/unit/window-controls.test.ts`:
@@ -212,22 +216,22 @@ export function controlMode(platform: Platform): 'native' | 'custom' {
 - [ ] **Step 5: Frameless window + IPC** — `src/main/index.ts`. Change the `BrowserWindow` construction (currently at ~line 104) to be frameless, and add window-controls IPC + maximize broadcast. Replace the `createWindow` window construction with:
 
 ```ts
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 720,
-    minHeight: 480,
-    frame: false,
-    ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.mjs'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: false
-    }
-  })
-  win.on('maximize', () => win.webContents.send('window:maximize-changed', true))
-  win.on('unmaximize', () => win.webContents.send('window:maximize-changed', false))
+const win = new BrowserWindow({
+  width: 1200,
+  height: 800,
+  minWidth: 720,
+  minHeight: 480,
+  frame: false,
+  ...(process.platform === 'darwin' ? { titleBarStyle: 'hiddenInset' as const } : {}),
+  webPreferences: {
+    preload: join(__dirname, '../preload/index.mjs'),
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: false
+  }
+})
+win.on('maximize', () => win.webContents.send('window:maximize-changed', true))
+win.on('unmaximize', () => win.webContents.send('window:maximize-changed', false))
 ```
 
 Add these IPC handlers near the other `ipcMain` registrations (module scope, after the `db-host:request-port` handler). Use the sender's window so multi-window is safe:
@@ -283,9 +287,11 @@ ipcMain.handle('window:is-maximized', (e) =>
 ### Task 3: TitleBar component
 
 **Files:**
+
 - Create: `src/renderer/src/components/TitleBar.tsx`
 
 **Interfaces:**
+
 - Consumes: `window.fordb.platform`, `window.fordb.windowControls` (T2); `useConnStore` (active connection), `connectionLabel` (`@shared/connection-label`), `useProfiles` (`../query/profiles`) — mirror `ActiveConnectionBar.tsx`; `controlMode` (`@shared/window-controls`); icons `~icons/lucide/minus`, `~icons/lucide/square`, `~icons/lucide/copy`, `~icons/lucide/x`.
 - Produces: `<TitleBar />` — a 44px draggable navy bar with app title + active-connection label and (off-macOS) custom min/max/close controls.
 
@@ -305,10 +311,12 @@ ipcMain.handle('window:is-maximized', (e) =>
 ### Task 4: StatusBar + shell restructure
 
 **Files:**
+
 - Create: `src/renderer/src/components/StatusBar.tsx`
 - Modify: `src/renderer/src/App.tsx`
 
 **Interfaces:**
+
 - Consumes: `TitleBar` (T3); `useConnStore` (connection state + engine), `useQueryStore` (active tab row-count/elapsed/status), `ThemeToggle` (`./components/ThemeToggle`).
 - Produces: `<StatusBar />`; `App.tsx` as a `TitleBar / body / StatusBar` full-height column.
 

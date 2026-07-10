@@ -12,7 +12,7 @@ Adopt the "Dialect DB Client" visual design (Claude Design project `ba155b59-eb5
 
 **This spec is P1 only.** It establishes the design-token layer the whole app inherits, plus the app-shell chrome (frameless custom title bar + status bar). Inner components are untouched in P1 — they inherit the new palette and may look transitional until their phase.
 
-**Framing (explicit assumption):** the mockup renders the app as a floating rounded 1440×900 card on a gradient backdrop with an outer drop shadow. That is the *design canvas*, not a UI to build. The real app **is** the OS window (frameless, fills its own bounds). We implement the window *contents* — no fake window-in-a-window backdrop / outer radius / outer shadow.
+**Framing (explicit assumption):** the mockup renders the app as a floating rounded 1440×900 card on a gradient backdrop with an outer drop shadow. That is the _design canvas_, not a UI to build. The real app **is** the OS window (frameless, fills its own bounds). We implement the window _contents_ — no fake window-in-a-window backdrop / outer radius / outer shadow.
 
 ## Goal
 
@@ -31,37 +31,37 @@ Extracted from the mockup. Extend **both** `:root` (light, exact) and `.dark` (d
 
 **Light (`:root`) — Dialect values:**
 
-| token | value | role |
-| --- | --- | --- |
-| `--background` | `#ffffff` | app base |
-| `--surface-1` | `#f8fafd` | raised panels |
-| `--surface-2` | `#f4f7fb` | inset/toolbar |
-| `--surface-3` | `#eef2f8` | deeper inset |
-| `--foreground` | `#1a2740` | primary ink |
-| `--foreground-soft` | `#33465f` | secondary ink |
-| `--muted-foreground` | `#5b6f8c` | muted |
-| `--muted-foreground-2` | `#7488a6` | fainter |
-| `--faint` | `#93a3bd` | placeholder/disabled |
-| `--border` | `#dbe3ef` | default border |
-| `--border-soft` | `#e4eaf3` | hairline |
-| `--border-strong` | `#c9d6ee` | emphasized |
-| `--primary` | `#2563eb` | accent |
-| `--primary-hover` | `#1d4ed8` | accent hover |
-| `--primary-foreground` | `#ffffff` | on-accent text |
-| `--ring` | `rgba(37,99,235,.4)` | focus ring color |
-| `--chrome` | `#0f2140` | title bar base |
-| `--chrome-2` | `#0b1830` | title bar gradient end |
-| `--chrome-foreground` | `#e7eefc` | title bar text |
-| `--success` | `#16a34a` / dark text `#177a48` | ok state |
-| `--warning` | `#f0a35e` | warn |
-| `--info` | `#8a52d6` | purple accent |
-| `--destructive` | `#c62a2f` (keep) | error |
+| token                  | value                           | role                   |
+| ---------------------- | ------------------------------- | ---------------------- |
+| `--background`         | `#ffffff`                       | app base               |
+| `--surface-1`          | `#f8fafd`                       | raised panels          |
+| `--surface-2`          | `#f4f7fb`                       | inset/toolbar          |
+| `--surface-3`          | `#eef2f8`                       | deeper inset           |
+| `--foreground`         | `#1a2740`                       | primary ink            |
+| `--foreground-soft`    | `#33465f`                       | secondary ink          |
+| `--muted-foreground`   | `#5b6f8c`                       | muted                  |
+| `--muted-foreground-2` | `#7488a6`                       | fainter                |
+| `--faint`              | `#93a3bd`                       | placeholder/disabled   |
+| `--border`             | `#dbe3ef`                       | default border         |
+| `--border-soft`        | `#e4eaf3`                       | hairline               |
+| `--border-strong`      | `#c9d6ee`                       | emphasized             |
+| `--primary`            | `#2563eb`                       | accent                 |
+| `--primary-hover`      | `#1d4ed8`                       | accent hover           |
+| `--primary-foreground` | `#ffffff`                       | on-accent text         |
+| `--ring`               | `rgba(37,99,235,.4)`            | focus ring color       |
+| `--chrome`             | `#0f2140`                       | title bar base         |
+| `--chrome-2`           | `#0b1830`                       | title bar gradient end |
+| `--chrome-foreground`  | `#e7eefc`                       | title bar text         |
+| `--success`            | `#16a34a` / dark text `#177a48` | ok state               |
+| `--warning`            | `#f0a35e`                       | warn                   |
+| `--info`               | `#8a52d6`                       | purple accent          |
+| `--destructive`        | `#c62a2f` (keep)                | error                  |
 
 **Radii:** `--radius-sm:6px --radius:8px --radius-lg:9px --radius-pill:20px --radius-card:12px`.
 **Shadows:** `--shadow-raised:0 1px 2px rgba(15,33,64,.12); --shadow-pop:0 12px 30px -8px rgba(0,0,0,.5); --shadow-modal:0 30px 80px -20px rgba(0,0,0,.5); --focus-ring:0 0 0 3px rgba(37,99,235,.2)`.
 **Type scale:** the design is dense — base `13px`, secondary `12px`, meta `11px`, micro `9–10px`, headings `15/16/18px`. Expose as `--text-xs:11px --text-sm:12px --text-base:13px --text-lg:15px --text-xl:18px` (used incrementally; P1 sets tokens, later phases apply).
 
-**Dark (`.dark`) — derived:** same token *names*, values derived from the mockup's navy chrome as the dark surface family (`--background:#0b1830`, `--surface-1:#0f2140`, `--surface-2:#132741`, ink `#e7eefc`/`#c9d6ee`, borders `rgba(255,255,255,.08/.14)`, `--primary:#5c9dff`, `--chrome:#0b1830`). Chosen so the dark toggle stays coherent; refined per-component in later phases.
+**Dark (`.dark`) — derived:** same token _names_, values derived from the mockup's navy chrome as the dark surface family (`--background:#0b1830`, `--surface-1:#0f2140`, `--surface-2:#132741`, ink `#e7eefc`/`#c9d6ee`, borders `rgba(255,255,255,.08/.14)`, `--primary:#5c9dff`, `--chrome:#0b1830`). Chosen so the dark toggle stays coherent; refined per-component in later phases.
 
 **Backward-compat:** keep the current token names (`--muted`, `--card`) as aliases to the nearest Dialect token so existing component classes don't break mid-reskin. Remove aliases as each component migrates in its phase.
 
