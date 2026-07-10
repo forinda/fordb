@@ -48,7 +48,7 @@ export function TitleBar(): React.JSX.Element {
 
   useEffect(() => {
     void window.fordb.windowControls.isMaximized().then(setMaximized)
-    window.fordb.windowControls.onMaximizeChanged(setMaximized)
+    return window.fordb.windowControls.onMaximizeChanged(setMaximized)
   }, [])
 
   return (

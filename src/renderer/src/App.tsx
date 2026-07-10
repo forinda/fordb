@@ -284,7 +284,7 @@ function ImportErrorBanner(): React.JSX.Element | null {
   const clear = useQueryStore((s) => s.clearIoError)
   if (!err) return null
   return (
-    <div className="fixed bottom-2 left-1/2 z-50 flex max-w-[90vw] -translate-x-1/2 items-start gap-2 rounded border border-border bg-destructive/10 p-2 text-sm text-destructive shadow">
+    <div className="fixed bottom-8 left-1/2 z-50 flex max-w-[90vw] -translate-x-1/2 items-start gap-2 rounded border border-border bg-destructive/10 p-2 text-sm text-destructive shadow">
       <span className="min-w-0 break-words">Export/import failed: {err}</span>
       <button className="shrink-0 hover:underline" onClick={clear}>
         dismiss

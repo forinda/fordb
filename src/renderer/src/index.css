@@ -18,6 +18,8 @@
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
   --primary-foreground: #ffffff;
+  /* Spec'd rgba(37,99,235,.4); hex-only here so the audited token tests can
+     parse it — the soft ring effect comes from --focus-ring below. */
   --ring: #2563eb;
   --chrome: #0f2140;
   --chrome-2: #0b1830;
@@ -30,6 +32,14 @@
   /* compat aliases (removed as components migrate in later phases) */
   --muted: #f4f7fb;
   --card: #ffffff;
+  /* Type scale + radii: set in P1, applied per-component in later phases
+     (deliberately NOT mapped to Tailwind utilities yet — a global remap would
+     reflow every existing component at once). */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
   --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 9px;
@@ -68,6 +78,14 @@
   --destructive-foreground: #1a0d0d;
   --muted: #132741;
   --card: #0f2140;
+  /* Type scale + radii: set in P1, applied per-component in later phases
+     (deliberately NOT mapped to Tailwind utilities yet — a global remap would
+     reflow every existing component at once). */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-lg: 15px;
+  --text-xl: 18px;
   --radius-sm: 6px;
   --radius: 8px;
   --radius-lg: 9px;
