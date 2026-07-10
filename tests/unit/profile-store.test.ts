@@ -38,6 +38,20 @@ describe('ProfileStore', () => {
     expect(secrets.sshPassword).toBeUndefined()
     expect(secrets.sshPassphrase).toBeUndefined()
   })
+  it('strips uri and password from a saved MongoProfile', async () => {
+    await store.save({
+      id: 'm',
+      name: 'm',
+      engine: 'mongodb',
+      uri: 'mongodb://u:p@h/',
+      password: 'p'
+    })
+    const [saved] = await store.list()
+    expect(saved).toBeDefined()
+    expect('uri' in saved!).toBe(false)
+    expect('password' in saved!).toBe(false)
+    expect(saved!.engine).toBe('mongodb')
+  })
   it('strips the SQLite auth token before persisting (remote)', async () => {
     await store.save({
       id: 's1',
