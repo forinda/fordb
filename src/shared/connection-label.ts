@@ -14,6 +14,14 @@ export function connectionLabel(profile: ConnectionProfile): string {
     const base = profile.file.split(/[\\/]/).pop() ?? profile.file
     return base || 'SQLite database'
   }
+  if (profile.engine === 'mongodb') {
+    const host = (profile.host ?? '').trim()
+    const user = (profile.user ?? '').trim()
+    const database = (profile.database ?? '').trim()
+    if (!host && !user && !database) return profile.uri?.trim() || 'Unnamed connection'
+    const left = user ? `${user}@${host}` : host
+    return database ? `${left}/${database}` : left
+  }
   const host = profile.host.trim()
   const user = profile.user.trim()
   const database = profile.database.trim()

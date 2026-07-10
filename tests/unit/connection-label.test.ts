@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { connectionLabel } from '../../src/shared/connection-label'
-import type { PostgresProfile } from '../../src/shared/adapter/types'
+import type { PostgresProfile, MongoProfile } from '../../src/shared/adapter/types'
 
 function profile(over: Partial<PostgresProfile>): PostgresProfile {
   return {
@@ -88,5 +88,60 @@ describe('connectionLabel', () => {
         syncUrl: 'libsql://x'
       })
     ).toBe('rep.sqlite')
+  })
+
+  describe('mongodb', () => {
+    it('discrete host + user + database', () => {
+      expect(
+        connectionLabel({
+          id: 'm',
+          name: '',
+          engine: 'mongodb',
+          host: 'localhost',
+          user: 'admin',
+          database: 'app'
+        } as MongoProfile)
+      ).toBe('admin@localhost/app')
+    })
+    it('host + database, no user', () => {
+      expect(
+        connectionLabel({
+          id: 'm',
+          name: '',
+          engine: 'mongodb',
+          host: 'localhost',
+          database: 'app'
+        } as MongoProfile)
+      ).toBe('localhost/app')
+    })
+    it('host only', () => {
+      expect(
+        connectionLabel({
+          id: 'm',
+          name: '',
+          engine: 'mongodb',
+          host: 'localhost'
+        } as MongoProfile)
+      ).toBe('localhost')
+    })
+    it('uri only (no host/user/database)', () => {
+      expect(
+        connectionLabel({
+          id: 'm',
+          name: '',
+          engine: 'mongodb',
+          uri: 'mongodb+srv://c.example.net/'
+        } as MongoProfile)
+      ).toBe('mongodb+srv://c.example.net/')
+    })
+    it('nothing set returns Unnamed connection', () => {
+      expect(
+        connectionLabel({
+          id: 'm',
+          name: '',
+          engine: 'mongodb'
+        } as MongoProfile)
+      ).toBe('Unnamed connection')
+    })
   })
 })

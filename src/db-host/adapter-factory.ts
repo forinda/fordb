@@ -11,5 +11,7 @@ export function adapterForEngine(engine: ConnectionProfile['engine']): DbAdapter
       return new PostgresAdapter()
     case 'sqlite':
       return new SqliteAdapter()
+    case 'mongodb':
+      throw new Error('MongoDB not yet wired')
   }
 }

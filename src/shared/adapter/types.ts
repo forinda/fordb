@@ -63,9 +63,24 @@ export interface SqliteReplica extends SqliteBase {
 
 export type SqliteProfile = SqliteLocal | SqliteRemote | SqliteReplica
 
+export interface MongoProfile extends BaseProfile {
+  engine: 'mongodb'
+  // URI path (primary) — whole connection string incl. credentials. SECRET.
+  uri?: string
+  // Discrete path (used only when uri is absent).
+  host?: string
+  port?: number
+  user?: string
+  password?: string // SECRET
+  authSource?: string
+  tls?: boolean
+  // Default database (from the URI path, or explicit for the discrete path).
+  database?: string
+}
+
 /** A saved connection. Discriminated on `engine`; consumers narrow before
  *  reading engine-specific fields (the union is the compile-time safety net). */
-export type ConnectionProfile = PostgresProfile | SqliteProfile
+export type ConnectionProfile = PostgresProfile | SqliteProfile | MongoProfile
 
 export interface TableInfo {
   schema: string
