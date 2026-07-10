@@ -17,9 +17,6 @@ export function ProfileForm(props: {
   profile?: ConnectionProfile
   onSaved: () => void
   onCancel: () => void
-  /** When provided, the form offers a primary Connect action: save the
-   *  profile + secrets, open the connection, and hand back the ids. */
-  onConnect?: (connectionId: string, profileId: string, database: string | null) => void
 }): React.JSX.Element {
   const p = props.profile
   // Postgres-only view of the edited profile, used to seed the PG field state.
@@ -186,73 +183,93 @@ export function ProfileForm(props: {
     }
   }
 
-  async function save(): Promise<void> {
-    await window.fordb.profiles.save(build(), secrets())
-    invalidateProfiles()
-    props.onSaved()
-  }
-  async function saveAndConnect(): Promise<void> {
+  /** Dialect form action: persist, then verify liveness. Save always sticks
+   *  (the profile is usable even if the test fails); a failing test keeps the
+   *  panel open with the error so the user can fix and retry. */
+  async function testAndSave(): Promise<void> {
     const profile = build()
     await window.fordb.profiles.save(profile, secrets())
     invalidateProfiles()
-    try {
-      const connectionId = await window.fordb.connection.open(profile.id)
-      props.onConnect?.(
-        connectionId,
-        profile.id,
-        profile.engine === 'postgres' ? profile.database : null
-      )
-    } catch (err) {
-      setTestMsg(err instanceof Error ? err.message : String(err))
-    }
-  }
-  async function test(): Promise<void> {
     setTestMsg('testing…')
-    const profile = build()
-    await window.fordb.profiles.save(profile, secrets())
     const r = await window.fordb.connection.test(profile.id)
-    setTestMsg(r.ok ? 'OK' : `Error: ${r.error ?? 'failed'}`)
+    if (r.ok) {
+      setTestMsg('')
+      props.onSaved()
+    } else {
+      setTestMsg(r.error ?? 'Connection test failed')
+    }
   }
 
   return (
     <div className="flex flex-col gap-2 p-4 max-w-md">
-      <Label>
-        Engine
-        <Select
-          value={engine}
-          onValueChange={(v) => setEngine(v as 'postgres' | 'sqlite' | 'mongodb')}
-        >
-          <SelectTrigger aria-label="Database engine">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="postgres">PostgreSQL</SelectItem>
-            <SelectItem value="sqlite">SQLite</SelectItem>
-            <SelectItem value="mongodb">MongoDB</SelectItem>
-          </SelectContent>
-        </Select>
-      </Label>
+      <div>
+        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground-2">
+          Engine
+        </div>
+        <div role="radiogroup" aria-label="Database engine" className="flex flex-wrap gap-2">
+          {(
+            [
+              ['postgres', 'Pg', 'PostgreSQL', 'bg-primary'],
+              ['sqlite', 'Sq', 'SQLite', 'bg-info'],
+              ['mongodb', 'Mo', 'MongoDB', 'bg-success']
+            ] as const
+          ).map(([id, glyph, label, cls]) => (
+            <button
+              key={id}
+              type="button"
+              role="radio"
+              aria-checked={engine === id}
+              aria-label={label}
+              title={label}
+              onClick={() => setEngine(id)}
+              className={`inline-flex h-11 w-11 items-center justify-center rounded-[10px] text-xs font-extrabold text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${cls} ${
+                engine === id
+                  ? 'ring-2 ring-primary ring-offset-2 ring-offset-card'
+                  : 'opacity-70 hover:opacity-100'
+              }`}
+            >
+              {glyph}
+            </button>
+          ))}
+        </div>
+      </div>
       <Input placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
-      <div className="flex items-center gap-2">
-        <select
-          aria-label="Environment"
-          className="flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
-          value={environment}
-          onChange={(e) => setEnvironment(e.target.value as typeof environment)}
-        >
-          <option value="none">No environment</option>
-          <option value="production">Production</option>
-          <option value="staging">Staging</option>
-          <option value="local">Local</option>
-        </select>
-        <label className="flex items-center gap-1 text-sm text-muted-foreground">
-          <input
-            type="checkbox"
-            checked={favorite}
-            onChange={(e) => setFavorite(e.target.checked)}
-          />
-          Favorite
-        </label>
+      <div>
+        <div className="mb-1.5 text-[11px] font-bold uppercase tracking-wide text-muted-foreground-2">
+          Environment
+        </div>
+        <div className="flex items-center gap-2">
+          <div
+            role="radiogroup"
+            aria-label="Environment"
+            className="flex flex-1 rounded-lg bg-surface-2 p-0.5"
+          >
+            {(['production', 'staging', 'local'] as const).map((env) => (
+              <button
+                key={env}
+                type="button"
+                role="radio"
+                aria-checked={environment === env}
+                onClick={() => setEnvironment(environment === env ? 'none' : env)}
+                className={`flex-1 rounded-md px-2 py-1 text-xs capitalize focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  environment === env
+                    ? 'bg-card font-semibold text-primary shadow-[var(--shadow-raised)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {env}
+              </button>
+            ))}
+          </div>
+          <label className="flex items-center gap-1 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={favorite}
+              onChange={(e) => setFavorite(e.target.checked)}
+            />
+            Favorite
+          </label>
+        </div>
       </div>
       {engine === 'sqlite' && (
         <>
@@ -337,13 +354,21 @@ export function ProfileForm(props: {
               </div>
             )}
           </div>
-          <Input placeholder="Host" value={host} onChange={(e) => setHost(e.target.value)} />
-          <Input
-            type="number"
-            placeholder="Port"
-            value={port}
-            onChange={(e) => setPort(e.target.value)}
-          />
+          <div className="flex gap-2">
+            <Input
+              className="flex-[2]"
+              placeholder="Host"
+              value={host}
+              onChange={(e) => setHost(e.target.value)}
+            />
+            <Input
+              className="flex-1"
+              type="number"
+              placeholder="Port"
+              value={port}
+              onChange={(e) => setPort(e.target.value)}
+            />
+          </div>
           <Input
             placeholder="Database"
             value={database}
@@ -487,15 +512,11 @@ export function ProfileForm(props: {
       )}
 
       <div className="flex gap-2 mt-2">
-        {props.onConnect && <Button onClick={() => void saveAndConnect()}>Connect</Button>}
-        <Button variant={props.onConnect ? 'outline' : 'default'} onClick={() => void save()}>
-          Save
-        </Button>
-        <Button variant="outline" onClick={() => void test()}>
-          Test
-        </Button>
-        <Button variant="ghost" onClick={props.onCancel}>
+        <Button variant="outline" className="flex-1" onClick={props.onCancel}>
           Cancel
+        </Button>
+        <Button className="flex-1" onClick={() => void testAndSave()}>
+          Test & Save
         </Button>
       </div>
       {testMsg && (

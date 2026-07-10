@@ -20,12 +20,13 @@ test('format, save + reopen, explain a query', async () => {
   const win = await app.firstWindow()
 
   await win.getByText('+ New connection').click()
-  await win.getByRole('combobox', { name: 'Database engine' }).click()
-  await win.getByRole('option', { name: 'SQLite' }).click()
+  await win.getByRole('radio', { name: 'SQLite' }).click()
   await win.getByPlaceholder('Name', { exact: true }).fill('qt-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
-  await win.getByText('Save', { exact: true }).click()
+  await win.getByText('Test & Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('qt-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   // Type lowercase SQL into the editor, then Format → uppercased keywords.
   const editor = win.locator('.cm-content')

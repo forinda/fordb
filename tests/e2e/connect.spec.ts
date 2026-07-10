@@ -14,11 +14,11 @@ test('create profile, test, connect, see schema tree', async () => {
   await win.getByPlaceholder('Database', { exact: true }).fill('fordb_test')
   await win.getByPlaceholder('User', { exact: true }).fill('fordb')
   await win.getByPlaceholder('Password', { exact: true }).fill('fordb')
-  await win.getByText('Test', { exact: true }).click()
-  await expect(win.getByText('OK')).toBeVisible({ timeout: 15000 })
-
-  await win.getByText('Save').click()
+  // Test & Save runs the liveness test and closes the panel on success.
+  await win.getByText('Test & Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('local-test').click()
+  await win.getByText('Connect', { exact: true }).click()
   await expect(win.getByText('app')).toBeVisible({ timeout: 15000 }) // schema node
   await app.close()
 })

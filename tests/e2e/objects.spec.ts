@@ -24,12 +24,13 @@ test('view definition + create/drop view', async () => {
   win.on('dialog', (d) => void d.accept()) // auto-confirm DDL previews
 
   await win.getByText('+ New connection').click()
-  await win.getByRole('combobox', { name: 'Database engine' }).click()
-  await win.getByRole('option', { name: 'SQLite' }).click()
+  await win.getByRole('radio', { name: 'SQLite' }).click()
   await win.getByPlaceholder('Name', { exact: true }).fill('obj-sqlite')
   await win.getByPlaceholder('File', { exact: true }).fill(file)
-  await win.getByText('Save').click()
+  await win.getByText('Test & Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('obj-sqlite').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
   // Expand the Views category folder and open the view's definition.

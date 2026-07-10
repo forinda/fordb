@@ -16,8 +16,10 @@ test('connect, open dashboard, see gauges and sessions', async () => {
   await win.getByPlaceholder('Password', { exact: true }).fill('fordb')
   await win.getByText('Test', { exact: true }).click()
   await expect(win.getByText('OK')).toBeVisible({ timeout: 15000 })
-  await win.getByText('Save').click()
+  await win.getByText('Test & Save').click()
+  // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('local-dash').click()
+  await win.getByText('Connect', { exact: true }).click()
 
   // Switch to the dashboard and confirm live stats render.
   await win.getByText('Dashboard', { exact: true }).click()
