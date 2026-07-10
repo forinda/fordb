@@ -173,4 +173,15 @@ describe('HostApi over RPC', () => {
     expect(await client.objectDefinition(id, 'app', 'view', 'user_emails')).toMatch(/select/i)
     await client.closeConnection(id)
   })
+
+  it('exposes server admin over the HostApi', async () => {
+    const id = await client.openConnection(profile)
+    expect(await client.serverAdminSupported(id)).toBe(true)
+    expect((await client.listRoles(id)).some((r) => r.name === 'fordb')).toBe(true)
+    expect((await client.serverSettings(id)).some((s) => s.name === 'max_connections')).toBe(true)
+    expect(Array.isArray(await client.roleGrants(id, 'fordb'))).toBe(true)
+    expect(await client.cancelBackend(id, 0)).toBe(false)
+    expect(await client.terminateBackend(id, 0)).toBe(false)
+    await client.closeConnection(id)
+  })
 })

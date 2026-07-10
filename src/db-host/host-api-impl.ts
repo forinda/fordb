@@ -19,6 +19,7 @@ import type { DataMutator, RowEdit } from '@shared/adapter/mutation-types'
 import type { DataBrowser, BrowseOptions } from '@shared/adapter/browse-types'
 import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectBrowser, ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
+import type { ServerAdmin, RoleInfo, GrantInfo, SettingRow } from '@shared/adapter/admin-types'
 import { connectAdapter } from './connect-with-tunnel'
 import type { ConnectionRegistry } from './connection-registry'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
@@ -175,5 +176,29 @@ export class HostApiImpl implements HostApi {
     name: string
   ): Promise<string> {
     return this.objs(id).definition(schema, kind, name)
+  }
+
+  private admin(id: ConnectionId): ServerAdmin {
+    const a = this.registry.get(id).serverAdmin
+    if (!a) throw new Error('Server administration is not supported by this engine')
+    return a
+  }
+  async serverAdminSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).serverAdmin != null
+  }
+  cancelBackend(id: ConnectionId, pid: number): Promise<boolean> {
+    return this.admin(id).cancelBackend(pid)
+  }
+  terminateBackend(id: ConnectionId, pid: number): Promise<boolean> {
+    return this.admin(id).terminateBackend(pid)
+  }
+  listRoles(id: ConnectionId): Promise<RoleInfo[]> {
+    return this.admin(id).listRoles()
+  }
+  roleGrants(id: ConnectionId, role: string): Promise<GrantInfo[]> {
+    return this.admin(id).roleGrants(role)
+  }
+  serverSettings(id: ConnectionId): Promise<SettingRow[]> {
+    return this.admin(id).serverSettings()
   }
 }
