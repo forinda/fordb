@@ -63,17 +63,22 @@ export const GET_INDEXES = `
 
 // Object browser (views/functions/triggers). Schema/name are bound params.
 export const LIST_VIEWS = `SELECT viewname AS name FROM pg_views WHERE schemaname = $1 ORDER BY name`
+// Collapse overloads to one node per name (avoids duplicate tree ids); functions
+// + procedures only (exclude aggregate/window).
 export const LIST_FUNCTIONS = `
-  SELECT p.proname AS name FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = $1 ORDER BY name`
+  SELECT DISTINCT p.proname AS name FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = $1 AND p.prokind IN ('f', 'p') ORDER BY name`
 export const LIST_TRIGGERS = `
   SELECT DISTINCT t.tgname AS name FROM pg_trigger t
   JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = $1 AND NOT t.tgisinternal ORDER BY name`
 export const DEF_VIEW = `SELECT pg_get_viewdef((quote_ident($1) || '.' || quote_ident($2))::regclass, true) AS def`
+// All overloads' definitions, joined — so clicking a name shows every overload
+// (deterministic, not an arbitrary LIMIT 1 pick).
 export const DEF_FUNCTION = `
-  SELECT pg_get_functiondef(p.oid) AS def FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = $1 AND p.proname = $2 LIMIT 1`
+  SELECT string_agg(pg_get_functiondef(p.oid), E'\n\n' ORDER BY p.oid) AS def
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+  WHERE n.nspname = $1 AND p.proname = $2 AND p.prokind IN ('f', 'p')`
 export const DEF_TRIGGER = `
   SELECT pg_get_triggerdef(t.oid, true) AS def FROM pg_trigger t
   JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace

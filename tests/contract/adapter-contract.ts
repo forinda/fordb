@@ -266,8 +266,20 @@ export function runAdapterContractTests(
       const views = await adapter.objects.list(s, 'view')
       expect(views.some((v) => v.name === 'user_emails')).toBe(true)
       expect(await adapter.objects.definition(s, 'view', 'user_emails')).toMatch(/select/i)
-      // triggers list runs (may be empty)
-      expect(Array.isArray(await adapter.objects.list(s, 'trigger'))).toBe(true)
+      // triggers: the fixture defines users_touch on both engines.
+      const triggers = await adapter.objects.list(s, 'trigger')
+      expect(triggers.some((t) => t.name === 'users_touch')).toBe(true)
+      expect(await adapter.objects.definition(s, 'trigger', 'users_touch')).toMatch(
+        /trigger|users/i
+      )
+      // functions: PG only, and `greet` is overloaded — the browser must collapse
+      // the two overloads to ONE node and return BOTH definitions.
+      if (adapter.objects.kinds.includes('function')) {
+        const fns = await adapter.objects.list(s, 'function')
+        expect(fns.filter((f) => f.name === 'greet')).toHaveLength(1)
+        const def = await adapter.objects.definition(s, 'function', 'greet')
+        expect(def.match(/CREATE (OR REPLACE )?FUNCTION/gi)?.length).toBe(2)
+      }
       // create + drop a view via the schema editor
       await adapter.schemaEditor.applyDdl(
         buildDdl(
