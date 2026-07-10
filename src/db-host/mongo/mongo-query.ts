@@ -12,15 +12,19 @@ interface OpenCursor {
   pageSize: number
 }
 
-/** Cursor-backed find/aggregate paging over a MongoDB database. The active
- *  cursor is exposed via getActive() so the adapter's cancel() can close it. */
+/** Cursor-backed find/aggregate paging over a MongoDB database. closeAll()
+ *  closes every open cursor and clears the map, so the adapter's cancel()
+ *  (and disconnect()) can drop all in-flight cursors without leaving stale
+ *  queryId entries behind. */
 export class MongoDocumentQuery implements DocumentQuery {
   private cursors = new Map<string, OpenCursor>()
   private next = 1
   constructor(private readonly db: () => Db) {}
 
-  active(): OpenCursor | undefined {
-    return [...this.cursors.values()][this.cursors.size - 1]
+  async closeAll(): Promise<void> {
+    const open = [...this.cursors.values()]
+    this.cursors.clear()
+    await Promise.all(open.map((o) => o.cursor.close().catch(() => {})))
   }
 
   private open(cursor: FindCursor | AggregationCursor, pageSize: number): OpenDocsResult {

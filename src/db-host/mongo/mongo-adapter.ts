@@ -42,6 +42,7 @@ export class MongoAdapter implements DbAdapter {
     this.dbName = profile.database ?? client.db().databaseName
   }
   async disconnect(): Promise<void> {
+    await (this.documentQuery as MongoDocumentQuery).closeAll()
     await this.client?.close()
     this.client = null
   }
@@ -58,7 +59,11 @@ export class MongoAdapter implements DbAdapter {
     return cols.map((c) => ({ schema, name: c.name, type: c.type === 'view' ? 'view' : 'table' }))
   }
   async getColumns(schema: string, table: string): Promise<ColumnInfo[]> {
-    const docs = await this.conn.db(schema).collection(table).find({}).limit(SAMPLE).toArray()
+    const docs = await this.conn
+      .db(schema)
+      .collection(table)
+      .aggregate([{ $sample: { size: SAMPLE } }])
+      .toArray()
     const seen = new Map<string, string>()
     for (const d of docs)
       for (const [k, v] of Object.entries(d)) if (!seen.has(k)) seen.set(k, bsonType(v))
@@ -86,7 +91,7 @@ export class MongoAdapter implements DbAdapter {
     return idx.map((ix) => ({
       name: String(ix.name),
       columns: Object.keys(ix.key as Record<string, unknown>),
-      unique: Boolean(ix.unique)
+      unique: Boolean(ix.unique) || ix.name === '_id_'
     }))
   }
 
@@ -103,9 +108,7 @@ export class MongoAdapter implements DbAdapter {
     return Promise.resolve()
   }
   async cancel(): Promise<void> {
-    const q = this.documentQuery as MongoDocumentQuery
-    const open = q.active?.()
-    if (open) await open.cursor.close()
+    await (this.documentQuery as MongoDocumentQuery).closeAll()
   }
 }
 
