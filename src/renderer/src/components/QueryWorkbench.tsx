@@ -14,7 +14,6 @@ import { ExplainView } from './ExplainView'
 import { ObjectDefinitionView } from './ObjectDefinitionView'
 import { QueryTabs } from './QueryTabs'
 import { useIndexes } from '../query/introspection'
-import { useProfiles } from '../query/profiles'
 import { useConnStore } from '../store'
 import IconPlay from '~icons/lucide/play'
 import IconX from '~icons/lucide/x'
@@ -118,13 +117,11 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
   // profile's default database — that's what documentQuery targets too.
   const [showIndexes, setShowIndexes] = useState(false)
   const connId = useConnStore((s) => s.activeConnectionId)
-  const activeProfileId = useConnStore((s) => s.activeProfileId)
-  const { data: profiles = [] } = useProfiles()
-  const mongoProfile = profiles.find((pr) => pr.id === activeProfileId)
-  const mongoDb = mongoProfile?.engine === 'mongodb' ? (mongoProfile.database ?? null) : null
+  // Indexes target the collection's OWN database (from the tab), not the
+  // connection default — same fix as the query/mutator path.
   const indexesQ = useIndexes(
     connId,
-    showIndexes ? mongoDb : null,
+    showIndexes ? doc.database : null,
     showIndexes ? doc.collection : null
   )
 
@@ -133,7 +130,9 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
       <QueryTabs />
       <div className="flex items-center gap-2 p-2 border-b border-border">
         <span className="text-sm text-muted-foreground">Collection</span>
-        <span className="font-mono text-sm text-foreground">{doc.collection}</span>
+        <span className="font-mono text-sm text-foreground">
+          {doc.database}.{doc.collection}
+        </span>
         <div className="flex rounded border border-border overflow-hidden">
           <Button
             size="sm"
@@ -152,7 +151,7 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
             aggregate
           </Button>
         </div>
-        {mongoDb && (
+        {doc.database && (
           <Button
             size="sm"
             variant={showIndexes ? 'default' : 'ghost'}

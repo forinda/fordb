@@ -88,6 +88,7 @@ export interface HostApi {
   documentQuerySupported(id: ConnectionId): Promise<boolean>
   findDocs(
     id: ConnectionId,
+    db: string,
     coll: string,
     filter: Record<string, unknown>,
     opts: FindOptions,
@@ -95,6 +96,7 @@ export interface HostApi {
   ): Promise<OpenDocsResult>
   aggregateDocs(
     id: ConnectionId,
+    db: string,
     coll: string,
     pipeline: Record<string, unknown>[],
     pageSize: number
@@ -105,17 +107,20 @@ export interface HostApi {
   documentMutatorSupported(id: ConnectionId): Promise<boolean>
   insertDoc(
     id: ConnectionId,
+    db: string,
     coll: string,
     doc: Record<string, unknown>
   ): ReturnType<DocumentMutator['insertOne']>
   updateDoc(
     id: ConnectionId,
+    db: string,
     coll: string,
     docId: unknown,
     patch: Record<string, unknown>
   ): ReturnType<DocumentMutator['updateById']>
   deleteDoc(
     id: ConnectionId,
+    db: string,
     coll: string,
     docId: unknown
   ): ReturnType<DocumentMutator['deleteById']>

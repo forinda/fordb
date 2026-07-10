@@ -215,7 +215,7 @@ describe('HostApi over RPC', () => {
   it('exposes documentQuery over the HostApi when supported', async () => {
     const mid = await client.openConnection(mongoProfile)
     expect(await client.documentQuerySupported(mid)).toBe(true)
-    const open = await client.findDocs(mid, 'orders', { status: 'open' }, { limit: 10 }, 10)
+    const open = await client.findDocs(mid, 'app', 'orders', { status: 'open' }, { limit: 10 }, 10)
     const page = await client.fetchDocs(mid, open.queryId)
     expect(page.docs.length).toBe(10)
     await client.closeDocs(mid, open.queryId)
@@ -226,24 +226,24 @@ describe('HostApi over RPC', () => {
   it('exposes documentMutator over the HostApi when supported (insert/update/delete)', async () => {
     const mid = await client.openConnection(mongoProfile)
     expect(await client.documentMutatorSupported(mid)).toBe(true)
-    const ins = await client.insertDoc(mid, 'users', {
+    const ins = await client.insertDoc(mid, 'app', 'users', {
       _id: 999998,
       email: 'hostapi@z',
       name: 'HostApi Z'
     })
     expect(ins.insertedId).toBe(999998)
 
-    const up = await client.updateDoc(mid, 'users', 999998, { name: 'HostApi Z2' })
+    const up = await client.updateDoc(mid, 'app', 'users', 999998, { name: 'HostApi Z2' })
     expect(up.matched).toBe(1)
     // Verify the field actually changed, not just that a doc matched.
-    const afterUpdate = await client.findDocs(mid, 'users', { _id: 999998 }, {}, 1)
+    const afterUpdate = await client.findDocs(mid, 'app', 'users', { _id: 999998 }, {}, 1)
     const updatedPage = await client.fetchDocs(mid, afterUpdate.queryId)
     expect(updatedPage.docs[0]?.name).toBe('HostApi Z2')
 
-    const del = await client.deleteDoc(mid, 'users', 999998)
+    const del = await client.deleteDoc(mid, 'app', 'users', 999998)
     expect(del.deleted).toBe(1)
     // Verify the doc is actually gone, not just that a count of 1 was reported.
-    const afterDelete = await client.findDocs(mid, 'users', { _id: 999998 }, {}, 1)
+    const afterDelete = await client.findDocs(mid, 'app', 'users', { _id: 999998 }, {}, 1)
     const deletedPage = await client.fetchDocs(mid, afterDelete.queryId)
     expect(deletedPage.docs.length).toBe(0)
 
@@ -257,7 +257,10 @@ describe('HostApi over RPC', () => {
   // ObjectId, and check the round trip via the actual RPC transport.
   it('documentMutator insertDoc without _id returns a JSON-safe insertedId that round-trips over RPC', async () => {
     const mid = await client.openConnection(mongoProfile)
-    const ins = await client.insertDoc(mid, 'users', { email: 'autoid-hostapi@z', name: 'AutoId' })
+    const ins = await client.insertDoc(mid, 'app', 'users', {
+      email: 'autoid-hostapi@z',
+      name: 'AutoId'
+    })
     const id = ins.insertedId
     const isJsonSafeOid =
       typeof id === 'object' &&
@@ -267,7 +270,7 @@ describe('HostApi over RPC', () => {
     const isPrimitive = typeof id === 'string' || typeof id === 'number'
     expect(isJsonSafeOid || isPrimitive).toBe(true)
 
-    const del = await client.deleteDoc(mid, 'users', id)
+    const del = await client.deleteDoc(mid, 'app', 'users', id)
     expect(del.deleted).toBe(1)
     await client.closeConnection(mid)
   })
