@@ -25,6 +25,7 @@ export async function buildSqliteFixture(): Promise<string> {
     );
     CREATE INDEX orders_user_id_idx ON orders(user_id);
     CREATE VIEW user_emails AS SELECT id, email FROM users;
+    CREATE TRIGGER users_touch AFTER UPDATE ON users BEGIN SELECT 1; END;
     INSERT INTO users (email, name)
     WITH RECURSIVE seq(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM seq WHERE i < 1000)
     SELECT 'user' || i || '@example.com', 'User ' || i FROM seq;

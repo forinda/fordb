@@ -25,7 +25,7 @@ export const qk = {
   objects: (
     connId: string,
     schema: string,
-    kind: string
+    kind: import('@shared/adapter/object-types').ObjectKind
   ): readonly ['conn', string, 'objects', string, string] =>
     ['conn', connId, 'objects', schema, kind] as const,
   serverSnapshot: (connId: string): readonly ['conn', string, 'serverSnapshot'] =>
