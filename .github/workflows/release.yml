@@ -1,0 +1,47 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # On a tag: build + publish artifacts to a DRAFT GitHub Release (+ the
+      # latest*.yml updater metadata). On workflow_dispatch (no tag): build
+      # only, no publish — a dry-run that proves the matrix + native rebuild
+      # + NSIS work without cutting a release.
+      - name: Build + package
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          FLAG=$([ "${{ github.ref_type }}" = "tag" ] && echo always || echo never)
+          if [ "${{ runner.os }}" = "Windows" ]; then TARGET=--win; else TARGET=--linux; fi
+          pnpm build
+          pnpm exec electron-builder $TARGET --publish "$FLAG" --config.releaseType=draft
+      - name: Upload artifacts (dry-run visibility)
+        if: github.ref_type != 'tag'
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-${{ matrix.os }}
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.exe
+            dist/*.yml
+          if-no-files-found: ignore
