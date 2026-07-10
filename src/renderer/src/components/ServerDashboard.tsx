@@ -35,17 +35,23 @@ export function ServerDashboard(): React.JSX.Element {
   const admin =
     connId && adminSupported
       ? {
-          onCancel: (pid: number) => runAdmin((a) => a.cancelBackend(connId, pid)),
-          onTerminate: (pid: number) => runAdmin((a) => a.terminateBackend(connId, pid))
+          onCancel: (pid: number) =>
+            runAdmin((a) => a.cancelBackend(connId, pid), `Backend ${pid} was already gone.`),
+          onTerminate: (pid: number) =>
+            runAdmin((a) => a.terminateBackend(connId, pid), `Backend ${pid} was already gone.`)
         }
       : undefined
 
   async function runAdmin(
-    action: (a: Awaited<ReturnType<typeof hostApi>>) => Promise<boolean>
+    action: (a: Awaited<ReturnType<typeof hostApi>>) => Promise<boolean>,
+    onNoop: string
   ): Promise<void> {
     setAdminError(null)
     try {
-      await action(await hostApi())
+      // false = PG found no such backend (it exited between poll and click) —
+      // no error is raised, so tell the user rather than fake success.
+      const ok = await action(await hostApi())
+      if (!ok) setAdminError(onNoop)
       await queryClient.invalidateQueries({ queryKey: qk.sessions(connId!) })
     } catch (e) {
       setAdminError(e instanceof Error ? e.message : 'Action failed')
@@ -134,9 +140,7 @@ export function ServerDashboard(): React.JSX.Element {
           {panelError(sessionsQ) && (
             <div className="p-2 text-sm text-destructive">Sessions {panelError(sessionsQ)}</div>
           )}
-          {adminError && (
-            <div className="p-2 text-sm text-destructive">Action failed: {adminError}</div>
-          )}
+          {adminError && <div className="p-2 text-sm text-destructive">{adminError}</div>}
           {sessionsQ.data && <SessionsTable rows={sessionsQ.data} admin={admin} />}
           <div className="border-t border-border p-2 text-sm font-medium text-muted-foreground">
             Locks

@@ -301,7 +301,10 @@ export function runAdapterContractTests(
       expect(roles.some((r) => r.name === 'fordb')).toBe(true)
       const settings = await adapter.serverAdmin.serverSettings()
       expect(settings.some((x) => x.name === 'max_connections')).toBe(true)
-      expect(Array.isArray(await adapter.serverAdmin.roleGrants('fordb'))).toBe(true)
+      const grants = await adapter.serverAdmin.roleGrants('fordb')
+      expect(
+        grants.some((g) => g.schema === 'app' && g.table === 'users' && g.privilege === 'SELECT')
+      ).toBe(true)
       // No backend with pid 0 → false, not a throw.
       expect(await adapter.serverAdmin.cancelBackend(0)).toBe(false)
       expect(await adapter.serverAdmin.terminateBackend(0)).toBe(false)
