@@ -374,26 +374,36 @@ export function QueryWorkbench(): React.JSX.Element {
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="vertical">
           <ResizablePanel defaultSize={50} minSize={20}>
-            <div className="h-full min-h-0">
-              {/* key by tab so switching tabs remounts the editor with that tab's
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Query editor
+              </div>
+              <div className="min-h-0 flex-1">
+                {/* key by tab so switching tabs remounts the editor with that tab's
                   text (the editor is uncontrolled — value is the initial doc). */}
-              <SqlEditor
-                key={tab.id}
-                value={tab.sql}
-                onChange={(v) => setSql(tab.id, v)}
-                onRun={() => void run(tab.id)}
-                connectionId={connId}
-              />
+                <SqlEditor
+                  key={tab.id}
+                  value={tab.sql}
+                  onChange={(v) => setSql(tab.id, v)}
+                  onRun={() => void run(tab.id)}
+                  connectionId={connId}
+                />
+              </div>
             </div>
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel minSize={20}>
-            <div className="h-full min-h-0">
-              {tab.source ? (
-                <ResultsGrid source={tab.source} />
-              ) : (
-                <div className="p-4 text-muted-foreground">Run a query to see results.</div>
-              )}
+            <div className="flex h-full min-h-0 flex-col">
+              <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Results
+              </div>
+              <div className="min-h-0 flex-1">
+                {tab.source ? (
+                  <ResultsGrid source={tab.source} />
+                ) : (
+                  <div className="p-4 text-muted-foreground">Run a query to see results.</div>
+                )}
+              </div>
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
