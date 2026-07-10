@@ -3,6 +3,7 @@ import { useInvalidateProfiles } from '../query/profiles'
 import type { ConnectionProfile, SqliteProfile, SshOptions } from '@shared/adapter/types'
 import { parseConnectionUrl } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
+import { parseMongoUri, buildMongoUriFromFields } from '@shared/mongo/uri'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
 import { Label } from './ui/label'
@@ -64,8 +65,23 @@ export function ProfileForm(props: {
 
   // Mongo — URI path (primary) is the default unless editing a profile that
   // was saved with discrete fields (recognizable by a persisted `host`).
-  const [mongoUseUri, setMongoUseUri] = useState(mongo?.host === undefined)
-  const [mongoUri, setMongoUri] = useState('')
+  const [mongoSrv, setMongoSrv] = useState(false)
+  // Editing an existing profile: seed the URI view from the saved discrete
+  // fields (the secret credentials aren't re-shown — same as password fields).
+  const [mongoUri, setMongoUri] = useState(() =>
+    mongo?.host
+      ? buildMongoUriFromFields({
+          srv: false,
+          host: mongo.host,
+          port: mongo.port ?? 27017,
+          user: mongo.user ?? '',
+          password: '',
+          database: mongo.database ?? '',
+          authSource: mongo.authSource ?? '',
+          tls: mongo.tls ?? false
+        })
+      : ''
+  )
   const [mongoHost, setMongoHost] = useState(mongo?.host ?? 'localhost')
   const [mongoPort, setMongoPort] = useState(String(mongo?.port ?? 27017))
   const [mongoUser, setMongoUser] = useState(mongo?.user ?? '')
@@ -107,6 +123,47 @@ export function ProfileForm(props: {
     }
   }
 
+  // Compass-style two-way sync: the URI and the discrete fields describe the
+  // same connection; editing either updates the other (URI wins on parse).
+  function syncUriFromFields(next: {
+    host?: string
+    port?: string
+    user?: string
+    password?: string
+    authSource?: string
+    tls?: boolean
+    database?: string
+    srv?: boolean
+  }): void {
+    const srv = next.srv ?? mongoSrv
+    const portNum = Number(next.port ?? mongoPort)
+    setMongoUri(
+      buildMongoUriFromFields({
+        srv,
+        host: next.host ?? mongoHost,
+        port: srv ? null : Number.isInteger(portNum) && portNum > 0 ? portNum : 27017,
+        user: next.user ?? mongoUser,
+        password: next.password ?? mongoPassword,
+        database: next.database ?? mongoDatabase,
+        authSource: next.authSource ?? mongoAuthSource,
+        tls: next.tls ?? mongoTls
+      })
+    )
+  }
+  function syncFieldsFromUri(uri: string): void {
+    setMongoUri(uri)
+    const f = parseMongoUri(uri)
+    if (!f) return // keep typing; fields update on the next parseable state
+    setMongoSrv(f.srv)
+    setMongoHost(f.host)
+    setMongoPort(f.port == null ? '' : String(f.port))
+    setMongoUser(f.user)
+    setMongoPassword(f.password)
+    setMongoDatabase(f.database)
+    setMongoAuthSource(f.authSource)
+    setMongoTls(f.tls)
+  }
+
   function build(): ConnectionProfile {
     // Non-secret Dialect metadata, shared by every engine branch below.
     const meta = {
@@ -125,19 +182,19 @@ export function ProfileForm(props: {
     if (engine === 'mongodb') {
       const parsedMongoPort = Number(mongoPort)
       const id = p?.id ?? newId()
-      const base: ConnectionProfile = mongoUseUri
-        ? { id, name, engine: 'mongodb', database: mongoDatabase || undefined }
-        : {
-            id,
-            name,
-            engine: 'mongodb',
-            host: mongoHost,
-            port: Number.isNaN(parsedMongoPort) ? 27017 : parsedMongoPort,
-            user: mongoUser || undefined,
-            authSource: mongoAuthSource || undefined,
-            tls: mongoTls || undefined,
-            database: mongoDatabase || undefined
-          }
+      // Discrete fields persist (non-secret, drive card labels/search); the
+      // URI travels as a secret and wins at connect time.
+      const base: ConnectionProfile = {
+        id,
+        name,
+        engine: 'mongodb',
+        host: mongoHost || undefined,
+        port: Number.isNaN(parsedMongoPort) ? 27017 : parsedMongoPort,
+        user: mongoUser || undefined,
+        authSource: mongoAuthSource || undefined,
+        tls: mongoTls || undefined,
+        database: mongoDatabase || undefined
+      }
       return { ...base, ...meta, name: name.trim() || connectionLabel(base) }
     }
     const parsedPort = Number(port)
@@ -175,7 +232,9 @@ export function ProfileForm(props: {
     if (engine === 'sqlite')
       return kind === 'remote' || kind === 'replica' ? { authToken: authToken || undefined } : {}
     if (engine === 'mongodb')
-      return mongoUseUri ? { uri: mongoUri || undefined } : { password: mongoPassword || undefined }
+      // The URI (may embed credentials) is the connect-time secret; the
+      // password field is its synced view. Send both; hydrate prefers uri.
+      return { uri: mongoUri || undefined, password: mongoPassword || undefined }
     return {
       password: password || undefined,
       sshPassword: useSsh && authMethod === 'password' ? sshPassword || undefined : undefined,
@@ -457,56 +516,120 @@ export function ProfileForm(props: {
       )}
       {engine === 'mongodb' && (
         <>
-          <Label className="mt-2">
-            <Checkbox checked={mongoUseUri} onCheckedChange={(v) => setMongoUseUri(v === true)} />
-            Use connection URI
-          </Label>
-          {mongoUseUri ? (
-            <Input
-              type="password"
+          {/* Compass-style: URI and fields are two views of one connection —
+              editing either syncs the other. */}
+          <div>
+            <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted-foreground-2">
+              URI
+            </div>
+            <textarea
+              aria-label="Connection URI"
+              rows={2}
+              spellCheck={false}
+              className="w-full resize-y rounded border border-border bg-background px-2 py-1 font-mono text-xs"
               placeholder="mongodb://user:pass@host:27017/db"
               value={mongoUri}
-              onChange={(e) => setMongoUri(e.target.value)}
+              onChange={(e) => syncFieldsFromUri(e.target.value)}
             />
-          ) : (
-            <div className="flex flex-col gap-2 pl-6 border-l border-border">
+          </div>
+          <div className="flex rounded-lg bg-surface-2 p-0.5" role="radiogroup" aria-label="Scheme">
+            {(
+              [
+                ['mongodb', false],
+                ['mongodb+srv', true]
+              ] as const
+            ).map(([label, srv]) => (
+              <button
+                key={label}
+                type="button"
+                role="radio"
+                aria-checked={mongoSrv === srv}
+                onClick={() => {
+                  setMongoSrv(srv)
+                  syncUriFromFields({ srv })
+                }}
+                className={`flex-1 rounded-md px-2 py-1 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                  mongoSrv === srv
+                    ? 'bg-card font-semibold text-primary shadow-[var(--shadow-raised)]'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              className="flex-[2]"
+              placeholder="Host"
+              value={mongoHost}
+              onChange={(e) => {
+                setMongoHost(e.target.value)
+                syncUriFromFields({ host: e.target.value })
+              }}
+            />
+            {!mongoSrv && (
               <Input
-                placeholder="Host"
-                value={mongoHost}
-                onChange={(e) => setMongoHost(e.target.value)}
-              />
-              <Input
+                className="flex-1"
                 type="number"
                 placeholder="Port"
                 value={mongoPort}
-                onChange={(e) => setMongoPort(e.target.value)}
+                onChange={(e) => {
+                  setMongoPort(e.target.value)
+                  syncUriFromFields({ port: e.target.value })
+                }}
               />
-              <Input
-                placeholder="User"
-                value={mongoUser}
-                onChange={(e) => setMongoUser(e.target.value)}
+            )}
+          </div>
+          <div className="flex gap-2">
+            <Input
+              className="flex-1"
+              placeholder="User"
+              value={mongoUser}
+              onChange={(e) => {
+                setMongoUser(e.target.value)
+                syncUriFromFields({ user: e.target.value })
+              }}
+            />
+            <Input
+              className="flex-1"
+              type="password"
+              placeholder="Password"
+              value={mongoPassword}
+              onChange={(e) => {
+                setMongoPassword(e.target.value)
+                syncUriFromFields({ password: e.target.value })
+              }}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Input
+              className="flex-1"
+              placeholder="Auth source"
+              value={mongoAuthSource}
+              onChange={(e) => {
+                setMongoAuthSource(e.target.value)
+                syncUriFromFields({ authSource: e.target.value })
+              }}
+            />
+            <Label>
+              <Checkbox
+                checked={mongoTls}
+                onCheckedChange={(v) => {
+                  setMongoTls(v === true)
+                  syncUriFromFields({ tls: v === true })
+                }}
               />
-              <Input
-                type="password"
-                placeholder="Password"
-                value={mongoPassword}
-                onChange={(e) => setMongoPassword(e.target.value)}
-              />
-              <Input
-                placeholder="Auth source"
-                value={mongoAuthSource}
-                onChange={(e) => setMongoAuthSource(e.target.value)}
-              />
-              <Label>
-                <Checkbox checked={mongoTls} onCheckedChange={(v) => setMongoTls(v === true)} />
-                Use TLS
-              </Label>
-            </div>
-          )}
+              TLS
+            </Label>
+          </div>
           <Input
             placeholder="Database (optional)"
             value={mongoDatabase}
-            onChange={(e) => setMongoDatabase(e.target.value)}
+            onChange={(e) => {
+              setMongoDatabase(e.target.value)
+              syncUriFromFields({ database: e.target.value })
+            }}
           />
         </>
       )}
