@@ -200,23 +200,31 @@ export function App(): React.JSX.Element {
       />
       <div className="min-h-0 flex-1">
         {screen === 'connections' ? (
-          /* Connections screen: the manager IS the page (its rail is the side
-             panel per the Dialect design); the form overlays it while editing. */
-          form ? (
-            <div className="h-full overflow-auto">
-              <ProfileForm
-                profile={form.profile}
-                onSaved={() => setForm(null)}
-                onCancel={() => setForm(null)}
+          /* Connections screen: the manager IS the page; the profile form
+             opens as a 340px right panel beside it (Dialect design) with a
+             direct Connect action. */
+          <div className="flex h-full min-h-0">
+            <div className="min-w-0 flex-1">
+              <ConnectionManager
+                onNew={() => setForm({})}
+                onEdit={(profile) => setForm({ profile })}
+                onConnect={connectTo}
               />
             </div>
-          ) : (
-            <ConnectionManager
-              onNew={() => setForm({})}
-              onEdit={(profile) => setForm({ profile })}
-              onConnect={connectTo}
-            />
-          )
+            {form && (
+              <aside className="w-[340px] flex-none overflow-auto border-l border-border bg-card">
+                <ProfileForm
+                  profile={form.profile}
+                  onSaved={() => setForm(null)}
+                  onCancel={() => setForm(null)}
+                  onConnect={(connectionId, profileId, database) => {
+                    setForm(null)
+                    connectTo(connectionId, profileId, database)
+                  }}
+                />
+              </aside>
+            )}
+          </div>
         ) : (
           <ResizablePanelGroup direction="horizontal">
             {/* Editor sidebar: active-connection bar + schema tree. Switching
