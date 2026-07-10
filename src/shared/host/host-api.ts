@@ -13,6 +13,7 @@ import type { RowEdit } from '../adapter/mutation-types'
 import type { BrowseOptions } from '../adapter/browse-types'
 import type { SchemaOps } from '../adapter/schema-types'
 import type { ObjectKind, ObjectSummary } from '../adapter/object-types'
+import type { RoleInfo, GrantInfo, SettingRow } from '../adapter/admin-types'
 
 export type ConnectionId = string
 
@@ -69,4 +70,11 @@ export interface HostApi {
     kind: ObjectKind,
     name: string
   ): Promise<string>
+
+  serverAdminSupported(id: ConnectionId): Promise<boolean>
+  cancelBackend(id: ConnectionId, pid: number): Promise<boolean>
+  terminateBackend(id: ConnectionId, pid: number): Promise<boolean>
+  listRoles(id: ConnectionId): Promise<RoleInfo[]>
+  roleGrants(id: ConnectionId, role: string): Promise<GrantInfo[]>
+  serverSettings(id: ConnectionId): Promise<SettingRow[]>
 }
