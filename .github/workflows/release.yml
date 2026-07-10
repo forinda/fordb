@@ -75,7 +75,7 @@ jobs:
         run: gh release edit "$TAG" --repo "$REPO" --draft=false
       - name: Publish to AUR
         if: ${{ env.AUR_SSH_KEY != '' }}
-        uses: KSXGitHub/github-actions-deploy-aur@v3
+        uses: KSXGitHub/github-actions-deploy-aur@a97f56a8425a7a7f3b8c58607f769c69b089cadb # v3
         with:
           pkgname: fordb-bin
           pkgbuild: packaging/aur/PKGBUILD
