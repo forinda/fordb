@@ -137,5 +137,12 @@ export function runDocumentAdapterContractTests(
       const del = await dm.deleteById('users', id)
       expect(del.deleted).toBe(1)
     })
+
+    it('mongoStats: serverStatus snapshot', async () => {
+      if (!adapter.mongoStats) return
+      const snap = await adapter.mongoStats.serverStatus()
+      expect(snap.connections.current).toBeGreaterThan(0)
+      expect(typeof snap.opcounters.query).toBe('number')
+    })
   })
 }
