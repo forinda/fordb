@@ -7,6 +7,7 @@ import { connectionLabel } from '@shared/connection-label'
 import { filterProfiles, type ProfileFilter } from '@shared/profile-filter'
 import { useProfiles, useInvalidateProfiles } from '../query/profiles'
 import { useConnStore } from '../store'
+import { useUiStore } from '../store-ui'
 import { Button } from './ui/button'
 
 const ENVIRONMENTS = ['production', 'staging', 'local'] as const
@@ -300,10 +301,12 @@ export function ConnectionDetails(props: {
   const [connecting, setConnecting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const setOverlay = useUiStore((s) => s.setConnecting)
   async function connect(): Promise<void> {
     if (connecting) return
     setConnecting(true)
     setError(null)
+    setOverlay({ label: connectionLabel(p), host: profileAddress(p) })
     try {
       const connectionId = await window.fordb.connection.open(p.id)
       props.onConnect(connectionId, p.id, p.engine === 'postgres' ? p.database : null)
@@ -311,6 +314,7 @@ export function ConnectionDetails(props: {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
       setConnecting(false)
+      setOverlay(null)
     }
   }
 

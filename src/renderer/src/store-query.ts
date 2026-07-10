@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useUiStore } from './store-ui'
 import { hostApi } from './rpc'
 import { useConnStore } from './store'
 import { isSelectLike } from '@shared/sql/classify'
@@ -584,14 +585,16 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       const cur = get().tabs.find((t) => t.id === id)
       void cur?.source?.dispose()
       void cur?.docSource?.dispose()
+      const message = err instanceof Error ? err.message : String(err)
       set((s) => ({
         tabs: patch(s.tabs, id, {
           status: 'error',
           source: undefined,
           docSource: undefined,
-          message: err instanceof Error ? err.message : String(err)
+          message
         })
       }))
+      useUiStore.getState().showToast('error', `Query failed: ${message}`)
     }
   },
   cancel: async (id) => {
