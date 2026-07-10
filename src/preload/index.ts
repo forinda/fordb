@@ -79,8 +79,10 @@ contextBridge.exposeInMainWorld('fordb', {
     maximize: (): void => ipcRenderer.send('window:maximize'),
     close: (): void => ipcRenderer.send('window:close'),
     isMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:is-maximized'),
-    onMaximizeChanged: (cb: (max: boolean) => void): void => {
-      ipcRenderer.on('window:maximize-changed', (_e, max: boolean) => cb(max))
+    onMaximizeChanged: (cb: (max: boolean) => void): (() => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, max: boolean): void => cb(max)
+      ipcRenderer.on('window:maximize-changed', listener)
+      return () => ipcRenderer.removeListener('window:maximize-changed', listener)
     }
   },
   appearance: {

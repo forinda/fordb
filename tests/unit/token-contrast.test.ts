@@ -23,6 +23,11 @@ describe('token contrast (WCAG AA)', () => {
     it(`${theme}: muted text ≥ 4.5:1`, () => {
       expect(contrast(t.mutedForeground, t.background)).toBeGreaterThanOrEqual(4.5)
     })
+    // muted doubles as the Dialect surface-2 (status bar/toolbars) — text
+    // rendered ON it (StatusBar) must also clear AA, not just on background.
+    it(`${theme}: muted text on muted surface ≥ 4.5:1`, () => {
+      expect(contrast(t.mutedForeground, t.muted)).toBeGreaterThanOrEqual(4.5)
+    })
     it(`${theme}: primary button text ≥ 4.5:1`, () => {
       expect(contrast(t.primaryForeground, t.primary)).toBeGreaterThanOrEqual(4.5)
     })
