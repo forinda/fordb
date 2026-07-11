@@ -1,16 +1,14 @@
 import { app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+// electron-updater is CommonJS; a named ESM import (`import { autoUpdater }`)
+// throws "Named export not found" in the packaged ESM main. Import the default
+// (= module.exports) and destructure — the runtime-safe form.
+import electronUpdater from 'electron-updater'
+import { canAutoUpdate } from '../shared/updater'
 import type { UpdaterStatus } from '../shared/updater'
 
-/** electron-updater updates NSIS (Windows) and AppImage (Linux) only.
- *  deb/rpm (no APPIMAGE env) and dev builds are excluded. */
-export function canAutoUpdate(
-  isPackaged: boolean,
-  platform: NodeJS.Platform,
-  isAppImage: boolean
-): boolean {
-  return isPackaged && (platform === 'win32' || isAppImage)
-}
+// Accessed lazily (not destructured at module load): reading `.autoUpdater`
+// constructs the singleton, which calls app.getVersion().
+const au = (): typeof electronUpdater.autoUpdater => electronUpdater.autoUpdater
 
 let emitStatus: (s: UpdaterStatus) => void = () => {}
 let wired = false
@@ -20,20 +18,20 @@ export function initUpdater(emit: (s: UpdaterStatus) => void): void {
   if (wired) return
   wired = true
   try {
-    autoUpdater.autoDownload = true
-    autoUpdater.autoInstallOnAppQuit = false
-    autoUpdater.on('checking-for-update', () => emitStatus({ status: 'checking' }))
-    autoUpdater.on('update-available', (info) =>
+    au().autoDownload = true
+    au().autoInstallOnAppQuit = false
+    au().on('checking-for-update', () => emitStatus({ status: 'checking' }))
+    au().on('update-available', (info) =>
       emitStatus({ status: 'available', version: info.version })
     )
-    autoUpdater.on('update-not-available', () => emitStatus({ status: 'not-available' }))
-    autoUpdater.on('download-progress', (p) =>
+    au().on('update-not-available', () => emitStatus({ status: 'not-available' }))
+    au().on('download-progress', (p) =>
       emitStatus({ status: 'downloading', percent: Math.round(p.percent) })
     )
-    autoUpdater.on('update-downloaded', (info) =>
+    au().on('update-downloaded', (info) =>
       emitStatus({ status: 'downloaded', version: info.version })
     )
-    autoUpdater.on('error', (e) =>
+    au().on('error', (e) =>
       emitStatus({ status: 'error', message: e instanceof Error ? e.message : String(e) })
     )
   } catch (e) {
@@ -49,7 +47,7 @@ export function checkForUpdates(): void {
   }
   try {
     emitStatus({ status: 'checking' })
-    void autoUpdater.checkForUpdates()
+    void au().checkForUpdates()
   } catch (e) {
     emitStatus({ status: 'error', message: e instanceof Error ? e.message : String(e) })
   }
@@ -57,7 +55,7 @@ export function checkForUpdates(): void {
 
 export function quitAndInstall(): void {
   try {
-    autoUpdater.quitAndInstall()
+    au().quitAndInstall()
   } catch (e) {
     emitStatus({ status: 'error', message: e instanceof Error ? e.message : String(e) })
   }

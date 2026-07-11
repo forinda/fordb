@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { canAutoUpdate } from '../../src/main/updater'
-import { bannerVisible, type UpdaterStatus } from '../../src/shared/updater'
+import { canAutoUpdate, bannerVisible, type UpdaterStatus } from '../../src/shared/updater'
 
 describe('canAutoUpdate', () => {
   it('packaged AppImage on linux → true', () => {
