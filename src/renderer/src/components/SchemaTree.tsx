@@ -19,6 +19,7 @@ import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { CreateTableDialog } from './CreateTableDialog'
+import { CreateDatabaseDialog } from './CreateDatabaseDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
 import { useDocumentQuerySupported } from '../query/documents'
@@ -78,6 +79,7 @@ export function SchemaTree(): React.JSX.Element {
     onSubmit: (name: string) => void
   } | null>(null)
   const [createTable, setCreateTable] = useState<{ schema: string } | null>(null)
+  const [createDatabase, setCreateDatabase] = useState(false)
 
   const profileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
@@ -213,11 +215,7 @@ export function SchemaTree(): React.JSX.Element {
     if (ops?.createDatabase)
       items.push({
         label: 'New database…',
-        run: () =>
-          setNamePrompt({
-            title: 'New database name',
-            onSubmit: (name) => void runDdl({ kind: 'createDatabase', name })
-          })
+        run: () => setCreateDatabase(true)
       })
     if (ops?.dropDatabase)
       items.push({
@@ -365,6 +363,14 @@ export function SchemaTree(): React.JSX.Element {
           connId={connId!}
           schema={createTable.schema}
           dialect={dialect}
+          onSubmit={(change) => void runDdl(change)}
+        />
+      )}
+      {createDatabase && (
+        <CreateDatabaseDialog
+          open
+          onClose={() => setCreateDatabase(false)}
+          connId={connId!}
           onSubmit={(change) => void runDdl(change)}
         />
       )}

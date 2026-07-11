@@ -12,6 +12,15 @@ export function useSchemas(connId: string | null): UseQueryResult<string[]> {
   })
 }
 
+/** Role names for the owner dropdown; reuses the server-admin listRoles. */
+export function useRoles(connId: string | null): UseQueryResult<string[]> {
+  return useQuery({
+    queryKey: connId ? qk.roles(connId) : ['conn', 'none', 'roles'],
+    queryFn: async () => (await hostApi()).listRoles(connId!).then((rs) => rs.map((r) => r.name)),
+    enabled: !!connId
+  })
+}
+
 export function useTables(
   connId: string | null,
   schema: string | null
