@@ -1,7 +1,15 @@
 import tseslint from 'typescript-eslint'
 
 export default tseslint.config(
-  { ignores: ['out/', 'dist/', 'node_modules/'] },
+  {
+    ignores: [
+      'out/',
+      'dist/',
+      'node_modules/',
+      'website/.vitepress/dist/',
+      'website/.vitepress/cache/'
+    ]
+  },
   ...tseslint.configs.recommended,
   {
     rules: {
