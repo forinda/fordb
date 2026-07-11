@@ -68,8 +68,13 @@ jobs:
         if: ${{ runner.os == 'Linux' && env.CLOUDSMITH_API_KEY != '' }}
         run: |
           pipx install cloudsmith-cli
+          # deb: one any-distro upload serves every Debian/Ubuntu release.
           cloudsmith push deb forinda/fordb/any-distro/any-version dist/*.deb
-          cloudsmith push rpm forinda/fordb/any-distro/any-version dist/*.rpm
+          # rpm: Cloudsmith does NOT index an any-distro rpm (no repodata is
+          # generated), so dnf finds nothing. rpm must target a concrete distro;
+          # `any-version` then serves it under every release of that distro.
+          cloudsmith push rpm forinda/fordb/fedora/any-version dist/*.rpm
+          cloudsmith push rpm forinda/fordb/el/any-version dist/*.rpm
 
   finalize:
     needs: [release-please, build]
