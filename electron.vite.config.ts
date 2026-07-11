@@ -23,7 +23,7 @@ export default defineConfig({
         // require + try/catch.
         // ssh2 and related modules (tunnel-ssh, cpu-features) have optional
         // native bindings; mark them as external to preserve their guard clauses.
-        external: ['pg-native', 'cpu-features', 'libsql', '@libsql/client']
+        external: ['pg-native', 'cpu-features', 'libsql', '@libsql/client', 'electron-updater']
       }
     }
   },
