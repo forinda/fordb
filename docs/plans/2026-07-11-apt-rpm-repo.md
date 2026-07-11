@@ -30,11 +30,13 @@
 ### Task 1: rpm build target
 
 **Files:**
+
 - Modify: `electron-builder.yml:21-30`
 - Modify: `.github/workflows/release-please.yml` (build job, after `pnpm install`)
 - Modify: `.github/workflows/release.yml` (build job, after `pnpm install`; dry-run upload paths)
 
 **Interfaces:**
+
 - Produces: `dist/fordb-<version>-x86_64.rpm` in the Linux build leg of both release workflows, alongside the existing `dist/*.deb` and `dist/*.AppImage`.
 
 - [ ] **Step 1: Add rpm to the Linux targets**
@@ -62,9 +64,9 @@ rpm:
 In `.github/workflows/release-please.yml`, in the `build` job, add a step immediately after `- run: pnpm install --frozen-lockfile` and before "Build + upload installers". Guard it to Linux so the Windows leg skips it:
 
 ```yaml
-      - name: Install rpm tooling (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm
+- name: Install rpm tooling (Linux)
+  if: runner.os == 'Linux'
+  run: sudo apt-get update && sudo apt-get install -y rpm
 ```
 
 - [ ] **Step 3: Install rpm tooling on the runner — release.yml**
@@ -72,9 +74,9 @@ In `.github/workflows/release-please.yml`, in the `build` job, add a step immedi
 In `.github/workflows/release.yml`, in the `build` job, add the same step immediately after `- run: pnpm install --frozen-lockfile` and before "Build + package":
 
 ```yaml
-      - name: Install rpm tooling (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y rpm
+- name: Install rpm tooling (Linux)
+  if: runner.os == 'Linux'
+  run: sudo apt-get update && sudo apt-get install -y rpm
 ```
 
 - [ ] **Step 4: Add rpm to the release.yml dry-run artifact upload**
@@ -82,12 +84,12 @@ In `.github/workflows/release.yml`, in the `build` job, add the same step immedi
 In `.github/workflows/release.yml`, in the "Upload artifacts (dry-run visibility)" step's `path:` list, add the rpm line so a dry-run surfaces it:
 
 ```yaml
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-            dist/*.rpm
-            dist/*.exe
-            dist/*.yml
+path: |
+  dist/*.AppImage
+  dist/*.deb
+  dist/*.rpm
+  dist/*.exe
+  dist/*.yml
 ```
 
 - [ ] **Step 5: Commit**
@@ -127,9 +129,11 @@ Expected: the ubuntu build leg is green and `*.rpm` is present. If the rpm step 
 ### Task 2: Cloudsmith push step
 
 **Files:**
+
 - Modify: `.github/workflows/release-please.yml` (build job: add job-level `env`, add push step)
 
 **Interfaces:**
+
 - Consumes: `dist/*.deb` + `dist/*.rpm` produced by Task 1 in the Linux build leg.
 - Produces: on a real release with `CLOUDSMITH_API_KEY` set, the deb + rpm are pushed to `forinda/fordb`. With the secret unset, the step is skipped.
 
@@ -138,18 +142,18 @@ Expected: the ubuntu build leg is green and `*.rpm` is present. If the rpm step 
 In `.github/workflows/release-please.yml`, the `build` job currently has no `env:` at job level. Add one directly under `runs-on: ${{ matrix.os }}` (a sibling of `strategy`/`steps`), so the secret can be referenced in a step-level `if:` via `env`:
 
 ```yaml
-  build:
-    needs: release-please
-    if: ${{ needs.release-please.outputs.release_created }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    # secrets are invalid in step-level `if:`; surface as env first.
-    env:
-      CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
-    steps:
+build:
+  needs: release-please
+  if: ${{ needs.release-please.outputs.release_created }}
+  strategy:
+    fail-fast: false
+    matrix:
+      os: [ubuntu-latest, windows-latest]
+  runs-on: ${{ matrix.os }}
+  # secrets are invalid in step-level `if:`; surface as env first.
+  env:
+    CLOUDSMITH_API_KEY: ${{ secrets.CLOUDSMITH_API_KEY }}
+  steps:
 ```
 
 - [ ] **Step 2: Add the gated push step**
@@ -157,12 +161,12 @@ In `.github/workflows/release-please.yml`, the `build` job currently has no `env
 In the same `build` job, add this step at the END of the `steps:` list, after the existing "Build + upload installers" step. It runs only on the Linux leg (the only one with a deb/rpm) and only when the secret is set:
 
 ```yaml
-      - name: Push to Cloudsmith
-        if: ${{ runner.os == 'Linux' && env.CLOUDSMITH_API_KEY != '' }}
-        run: |
-          pipx install cloudsmith-cli
-          cloudsmith push deb forinda/fordb/any-distro/any-version dist/*.deb
-          cloudsmith push rpm forinda/fordb/any-distro/any-version dist/*.rpm
+- name: Push to Cloudsmith
+  if: ${{ runner.os == 'Linux' && env.CLOUDSMITH_API_KEY != '' }}
+  run: |
+    pipx install cloudsmith-cli
+    cloudsmith push deb forinda/fordb/any-distro/any-version dist/*.deb
+    cloudsmith push rpm forinda/fordb/any-distro/any-version dist/*.rpm
 ```
 
 `cloudsmith-cli` reads the API key from the `CLOUDSMITH_API_KEY` env var (already exported job-level), so no extra `env:` on the step is needed.
@@ -201,17 +205,19 @@ Expected: the grep matches the guard line and `yaml ok` prints. On the next real
 ### Task 3: Install docs
 
 **Files:**
+
 - Modify: `README.md` (install section)
 - Modify: `docs/RELEASING.md` (optional distribution channels / secrets)
 
 **Interfaces:**
+
 - Consumes: the Cloudsmith repo coordinates `forinda/fordb` and the `CLOUDSMITH_API_KEY` secret name from Tasks 1–2.
 
 - [ ] **Step 1: Add apt + dnf install snippets to README**
 
 In `README.md`, in the install/download area, add a section (place it near the existing Releases/installers mention):
 
-```markdown
+````markdown
 ### Install via package manager (Linux)
 
 Track releases through apt or dnf — new versions arrive with a normal system update.
@@ -226,9 +232,11 @@ sudo apt update && sudo apt install fordb
 curl -1sLf 'https://dl.cloudsmith.io/public/forinda/fordb/setup.rpm.sh' | sudo -E bash
 sudo dnf install fordb
 ```
+````
 
 Or grab a standalone `.AppImage` / `.deb` / `.rpm` / Windows `.exe` from the [Releases](https://github.com/forinda/fordb/releases) page.
-```
+
+````
 
 - [ ] **Step 2: Document the Cloudsmith secret in RELEASING.md**
 
@@ -244,7 +252,7 @@ rpm). With the secret set, each release pushes the `.deb` + `.rpm` to
 Cloudsmith and `apt install fordb` / `dnf install fordb` (see README) track new
 versions. Without the secret the push step is skipped — Cloudsmith is never on
 the critical path of a release.
-```
+````
 
 - [ ] **Step 3: Prettier-format the docs**
 
@@ -281,6 +289,7 @@ Expected: lint passes. Eyeball the README section renders as two fenced install 
 ## Self-Review
 
 **1. Spec coverage:**
+
 - rpm target (spec §Components/1) → Task 1 ✓
 - runner rpm tooling → Task 1 Steps 2–3 ✓
 - Cloudsmith push, gated, Linux leg (spec §Components/2) → Task 2 ✓
@@ -290,7 +299,7 @@ Expected: lint passes. Eyeball the README section renders as two fenced install 
 - RELEASING.md secret+account setup → Task 3 Step 2 ✓
 - rpm builds in CI (spec §Testing) → Task 1 Step 6 (release.yml dry-run) ✓
 - `any-distro/any-version` coordinates → Task 2 Step 2 ✓
-No gaps.
+  No gaps.
 
 **2. Placeholder scan:** No TBD/TODO; every code step shows the exact YAML/markdown/commands. `<branch>` in Task 1 Step 6 is a run-time value the executor fills, not a content placeholder.
 
