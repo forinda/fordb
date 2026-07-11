@@ -289,6 +289,84 @@ describe('buildDdl', () => {
     // The reserved auto-index name must never be recreated via CREATE INDEX.
     expect(stmts.some((s) => s.includes('sqlite_autoindex'))).toBe(false)
   })
+
+  it('createTable: UNIQUE column + inline foreign key (pg, qualified ref)', () => {
+    const change: DdlChange = {
+      kind: 'createTable',
+      spec: {
+        schema: 'app',
+        table: 'orders',
+        columns: [
+          { name: 'id', type: 'integer', notNull: true },
+          { name: 'sku', type: 'text', unique: true },
+          { name: 'customer_id', type: 'integer' }
+        ],
+        primaryKey: ['id'],
+        foreignKeys: [
+          {
+            name: 'fk_orders_customer',
+            columns: ['customer_id'],
+            refSchema: 'app',
+            refTable: 'customers',
+            refColumns: ['id']
+          }
+        ]
+      }
+    }
+    expect(buildDdl(change, 'pg')).toEqual([
+      `CREATE TABLE "app"."orders" (\n` +
+        `  "id" integer NOT NULL,\n` +
+        `  "sku" text UNIQUE,\n` +
+        `  "customer_id" integer,\n` +
+        `  PRIMARY KEY ("id"),\n` +
+        `  CONSTRAINT "fk_orders_customer" FOREIGN KEY ("customer_id") REFERENCES "app"."customers" ("id")\n` +
+        `)`
+    ])
+  })
+
+  it('createTable: inline foreign key without refSchema (sqlite, bare ref)', () => {
+    const change: DdlChange = {
+      kind: 'createTable',
+      spec: {
+        schema: 'main',
+        table: 'orders',
+        columns: [{ name: 'customer_id', type: 'INTEGER' }],
+        foreignKeys: [
+          { name: 'fk_o_c', columns: ['customer_id'], refTable: 'customers', refColumns: ['id'] }
+        ]
+      }
+    }
+    expect(buildDdl(change, 'sqlite')).toEqual([
+      `CREATE TABLE "main"."orders" (\n` +
+        `  "customer_id" INTEGER,\n` +
+        `  CONSTRAINT "fk_o_c" FOREIGN KEY ("customer_id") REFERENCES "customers" ("id")\n` +
+        `)`
+    ])
+  })
+
+  it('createDatabase: all options in fixed order', () => {
+    expect(
+      buildDdl(
+        {
+          kind: 'createDatabase',
+          name: 'shop',
+          options: {
+            owner: 'app_owner',
+            encoding: 'UTF8',
+            template: 'template0',
+            lcCollate: 'en_US.UTF-8',
+            lcCtype: 'en_US.UTF-8',
+            tablespace: 'fast',
+            connectionLimit: 20
+          }
+        },
+        'pg'
+      )
+    ).toEqual([
+      `CREATE DATABASE "shop" OWNER "app_owner" ENCODING 'UTF8' TEMPLATE "template0" ` +
+        `LC_COLLATE 'en_US.UTF-8' LC_CTYPE 'en_US.UTF-8' TABLESPACE "fast" CONNECTION LIMIT 20`
+    ])
+  })
 })
 
 describe('reconstructDdl', () => {
