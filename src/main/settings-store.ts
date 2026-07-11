@@ -1,11 +1,15 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { ThemeMode } from '@shared/theme'
+import type { McpConfig } from '@shared/mcp/auth'
 
 const MODES: ReadonlySet<string> = new Set(['light', 'dark', 'system'])
 
 interface SettingsFile {
   theme?: string
+  mcpEnabled?: boolean
+  mcpPort?: number
+  mcpToken?: string
 }
 
 export class SettingsStore {
@@ -28,6 +32,24 @@ export class SettingsStore {
   async setTheme(mode: ThemeMode): Promise<void> {
     const data = await this.read()
     data.theme = mode
+    await mkdir(dirname(this.filePath), { recursive: true })
+    await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
+  }
+
+  async getMcp(): Promise<McpConfig> {
+    const raw = await this.read()
+    return {
+      enabled: raw.mcpEnabled ?? false,
+      port: raw.mcpPort ?? 8283,
+      token: raw.mcpToken ?? ''
+    }
+  }
+
+  async setMcp(c: McpConfig): Promise<void> {
+    const data = await this.read()
+    data.mcpEnabled = c.enabled
+    data.mcpPort = c.port
+    data.mcpToken = c.token
     await mkdir(dirname(this.filePath), { recursive: true })
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }

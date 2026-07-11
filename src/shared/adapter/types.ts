@@ -20,6 +20,8 @@ interface BaseProfile {
   /** Optional non-secret metadata (Dialect connections manager). */
   environment?: 'production' | 'staging' | 'local'
   favorite?: boolean
+  /** Opt this connection in to the read-only MCP server (default off). */
+  exposeToMcp?: boolean
 }
 
 export interface PostgresProfile extends BaseProfile {
