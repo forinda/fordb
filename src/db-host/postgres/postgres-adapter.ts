@@ -166,6 +166,17 @@ export class PostgresAdapter implements DbAdapter {
     }
   }
 
+  async executeReadOnly(sql: string): Promise<QueryResult> {
+    await this.conn.query('BEGIN TRANSACTION READ ONLY')
+    try {
+      return await this.executeQuery(sql)
+    } finally {
+      // Nothing to persist; ROLLBACK also clears an aborted txn if the
+      // statement was a write the engine rejected.
+      await this.conn.query('ROLLBACK')
+    }
+  }
+
   async openQuery(sql: string, pageSize: number): Promise<OpenQueryResult> {
     return this.openCursor(sql, [], pageSize)
   }

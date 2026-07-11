@@ -35,6 +35,13 @@ export interface DbAdapter {
   /** Buffered execution — small/interactive statements. */
   executeQuery(sql: string): Promise<QueryResult>
 
+  /** Execute a single row-returning statement in an engine-enforced read-only
+   *  mode (Postgres READ ONLY transaction / SQLite query_only). The MCP surface
+   *  uses ONLY this path: a write reaching here throws at the engine — the
+   *  definitive boundary behind the text classifier. Absent on engines with no
+   *  read-only mode (Mongo), so the MCP run_query rejects them. */
+  executeReadOnly?(sql: string): Promise<QueryResult>
+
   /** Cursor-backed streaming for large results. */
   openQuery(sql: string, pageSize: number): Promise<OpenQueryResult>
   fetchPage(queryId: string): Promise<Page>

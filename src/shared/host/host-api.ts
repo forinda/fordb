@@ -45,6 +45,9 @@ export interface HostApi {
   getIndexes(id: ConnectionId, schema: string, table: string): Promise<IndexInfo[]>
 
   executeQuery(id: ConnectionId, sql: string): Promise<QueryResult>
+  /** Engine-enforced read-only execution (MCP surface). Throws if the engine
+   *  has no read-only mode. */
+  executeReadOnly(id: ConnectionId, sql: string): Promise<QueryResult>
   openQuery(id: ConnectionId, sql: string, pageSize: number): Promise<OpenQueryResult>
   fetchPage(id: ConnectionId, queryId: string): Promise<Page>
   closeQuery(id: ConnectionId, queryId: string): Promise<void>

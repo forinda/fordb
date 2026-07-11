@@ -320,6 +320,17 @@ export function runAdapterContractTests(
       expect(r.rows[0]?.[1]).toBe('user1@example.com')
     })
 
+    it('executeReadOnly: reads work; a write never persists', async () => {
+      const ro = await adapter.executeReadOnly!('SELECT 1 AS one')
+      expect(ro.rows).toHaveLength(1)
+      // The engine-level boundary the MCP surface relies on: a write sent
+      // through the read-only path MUST NOT persist — Postgres rejects it in
+      // the READ ONLY transaction; libsql rolls the read transaction back.
+      // Either way the table must not exist afterwards.
+      await adapter.executeReadOnly!('CREATE TABLE mcp_ro_probe (x integer)').catch(() => {})
+      await expect(adapter.executeQuery('SELECT 1 FROM mcp_ro_probe')).rejects.toThrow()
+    })
+
     it('streams large results in pages until done', async () => {
       const open = await adapter.openQuery(
         `SELECT id FROM ${expected.schema}.orders ORDER BY id`,
