@@ -40,3 +40,18 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   artifactName: fordb-${version}-setup.${ext}
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: universal
+  # Native .node binaries are identical across the two slices here: @libsql
+  # selects a prebuild by dir (darwin-arm64/ vs darwin-x64/), and with
+  # npmRebuild:false ssh2/cpu-features ship the runner-arch (arm64) build copied
+  # to both. None are lipo-able, so @electron/universal errors on the identical
+  # pair — mark all .node as arch-specific and keep them as-is. Consequence: on
+  # an Intel (x64) Mac, cpu-features' optional accel doesn't load and ssh2 falls
+  # back to pure-JS crypto; @libsql still loads its correct per-arch prebuild.
+  x64ArchFiles: '**/*.node'
+dmg:
+  artifactName: fordb-${version}-${arch}.dmg

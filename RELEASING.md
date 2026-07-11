@@ -144,6 +144,17 @@ deb/rpm are updated by apt/dnf, not the in-app updater; dev builds no-op.
 > unsigned installer today. Code signing (and macOS notarization) is deferred to
 > M8; until then this is an accepted risk.
 
+## macOS (unsigned)
+
+The macOS `.dmg` (universal — Apple Silicon + Intel) is built unsigned on
+`macos-latest` and is **not notarized**, so Gatekeeper prompts on first launch
+(right-click → Open, or clear the quarantine attribute — see the README). It
+does **not** auto-update; Mac users re-download from Releases. Code signing
+(Developer ID) + notarization needs the paid Apple Developer Program and is
+deferred to M8; until then the mac build is best-effort. (The `.node` binaries
+are shared across both arch slices via `mac.x64ArchFiles`, so on Intel Macs
+ssh2 falls back to pure-JS crypto.)
+
 ## Deferred (not in this pipeline yet)
 
-macOS dmg + code signing / notarization (M8), Flathub.
+code signing / notarization (M8), Flathub.

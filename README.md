@@ -22,6 +22,14 @@ sudo dnf install fordb
 
 Or download a standalone `.AppImage` / `.deb` / `.rpm` / Windows `.exe` from [Releases](https://github.com/forinda/fordb/releases).
 
+**macOS** — download `fordb-<version>-universal.dmg` (runs on both Apple Silicon and Intel) from [Releases](https://github.com/forinda/fordb/releases), open it, and drag **fordb** to Applications.
+
+The build is **unsigned** (code signing is on the roadmap), so on first launch macOS Gatekeeper says it "can't be opened because it is from an unidentified developer." Right-click the app → **Open** and confirm once, or clear the quarantine flag:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/fordb.app
+```
+
 ## Run from source
 
 **Prerequisites:** [Node.js](https://nodejs.org) ≥ 22 and [pnpm](https://pnpm.io).
