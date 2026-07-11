@@ -105,8 +105,10 @@ export function SchemaTree(): React.JSX.Element {
   // Build → preview (confirm) → apply. Store's applyDdl invalidates introspection.
   // Surface failures (permission denied, in-use database, syntax) instead of
   // dropping the rejection silently.
-  async function runDdl(change: DdlChange): Promise<void> {
-    const statements = buildDdl(change, dialect)
+  async function runDdl(change: DdlChange | DdlChange[]): Promise<void> {
+    const changes = Array.isArray(change) ? change : [change]
+    const statements = changes.flatMap((c) => buildDdl(c, dialect))
+    if (!statements.length) return
     if (!window.confirm(`Apply this DDL?\n\n${statements.join(';\n')}`)) return
     setDdlError(null)
     try {

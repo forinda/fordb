@@ -7,10 +7,12 @@ import { SQLITE_TYPES } from '@shared/ddl/sqlite-types'
 import { useSchemas, useTables, useColumns } from '../query/introspection'
 import {
   buildTableSpec,
+  buildIndexChanges,
   duplicateColumnNames,
   emptyCol,
   type ColRow,
   type FkRow,
+  type IdxRow,
   type Dialect
 } from '@shared/ddl/table-spec'
 
@@ -20,7 +22,7 @@ interface Props {
   connId: string
   schema: string
   dialect: Dialect
-  onSubmit: (change: DdlChange) => void
+  onSubmit: (change: DdlChange[]) => void
 }
 
 export function CreateTableDialog({
@@ -32,9 +34,10 @@ export function CreateTableDialog({
   onSubmit
 }: Props): ReactNode {
   const [table, setTable] = useState('')
-  const [tab, setTab] = useState<'columns' | 'fks'>('columns')
+  const [tab, setTab] = useState<'columns' | 'fks' | 'idx'>('columns')
   const [cols, setCols] = useState<ColRow[]>([emptyCol()])
   const [fks, setFks] = useState<FkRow[]>([])
+  const [idxs, setIdxs] = useState<IdxRow[]>([])
 
   const typeOptions = dialect === 'pg' ? PG_TYPES : SQLITE_TYPES
   const { data: schemas } = useSchemas(connId)
@@ -46,7 +49,14 @@ export function CreateTableDialog({
 
   const dups = useMemo(() => duplicateColumnNames(cols), [cols])
   const valid = spec.table.length > 0 && spec.columns.length > 0 && dups.length === 0
-  const preview = valid ? buildDdl({ kind: 'createTable', spec }, dialect)[0] : ''
+  const changes = useMemo(
+    (): DdlChange[] => [
+      { kind: 'createTable', spec },
+      ...buildIndexChanges(idxs, schema, table.trim())
+    ],
+    [spec, idxs, schema, table]
+  )
+  const preview = valid ? changes.flatMap((c) => buildDdl(c, dialect)).join(';\n') : ''
 
   const setCol = (i: number, patch: Partial<ColRow>): void =>
     setCols((cs) => cs.map((c, j) => (j === i ? { ...c, ...patch } : c)))
@@ -63,7 +73,7 @@ export function CreateTableDialog({
 
   const submit = (): void => {
     if (!valid) return
-    onSubmit({ kind: 'createTable', spec })
+    onSubmit(changes)
     onClose()
   }
 
@@ -109,6 +119,12 @@ export function CreateTableDialog({
           onClick={() => setTab('fks')}
         >
           Foreign Keys
+        </button>
+        <button
+          className={tab === 'idx' ? 'font-medium underline' : ''}
+          onClick={() => setTab('idx')}
+        >
+          Indexes
         </button>
       </div>
 
@@ -207,11 +223,75 @@ export function CreateTableDialog({
             onClick={() =>
               setFks((fs) => [
                 ...fs,
-                { name: '', columns: [], refSchema: schema, refTable: '', refColumns: [] }
+                { name: '', refSchema: schema, refTable: '', pairs: [{ local: '', ref: '' }] }
               ])
             }
           >
             + foreign key
+          </button>
+        </div>
+      )}
+
+      {tab === 'idx' && (
+        <div className="space-y-2">
+          {idxs.map((ix, i) => (
+            <div
+              key={i}
+              className="flex flex-wrap items-center gap-1 border-b border-border pb-2 text-xs"
+            >
+              <input
+                aria-label="idx-name"
+                placeholder="index name (auto)"
+                className="rounded border border-border bg-background px-1 text-xs"
+                value={ix.name}
+                onChange={(e) =>
+                  setIdxs((xs) => xs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                }
+              />
+              <select
+                aria-label="idx-col"
+                className="rounded border border-border bg-background px-1 text-xs"
+                value={ix.columns[0] ?? ''}
+                onChange={(e) =>
+                  setIdxs((xs) =>
+                    xs.map((x, j) =>
+                      j === i ? { ...x, columns: e.target.value ? [e.target.value] : [] } : x
+                    )
+                  )
+                }
+              >
+                <option value="">column…</option>
+                {colNames.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+              <label className="flex items-center gap-0.5">
+                <input
+                  type="checkbox"
+                  checked={ix.unique}
+                  onChange={(e) =>
+                    setIdxs((xs) =>
+                      xs.map((x, j) => (j === i ? { ...x, unique: e.target.checked } : x))
+                    )
+                  }
+                />
+                unique
+              </label>
+              <button
+                title="remove index"
+                onClick={() => setIdxs((xs) => xs.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            className="text-xs underline"
+            onClick={() => setIdxs((xs) => [...xs, { name: '', columns: [], unique: false }])}
+          >
+            + index
           </button>
         </div>
       )}
@@ -236,69 +316,92 @@ function FkEditor(props: {
   const { data: tables } = useTables(connId, value.refSchema || null)
   const { data: refCols } = useColumns(connId, value.refSchema || null, value.refTable || null)
   const sel = 'rounded border border-border bg-background px-1 text-xs'
+  const setPair = (i: number, patch: Partial<{ local: string; ref: string }>): void =>
+    onChange({ pairs: value.pairs.map((p, j) => (j === i ? { ...p, ...patch } : p)) })
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-border pb-2 text-xs">
-      <input
-        aria-label="fk-name"
-        placeholder="fk name (auto)"
-        className={sel}
-        value={value.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-      />
-      <select
-        aria-label="fk-local-col"
-        className={sel}
-        value={value.columns[0] ?? ''}
-        onChange={(e) => onChange({ columns: e.target.value ? [e.target.value] : [] })}
+    <div className="space-y-1 border-b border-border pb-2 text-xs">
+      <div className="flex flex-wrap items-center gap-1">
+        <input
+          aria-label="fk-name"
+          placeholder="fk name (auto)"
+          className={sel}
+          value={value.name}
+          onChange={(e) => onChange({ name: e.target.value })}
+        />
+        <span>→</span>
+        <select
+          aria-label="fk-ref-schema"
+          className={sel}
+          value={value.refSchema}
+          onChange={(e) => onChange({ refSchema: e.target.value, refTable: '' })}
+        >
+          {schemas.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          aria-label="fk-ref-table"
+          className={sel}
+          value={value.refTable}
+          onChange={(e) => onChange({ refTable: e.target.value })}
+        >
+          <option value="">table…</option>
+          {(tables ?? []).map((t) => (
+            <option key={t.name} value={t.name}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        <button title="remove FK" onClick={onRemove}>
+          ✕
+        </button>
+      </div>
+      {value.pairs.map((p, i) => (
+        <div key={i} className="flex flex-wrap items-center gap-1 pl-3">
+          <select
+            aria-label="fk-local-col"
+            className={sel}
+            value={p.local}
+            onChange={(e) => setPair(i, { local: e.target.value })}
+          >
+            <option value="">local col…</option>
+            {localColumns.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+          <span>→</span>
+          <select
+            aria-label="fk-ref-col"
+            className={sel}
+            value={p.ref}
+            onChange={(e) => setPair(i, { ref: e.target.value })}
+          >
+            <option value="">ref col…</option>
+            {(refCols ?? []).map((c) => (
+              <option key={c.name} value={c.name}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          <button
+            title="remove pair"
+            onClick={() => onChange({ pairs: value.pairs.filter((_, j) => j !== i) })}
+            disabled={value.pairs.length <= 1}
+            className="disabled:opacity-40"
+          >
+            ✕
+          </button>
+        </div>
+      ))}
+      <button
+        className="pl-3 underline"
+        onClick={() => onChange({ pairs: [...value.pairs, { local: '', ref: '' }] })}
       >
-        <option value="">local col…</option>
-        {localColumns.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <span>→</span>
-      <select
-        aria-label="fk-ref-schema"
-        className={sel}
-        value={value.refSchema}
-        onChange={(e) => onChange({ refSchema: e.target.value, refTable: '', refColumns: [] })}
-      >
-        {schemas.map((s) => (
-          <option key={s} value={s}>
-            {s}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="fk-ref-table"
-        className={sel}
-        value={value.refTable}
-        onChange={(e) => onChange({ refTable: e.target.value, refColumns: [] })}
-      >
-        <option value="">table…</option>
-        {(tables ?? []).map((t) => (
-          <option key={t.name} value={t.name}>
-            {t.name}
-          </option>
-        ))}
-      </select>
-      <select
-        aria-label="fk-ref-col"
-        className={sel}
-        value={value.refColumns[0] ?? ''}
-        onChange={(e) => onChange({ refColumns: e.target.value ? [e.target.value] : [] })}
-      >
-        <option value="">col…</option>
-        {(refCols ?? []).map((c) => (
-          <option key={c.name} value={c.name}>
-            {c.name}
-          </option>
-        ))}
-      </select>
-      <button title="remove" onClick={onRemove}>
-        ✕
+        + column pair
       </button>
     </div>
   )
