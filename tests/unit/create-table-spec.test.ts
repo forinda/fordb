@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildTableSpec, type ColRow } from '../../src/shared/ddl/table-spec'
+import { buildTableSpec, duplicateColumnNames, type ColRow } from '../../src/shared/ddl/table-spec'
 import { buildDdl } from '../../src/shared/ddl/build-ddl'
 
 const col = (over: Partial<ColRow> = {}): ColRow => ({
@@ -80,5 +80,22 @@ describe('buildTableSpec', () => {
       'sqlite'
     )
     expect(spec.foreignKeys?.[0]?.refSchema).toBeUndefined()
+  })
+})
+
+describe('duplicateColumnNames', () => {
+  it('reports trimmed non-empty names appearing more than once', () => {
+    expect(
+      duplicateColumnNames([
+        col({ name: 'id' }),
+        col({ name: 'id ' }),
+        col({ name: 'name' }),
+        col({ name: '' }),
+        col({ name: '' })
+      ])
+    ).toEqual(['id'])
+  })
+  it('empty when all names are distinct', () => {
+    expect(duplicateColumnNames([col({ name: 'a' }), col({ name: 'b' })])).toEqual([])
   })
 })
