@@ -41,6 +41,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Install rpm tooling (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       # Build the OS's installers, then attach them to the release
       # release-please already published. electron-builder does NOT manage the
       # release here (--publish never) — `gh release upload` does, so the two

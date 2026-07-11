@@ -24,10 +24,13 @@ linux:
   target:
     - AppImage
     - deb
+    - rpm
 appImage:
   artifactName: fordb-${version}-${arch}.AppImage
 deb:
   artifactName: fordb_${version}_${arch}.deb
+rpm:
+  artifactName: fordb-${version}-${arch}.rpm
 win:
   icon: build/icon.ico
   target:
