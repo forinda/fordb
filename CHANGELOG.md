@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.5.0](https://github.com/forinda/fordb/compare/v0.4.1...v0.5.0) (2026-07-11)
+
+
+### Features
+
+* smarter SQL autocomplete (aliases, keywords, type detail) ([#244](https://github.com/forinda/fordb/issues/244)) ([ffca58a](https://github.com/forinda/fordb/commit/ffca58a24ebe61962f299554eab04760165cc59a))
+
+
+### Bug Fixes
+
+* UI visibility — scrollable toolbars, dashboard tabs, untagged connections ([#242](https://github.com/forinda/fordb/issues/242)) ([da41702](https://github.com/forinda/fordb/commit/da41702595da00b272f5d28e08e0c3286d23ae2b))
+
 ## [0.4.1](https://github.com/forinda/fordb/compare/v0.4.0...v0.4.1) (2026-07-11)
 
 
