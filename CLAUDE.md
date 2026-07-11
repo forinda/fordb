@@ -22,6 +22,7 @@ This file orients Claude Code (and other AI agents) in the fordb repo. It is a p
 | -------------------------------------------- | --------------------------------------------------------------- |
 | [AGENTS.md](AGENTS.md)                       | Architecture + coding conventions (**start here**)              |
 | [CONTRIBUTING.md](CONTRIBUTING.md)           | Dev setup, commands, sandbox fix, workflow                      |
+| [docs/RELEASING.md](docs/RELEASING.md)       | Cut a release: tag → CI builds/publishes; AUR/winget secrets    |
 | [docs/06-prd.md](docs/06-prd.md)             | Product requirements                                            |
 | [docs/07-work-plan.md](docs/07-work-plan.md) | Milestones M0–M8                                                |
 | [docs/README.md](docs/README.md)             | Research index (framework, packaging, drivers, UI, competitors) |
