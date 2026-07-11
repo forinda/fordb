@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.0](https://github.com/forinda/fordb/compare/v0.1.0...v0.2.0) (2026-07-11)
+
+
+### Features
+
+* apt/dnf install via Cloudsmith (deb + rpm) ([#220](https://github.com/forinda/fordb/issues/220)) ([9d907f6](https://github.com/forinda/fordb/commit/9d907f682cc5d9ae770fff6c2327186e79b41d6a))
+
 ## 0.1.0 (2026-07-11)
 
 First release. Lean, keyboard-first desktop database client — PostgreSQL,
