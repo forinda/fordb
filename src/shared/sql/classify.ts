@@ -23,9 +23,12 @@ export function isSelectLike(sql: string): boolean {
 const READ_FIRST = /^(select|with|values|show|explain|table)\b/i
 const CTE_WRITE = /\b(insert|update|delete|merge)\b/i
 
-/** Conservative read-only gate for the MCP surface. Rejects anything not
- *  provably a single row-returning statement — a false accept is a security
- *  hole, so err toward rejection. */
+/** Conservative FIRST-LINE read-only filter for the MCP surface. Rejects
+ *  anything not provably a single row-returning statement. This is NOT the sole
+ *  boundary — a text classifier can't match the engine's parser (e.g. a SELECT
+ *  invoking a volatile function that writes), so the MCP run_query MUST also
+ *  execute in an engine-level read-only mode (Postgres READ ONLY transaction /
+ *  SQLite query_only). This regex just rejects the obvious writes early. */
 export function isReadOnlyQuery(sql: string): boolean {
   const s = stripLeading(sql).trim()
   if (!s) return false
