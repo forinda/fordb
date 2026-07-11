@@ -92,7 +92,7 @@ of `fordb-bin`). On the next tagged release the PKGBUILD in
 Set repo secret **`WINGET_TOKEN`** (a GitHub PAT with a `winget-pkgs` fork).
 The step currently logs the intended submission; uncomment the `komac` line in
 `release.yml` to submit `packaging/winget/*.yaml` live. Needs a maintainer PAT
-+ fork — see the commented block in the workflow.
+and a `winget-pkgs` fork — see the commented block in the workflow.
 
 ## Verifying a release
 
