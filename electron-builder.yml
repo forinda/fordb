@@ -45,10 +45,13 @@ mac:
   target:
     - target: dmg
       arch: universal
-  # @libsql ships separate per-arch prebuilds (darwin-arm64/ + darwin-x64/), so
-  # each arch bundle carries both — byte-identical — which @electron/universal
-  # can't reconcile. Mark them as arch-specific so it keeps them as-is instead of
-  # trying to lipo-merge. ssh2/cpu-features build per-arch and lipo fine.
-  x64ArchFiles: '**/@libsql/**'
+  # Native .node binaries are identical across the two slices here: @libsql
+  # selects a prebuild by dir (darwin-arm64/ vs darwin-x64/), and with
+  # npmRebuild:false ssh2/cpu-features ship the runner-arch (arm64) build copied
+  # to both. None are lipo-able, so @electron/universal errors on the identical
+  # pair — mark all .node as arch-specific and keep them as-is. Consequence: on
+  # an Intel (x64) Mac, cpu-features' optional accel doesn't load and ssh2 falls
+  # back to pure-JS crypto; @libsql still loads its correct per-arch prebuild.
+  x64ArchFiles: '**/*.node'
 dmg:
   artifactName: fordb-${version}-${arch}.dmg
