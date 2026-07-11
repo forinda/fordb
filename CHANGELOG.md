@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0](https://github.com/forinda/fordb/compare/v0.2.0...v0.3.0) (2026-07-11)
+
+
+### Features
+
+* Create Database dialog with full metadata (Postgres) ([#228](https://github.com/forinda/fordb/issues/228)) ([7a250c4](https://github.com/forinda/fordb/commit/7a250c4858d9cc4216de512769ab9db0e6a3dbeb))
+* DDL builder — unique columns, inline FKs, CREATE DATABASE options ([#225](https://github.com/forinda/fordb/issues/225)) ([39e9bde](https://github.com/forinda/fordb/commit/39e9bde24f09ab9571145fee740ad0eea1e9cf40))
+* fetchRoles helper + designer spec/plan (Task 2) ([#226](https://github.com/forinda/fordb/issues/226)) ([811adea](https://github.com/forinda/fordb/commit/811adea5394f356cc37e577c221d4d102b00ca39))
+* Modal primitive + Create Table designer (Tasks 3-4) ([#227](https://github.com/forinda/fordb/issues/227)) ([0af4a26](https://github.com/forinda/fordb/commit/0af4a26a85a3c624d78ff2b839aa5cbce4846aa9))
+* VitePress landing + docs site → GitHub Pages ([#232](https://github.com/forinda/fordb/issues/232)) ([10b9ce5](https://github.com/forinda/fordb/commit/10b9ce522abf55999bf7d4be9449fc16a9faaf59))
+
+
+### Bug Fixes
+
+* focus trap in Modal + duplicate-column guard in table designer ([#229](https://github.com/forinda/fordb/issues/229)) ([45a8f64](https://github.com/forinda/fordb/commit/45a8f646306b397983df44761ea4608e12bd0229))
+* push rpm to concrete Cloudsmith distros (fedora/el any-version) ([#223](https://github.com/forinda/fordb/issues/223)) ([ef4db89](https://github.com/forinda/fordb/commit/ef4db89729b12169fc4d119da14c06dcaaacdd5d))
+
 ## [0.2.0](https://github.com/forinda/fordb/compare/v0.1.0...v0.2.0) (2026-07-11)
 
 
