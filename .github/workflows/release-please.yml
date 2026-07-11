@@ -1,0 +1,109 @@
+name: release-please
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  # Maintains a "release vX.Y.Z" PR from conventional commits. Merging that PR
+  # bumps package.json + CHANGELOG.md, creates the git tag, and publishes a
+  # GitHub Release with the changelog notes. The build job below then attaches
+  # the installers to that release — all in one run, on GITHUB_TOKEN, so no PAT
+  # and no cross-workflow trigger is needed.
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4.4.1
+        id: rp
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  build:
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      # Build the OS's installers, then attach them to the release
+      # release-please already published. electron-builder does NOT manage the
+      # release here (--publish never) — `gh release upload` does, so the two
+      # tools never fight over release ownership.
+      - name: Build + upload installers
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "Windows" ]; then TARGET=--win; else TARGET=--linux; fi
+          pnpm build
+          pnpm exec electron-builder $TARGET --publish never
+          shopt -s nullglob
+          files=(dist/*.AppImage dist/*.deb dist/*.exe dist/*.blockmap dist/*.yml)
+          gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
+
+  finalize:
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    # secrets can't be used in step-level `if:`; surface them as env first.
+    env:
+      AUR_SSH_KEY: ${{ secrets.AUR_SSH_KEY }}
+      WINGET_TOKEN: ${{ secrets.WINGET_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - name: Checksums
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          mkdir sums && cd sums
+          gh release download "$TAG" --repo "$REPO" \
+            --pattern '*.AppImage' --pattern '*.deb' --pattern '*.exe'
+          sha256sum * > SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS --repo "$REPO" --clobber
+      - name: Publish to AUR
+        if: ${{ env.AUR_SSH_KEY != '' }}
+        uses: KSXGitHub/github-actions-deploy-aur@a97f56a8425a7a7f3b8c58607f769c69b089cadb # v3
+        with:
+          pkgname: fordb-bin
+          pkgbuild: packaging/aur/PKGBUILD
+          commit_username: fordb-ci
+          commit_email: forinda82@gmail.com
+          ssh_private_key: ${{ env.AUR_SSH_KEY }}
+          commit_message: Update to ${{ needs.release-please.outputs.tag_name }}
+      - name: Submit to winget
+        if: ${{ env.WINGET_TOKEN != '' }}
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          REPO: ${{ github.repository }}
+        run: |
+          # Live winget submission needs a maintainer PAT + a winget-pkgs fork.
+          # With WINGET_TOKEN set, submit via komac; otherwise this step is
+          # skipped by the if: guard above.
+          VERSION="${TAG#v}"
+          echo "Would submit io.github.forinda.fordb $VERSION to winget-pkgs"
+          echo "  installer: https://github.com/$REPO/releases/download/$TAG/fordb-$VERSION-setup.exe"
+          # komac update io.github.forinda.fordb --version "$VERSION" \
+          #   --urls "https://github.com/$REPO/releases/download/$TAG/fordb-$VERSION-setup.exe" \
+          #   --token "$WINGET_TOKEN" --submit

@@ -1,23 +1,45 @@
 # Releasing fordb
 
-How to cut a public release. The pipeline is tag-driven: push a `vX.Y.Z` tag
-and GitHub Actions builds, publishes, and checksums the installers.
+Releases are automated by **release-please**. You don't tag by hand or write
+release notes — you write conventional commits, and merging the generated
+release PR cuts the whole release.
 
 ## TL;DR
 
+1. Land PRs on `main` with **conventional-commit** subjects (`feat:`, `fix:`,
+   `chore:`, `docs:`, …). This is already the repo convention.
+2. release-please keeps an open **"chore(main): release X.Y.Z"** PR that
+   accumulates the changelog and the version bump.
+3. When you want to ship, **merge that PR.** It bumps `package.json` +
+   `CHANGELOG.md`, tags `vX.Y.Z`, publishes the GitHub Release, and the same
+   run builds + attaches the installers + `SHA256SUMS`.
+
+Bump size comes from the commits: `fix:` → patch, `feat:` → minor, a
+`!`/`BREAKING CHANGE` footer → major.
+
+## What merging the release PR triggers
+
+`.github/workflows/release-please.yml` (one run, on `GITHUB_TOKEN` only):
+
+- **release-please** job — creates the tag + GitHub Release with the changelog.
+- **build** job (matrix ubuntu + windows) — builds installers and uploads them
+  to that release with `gh release upload` (electron-builder runs
+  `--publish never`, so it never fights release-please over the release).
+- **finalize** job — writes `SHA256SUMS`, plus the secret-gated AUR + winget
+  steps.
+
+## Manual fallback (`release.yml`)
+
+`.github/workflows/release.yml` still runs on a hand-pushed `v*` tag — use it
+only if release-please is unavailable. A tag created by release-please's
+`GITHUB_TOKEN` does **not** trigger it (GitHub blocks that recursion), so the
+two paths never double-fire.
+
 ```bash
-# 1. bump version in package.json (e.g. 0.1.0 -> 0.1.1), commit, merge to main
-# 2. from an up-to-date main:
-git tag -a v0.1.1 -m "fordb v0.1.1"
-git push origin v0.1.1
-# 3. watch it:  gh run watch --workflow release.yml
+git tag -a v0.1.1 -m "fordb v0.1.1" && git push origin v0.1.1
 ```
 
-That's it. The `release.yml` workflow does the rest.
-
-## What the tag triggers
-
-`.github/workflows/release.yml` runs on any `v*` tag:
+On any `v*` tag it:
 
 1. **build** (matrix: `ubuntu-latest` + `windows-latest`) — `pnpm build` then
    `electron-builder`, publishing artifacts to a **draft** GitHub Release for
@@ -70,7 +92,7 @@ of `fordb-bin`). On the next tagged release the PKGBUILD in
 Set repo secret **`WINGET_TOKEN`** (a GitHub PAT with a `winget-pkgs` fork).
 The step currently logs the intended submission; uncomment the `komac` line in
 `release.yml` to submit `packaging/winget/*.yaml` live. Needs a maintainer PAT
-+ fork — see the commented block in the workflow.
+and a `winget-pkgs` fork — see the commented block in the workflow.
 
 ## Verifying a release
 
