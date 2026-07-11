@@ -27,3 +27,15 @@ features:
   - title: Destructive = previewed + confirmed
     details: Row edits, DDL, and drops show the generated SQL and require an explicit confirm before applying.
 ---
+
+## A query workbench that stays out of your way
+
+Schema tree, SQL editor with autocomplete, and a fast result grid — with format, EXPLAIN, history, saved queries, and CSV/JSON export a keypress away.
+
+![fordb query workbench](/screenshots/query.png)
+
+## Design tables without hand-writing DDL
+
+A tabbed designer for columns (type, nullable, primary key, unique, default) and foreign keys — with a live `CREATE TABLE` preview you confirm before it runs.
+
+![fordb create-table designer](/screenshots/designer.png)
