@@ -1,6 +1,7 @@
 import type { ColumnInfo, IndexInfo, KeyInfo } from '../adapter/types'
 import type {
   ColumnSpec,
+  CreateDatabaseOptions,
   DdlChange,
   ForeignKeySpec,
   IndexSpec,
@@ -24,6 +25,7 @@ function columnClause(c: ColumnSpec): string {
   let s = `${qi(c.name)} ${c.type}`
   if (c.notNull) s += ' NOT NULL'
   if (c.default != null) s += ` DEFAULT ${c.default}`
+  if (c.unique) s += ' UNIQUE'
   return s
 }
 
@@ -31,7 +33,32 @@ function createTable(spec: TableSpec): string {
   const lines = spec.columns.map(columnClause)
   if (spec.primaryKey && spec.primaryKey.length)
     lines.push(`PRIMARY KEY (${spec.primaryKey.map(qi).join(', ')})`)
+  for (const fk of spec.foreignKeys ?? []) {
+    // SQLite forbids a cross-schema ref in a table body, so a missing refSchema
+    // yields a bare ref table; Postgres qualifies when refSchema is present.
+    const ref = fk.refSchema ? qtable(fk.refSchema, fk.refTable) : qi(fk.refTable)
+    lines.push(
+      `CONSTRAINT ${qi(fk.name)} FOREIGN KEY (${fk.columns.map(qi).join(', ')}) ` +
+        `REFERENCES ${ref} (${fk.refColumns.map(qi).join(', ')})`
+    )
+  }
   return `CREATE TABLE ${qtable(spec.schema, spec.table)} (\n  ${lines.join(',\n  ')}\n)`
+}
+
+function sqlStr(v: string): string {
+  return `'${v.replace(/'/g, "''")}'`
+}
+function createDatabase(name: string, o?: CreateDatabaseOptions): string {
+  let s = `CREATE DATABASE ${qi(name)}`
+  if (!o) return s
+  if (o.owner) s += ` OWNER ${qi(o.owner)}`
+  if (o.encoding) s += ` ENCODING ${sqlStr(o.encoding)}`
+  if (o.template) s += ` TEMPLATE ${qi(o.template)}`
+  if (o.lcCollate) s += ` LC_COLLATE ${sqlStr(o.lcCollate)}`
+  if (o.lcCtype) s += ` LC_CTYPE ${sqlStr(o.lcCtype)}`
+  if (o.tablespace) s += ` TABLESPACE ${qi(o.tablespace)}`
+  if (o.connectionLimit != null) s += ` CONNECTION LIMIT ${o.connectionLimit}`
+  return s
 }
 
 function createIndex(spec: IndexSpec, dialect: Dialect): string {
@@ -219,7 +246,7 @@ export function buildDdl(change: DdlChange, dialect: Dialect, context?: TableStr
     case 'dropSchema':
       return [`DROP SCHEMA ${qi(change.name)}`]
     case 'createDatabase':
-      return [`CREATE DATABASE ${qi(change.name)}`]
+      return [createDatabase(change.name, change.options)]
     case 'dropDatabase':
       return [`DROP DATABASE ${qi(change.name)}`]
     case 'createView': {

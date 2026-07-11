@@ -31,12 +31,30 @@ export interface ColumnSpec {
   type: string // raw engine type text
   notNull?: boolean
   default?: string | null // raw SQL expression; null/absent = none
+  unique?: boolean
+}
+export interface InlineForeignKey {
+  name: string
+  columns: string[]
+  refSchema?: string // omitted → bare ref table (SQLite: no cross-schema FK in table body)
+  refTable: string
+  refColumns: string[]
 }
 export interface TableSpec {
   schema: string
   table: string
   columns: ColumnSpec[]
   primaryKey?: string[]
+  foreignKeys?: InlineForeignKey[]
+}
+export interface CreateDatabaseOptions {
+  owner?: string
+  encoding?: string
+  template?: string
+  lcCollate?: string
+  lcCtype?: string
+  tablespace?: string
+  connectionLimit?: number
 }
 export interface IndexSpec {
   schema: string
@@ -78,7 +96,7 @@ export type DdlChange =
   | { kind: 'dropTable'; schema: string; table: string }
   | { kind: 'createSchema'; name: string }
   | { kind: 'dropSchema'; name: string }
-  | { kind: 'createDatabase'; name: string }
+  | { kind: 'createDatabase'; name: string; options?: CreateDatabaseOptions }
   | { kind: 'dropDatabase'; name: string }
   | { kind: 'createView'; schema: string; name: string; select: string; orReplace?: boolean }
   | { kind: 'dropView'; schema: string; name: string }
