@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/forinda/fordb/compare/v0.3.0...v0.4.0) (2026-07-11)
+
+
+### Features
+
+* in-app auto-update via electron-updater ([#239](https://github.com/forinda/fordb/issues/239)) ([fc58259](https://github.com/forinda/fordb/commit/fc58259c2495a268e90ced42e98cd101c97dca3f))
+* multi-column FKs + Indexes tab in the Create Table designer ([#238](https://github.com/forinda/fordb/issues/238)) ([d52ac39](https://github.com/forinda/fordb/commit/d52ac39266cf6e588df85085a58982137ee8b64e))
+
+
+### Bug Fixes
+
+* wrap query/data toolbars and scroll tabs when narrow ([#236](https://github.com/forinda/fordb/issues/236)) ([e8bc141](https://github.com/forinda/fordb/commit/e8bc14109daf74f8c616bcd0892fc2b7e6b21775))
+
 ## [0.3.0](https://github.com/forinda/fordb/compare/v0.2.0...v0.3.0) (2026-07-11)
 
 
