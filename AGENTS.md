@@ -2,6 +2,8 @@
 
 Single source of truth for how this codebase is structured and the conventions to follow. Human contributors: see also [CONTRIBUTING.md](CONTRIBUTING.md) for setup. AI agents: this file is your map — read it before editing.
 
+> **Personal overrides:** copy this file to `AGENTS.local.md` (git-ignored) to add your own style enforcement. The `.local` extends these shared concepts — it never overrides them. Same pattern for `CLAUDE.local.md`. The `docs/` design-doc tree is git-ignored and local-only.
+
 ## What fordb is
 
 A lean, keyboard-first, open-source (MIT) desktop database client. Engines: PostgreSQL (shipped), SQLite (planned v0.2), MongoDB (planned v0.3) — all free in core. Electron + TypeScript. Full product rationale in [docs/06-prd.md](docs/06-prd.md).

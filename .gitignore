@@ -7,3 +7,10 @@ dist/
 test-results/
 playwright-report/
 perf-results.json
+
+# Local-only design docs (specs/plans/PRD/work-plan) — not published
+docs/
+
+# Personal agent overrides (copy from AGENTS.md / CLAUDE.md)
+AGENTS.local.md
+CLAUDE.local.md

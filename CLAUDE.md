@@ -6,6 +6,10 @@ This file orients Claude Code (and other AI agents) in the fordb repo. It is a p
 
 **[AGENTS.md](AGENTS.md)** is the single source of truth for architecture and coding conventions. Read it before editing anything. Do not duplicate its content here.
 
+## Personal overrides (`.local`)
+
+`CLAUDE.local.md` and `AGENTS.local.md` are git-ignored, per-developer files. Copy the tracked file to its `.local` sibling and add your own style enforcement there. The `.local` file **extends** the shared concepts in the main file — it never overrides them. Claude Code auto-loads `CLAUDE.local.md`; read `AGENTS.local.md` if present.
+
 ## Quick facts
 
 - fordb: lean, keyboard-first, MIT desktop DB client. Electron + TypeScript. Postgres now; SQLite + MongoDB planned. All engines free.
@@ -16,18 +20,15 @@ This file orients Claude Code (and other AI agents) in the fordb repo. It is a p
 
 `pnpm dev` (or `pnpm dev:sandboxless` on Linux without chrome-sandbox setup) · `pnpm build` · `pnpm test` (unit) · `pnpm db:up && pnpm test:contract` (contract, needs Docker) · `pnpm lint` · `pnpm typecheck`. Full table + setup in [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Documentation map (context in one place)
+## Documentation map
 
-| Doc                                          | What                                                            |
-| -------------------------------------------- | --------------------------------------------------------------- |
-| [AGENTS.md](AGENTS.md)                       | Architecture + coding conventions (**start here**)              |
-| [CONTRIBUTING.md](CONTRIBUTING.md)           | Dev setup, commands, sandbox fix, workflow                      |
-| [docs/RELEASING.md](docs/RELEASING.md)       | Cut a release: tag → CI builds/publishes; AUR/winget secrets    |
-| [docs/06-prd.md](docs/06-prd.md)             | Product requirements                                            |
-| [docs/07-work-plan.md](docs/07-work-plan.md) | Milestones M0–M8                                                |
-| [docs/README.md](docs/README.md)             | Research index (framework, packaging, drivers, UI, competitors) |
-| [docs/specs/](docs/specs/)                   | Design specs (per milestone)                                    |
-| [docs/plans/](docs/plans/)                   | Implementation plans (per milestone)                            |
+| Doc                                | What                                                         |
+| ---------------------------------- | ------------------------------------------------------------ |
+| [AGENTS.md](AGENTS.md)             | Architecture + coding conventions (**start here**)           |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Dev setup, commands, sandbox fix, workflow                   |
+| [RELEASING.md](RELEASING.md)       | Cut a release: tag → CI builds/publishes; AUR/winget secrets |
+
+**Design docs are local-only.** The `docs/` tree (PRD, work plan, research, per-milestone specs and plans) is git-ignored and lives only on your machine — it holds in-progress thinking we don't publish. It is still the working record: brainstorm → spec (`docs/specs/`) → plan (`docs/plans/`) → task-by-task.
 
 ## Working conventions
 
