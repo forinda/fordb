@@ -5,6 +5,7 @@ import { gzipSync, gunzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
 import { QueryLibraryStore } from './query-library-store'
+import { checkForUpdates, quitAndInstall } from './updater'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HostApi } from '@shared/host/host-api'
 
@@ -17,6 +18,8 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
   )
   const queryLibrary = new QueryLibraryStore(join(dir, 'query-library.json'))
 
+  ipcMain.handle('updater:check', () => checkForUpdates())
+  ipcMain.handle('updater:install', () => quitAndInstall())
   ipcMain.handle('queries:history-list', (_e, profileId: string) =>
     queryLibrary.listHistory(profileId)
   )

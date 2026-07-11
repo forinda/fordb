@@ -6,6 +6,8 @@ import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { DatabaseSwitcher } from './components/DatabaseSwitcher'
 import { TitleBar } from './components/TitleBar'
+import { UpdateBanner } from './components/UpdateBanner'
+import { useUpdaterSubscription } from './store-updater'
 import { StatusBar } from './components/StatusBar'
 import { ConnectingOverlay } from './components/ConnectingOverlay'
 import { RunToast } from './components/RunToast'
@@ -51,6 +53,7 @@ export function App(): React.JSX.Element {
   // diverged from connectionLost(), which can only clear the store.
   const connected = activeConnectionId !== null
   const setMode = useThemeStore((s) => s.setMode)
+  useUpdaterSubscription()
 
   // Connect (or switch): closes the previously-open connection so switching from
   // the revealed list doesn't leak the old session.
@@ -195,11 +198,17 @@ export function App(): React.JSX.Element {
     { id: 'toggle-sidebar', label: 'Toggle sidebar', run: () => setShowSidebar((v) => !v) },
     { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
     { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
-    { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') }
+    { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') },
+    {
+      id: 'check-updates',
+      label: 'Check for updates',
+      run: () => void window.fordb.updater.check()
+    }
   ]
 
   return (
     <div className="flex h-screen flex-col overflow-hidden text-foreground bg-background">
+      <UpdateBanner />
       <TitleBar
         screen={screen}
         onScreenChange={(next) => {

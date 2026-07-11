@@ -131,7 +131,19 @@ chmod +x fordb-*.AppImage
   object (name + email) in `package.json`.
 - **Windows NSIS path/casing errors** — run the dry run before tagging.
 
+## In-app auto-update
+
+Packaged **AppImage** and **Windows NSIS** installs check for updates on launch
+(and via the "Check for updates" command), download in the background, and
+prompt to restart — consuming the `latest*.yml` published with each release.
+deb/rpm are updated by apt/dnf, not the in-app updater; dev builds no-op.
+
+> **Unsigned Windows updates:** NSIS builds are unsigned, so electron-updater
+> applies updates without signature verification. Anyone who can publish to the
+> release feed could push a malicious update — the same trust boundary as the
+> unsigned installer today. Code signing (and macOS notarization) is deferred to
+> M8; until then this is an accepted risk.
+
 ## Deferred (not in this pipeline yet)
 
-electron-updater in-app auto-update (metadata is already published),
 macOS dmg + code signing / notarization (M8), Flathub.

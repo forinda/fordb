@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 import type { PortLike } from '@shared/rpc/protocol'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
+import type { UpdaterStatus } from '@shared/updater'
 
 // contextBridge clones plain values across the isolated-world/main-world
 // boundary but does not preserve MessagePort identity/methods (Electron
@@ -107,5 +108,14 @@ contextBridge.exposeInMainWorld('fordb', {
   },
   onDbHostRestarted: (cb: () => void): void => {
     ipcRenderer.on('db-host:restarted', () => cb())
+  },
+  updater: {
+    check: (): Promise<void> => ipcRenderer.invoke('updater:check'),
+    install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+    onStatus: (cb: (s: UpdaterStatus) => void): (() => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, s: UpdaterStatus): void => cb(s)
+      ipcRenderer.on('updater:status', listener)
+      return () => ipcRenderer.removeListener('updater:status', listener)
+    }
   }
 })

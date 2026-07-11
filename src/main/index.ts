@@ -8,6 +8,7 @@ import {
 } from 'electron'
 import { join } from 'node:path'
 import { createRpcClient } from '@shared/rpc/client'
+import { initUpdater, checkForUpdates, canAutoUpdate } from './updater'
 import type { PortLike } from '@shared/rpc/protocol'
 import type { HostApi } from '@shared/host/host-api'
 import { registerIpc } from './ipc'
@@ -124,6 +125,12 @@ function createWindow(): void {
   win.on('unmaximize', () => win.webContents.send('window:maximize-changed', false))
   if (process.env['ELECTRON_RENDERER_URL']) void win.loadURL(process.env['ELECTRON_RENDERER_URL'])
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
+
+  // In-app auto-update (packaged AppImage/NSIS only). Init is wrapped so a
+  // failure can never block launch; the check is delayed off the startup path.
+  initUpdater((s) => win.webContents.send('updater:status', s))
+  if (canAutoUpdate(app.isPackaged, process.platform, !!process.env.APPIMAGE))
+    setTimeout(() => checkForUpdates(), 5000)
 }
 
 // Frameless window controls, addressed to the sender's window (multi-window safe).
