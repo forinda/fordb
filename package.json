@@ -13,6 +13,8 @@
     "dev": "electron-vite dev",
     "dev:sandboxless": "ELECTRON_DISABLE_SANDBOX=1 electron-vite dev",
     "build": "pnpm typecheck && electron-vite build",
+    "website:dev": "pnpm --filter @fordb/website dev",
+    "website:build": "pnpm --filter @fordb/website build",
     "package": "pnpm build && electron-builder --linux",
     "package:win": "pnpm build && electron-builder --win",
     "package:all": "pnpm build && electron-builder -lw",
