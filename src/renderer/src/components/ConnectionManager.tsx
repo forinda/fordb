@@ -85,16 +85,21 @@ export function ConnectionManager(props: {
   const activeProfileId = useConnStore((s) => s.activeProfileId)
   const [engine, setEngine] = useState<ConnectionProfile['engine'] | null>(null)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
-  const [environment, setEnvironment] = useState<Environment | null>(null)
+  // `unassigned` is a rail filter for connections with no environment tag —
+  // otherwise they're only reachable in the default (no-filter) view.
+  const [environment, setEnvironment] = useState<Environment | 'unassigned' | null>(null)
   const [search, setSearch] = useState('')
 
   const filter: ProfileFilter = {
     engine: engine ?? undefined,
-    environment: environment ?? undefined,
+    environment: environment && environment !== 'unassigned' ? environment : undefined,
     favoritesOnly: favoritesOnly || undefined,
     search: search || undefined
   }
-  const shown = useMemo(() => filterProfiles(profiles, filter), [profiles, filter])
+  const shown = useMemo(() => {
+    const base = filterProfiles(profiles, filter)
+    return environment === 'unassigned' ? base.filter((p) => !p.environment) : base
+  }, [profiles, filter, environment])
   const engines = useMemo(() => {
     const counts = new Map<ConnectionProfile['engine'], number>()
     for (const p of profiles) counts.set(p.engine, (counts.get(p.engine) ?? 0) + 1)
@@ -247,6 +252,12 @@ export function ConnectionManager(props: {
               onClick={() => setEnvironment(environment === env ? null : env)}
             />
           ))}
+          <RailRow
+            label="Unassigned"
+            active={environment === 'unassigned'}
+            leading={<span className="h-2 w-2 flex-none rounded-full bg-faint" />}
+            onClick={() => setEnvironment(environment === 'unassigned' ? null : 'unassigned')}
+          />
         </div>
       </div>
 
