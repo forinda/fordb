@@ -8,11 +8,11 @@ export function QueryTabs(): React.JSX.Element {
   const closeTab = useQueryStore((s) => s.closeTab)
   const newTab = useQueryStore((s) => s.newTab)
   return (
-    <div className="flex items-center gap-1 border-b border-border bg-surface-1 px-2 pt-1">
+    <div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-surface-1 px-2 pt-1">
       {tabs.map((t, i) => (
         <div
           key={t.id}
-          className={`flex items-center gap-1 rounded-t border border-b-0 px-2 py-1 text-sm ${
+          className={`flex shrink-0 items-center gap-1 rounded-t border border-b-0 px-2 py-1 text-sm ${
             t.id === active
               ? 'border-border bg-background text-foreground'
               : 'border-transparent text-muted-foreground hover:bg-surface-2/60'
@@ -28,7 +28,13 @@ export function QueryTabs(): React.JSX.Element {
           </button>
         </div>
       ))}
-      <Button variant="ghost" size="sm" onClick={newTab} aria-label="New query tab">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="shrink-0"
+        onClick={newTab}
+        aria-label="New query tab"
+      >
         +
       </Button>
     </div>

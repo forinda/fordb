@@ -349,7 +349,7 @@ export function QueryWorkbench(): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
-      <div className="flex items-center gap-1.5 border-b border-border bg-surface-1 p-2">
+      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-surface-1 p-2">
         <button
           className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
           onClick={() => void run(tab.id)}

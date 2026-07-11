@@ -315,7 +315,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           </span>
         </div>
       )}
-      <div className="flex items-center gap-2 border-b border-border p-1 text-sm">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border p-1 text-sm">
         {editable ? (
           <>
             <button
