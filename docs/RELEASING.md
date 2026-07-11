@@ -79,7 +79,17 @@ artifacts (no Release created, no publish).
 
 ## Optional distribution channels
 
-Both live in the `finalize` job and skip cleanly when their secret is unset.
+All skip cleanly when their secret is unset — a release never depends on them.
+
+### apt / dnf (Cloudsmith)
+
+Set repo secret **`CLOUDSMITH_API_KEY`** (from a free Cloudsmith OSS account, an
+API key with push rights on the `forinda/fordb` repository). Create the
+repository once at [cloudsmith.io](https://cloudsmith.io) as `forinda/fordb`
+(public; deb + rpm formats). With the secret set, each release pushes the
+`.deb` + `.rpm` from the Linux build leg to Cloudsmith, and `apt install fordb`
+/ `dnf install fordb` (see the README) track new versions. Without the secret
+the push step is skipped.
 
 ### AUR (`fordb-bin`)
 

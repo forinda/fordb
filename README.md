@@ -38,6 +38,25 @@ fordb sits between the two extremes: lighter than DataGrip/DBeaver, but multi-en
 - Streaming result grid for large results, with cancel and CSV/JSON export.
 - **Format** SQL, **EXPLAIN / EXPLAIN ANALYZE** plan view, per-connection **query history**, and named **saved queries** — all from the palette or the toolbar.
 
+## Install
+
+### Package manager (Linux)
+
+Track releases through apt or dnf — new versions arrive with a normal system update.
+
+```bash
+# Debian / Ubuntu
+curl -1sLf 'https://dl.cloudsmith.io/public/forinda/fordb/setup.deb.sh' | sudo -E bash
+sudo apt update && sudo apt install fordb
+# upgrade later: sudo apt update && sudo apt upgrade
+
+# Fedora / RHEL
+curl -1sLf 'https://dl.cloudsmith.io/public/forinda/fordb/setup.rpm.sh' | sudo -E bash
+sudo dnf install fordb
+```
+
+Or grab a standalone `.AppImage` / `.deb` / `.rpm` / Windows `.exe` from the [Releases](https://github.com/forinda/fordb/releases) page.
+
 ## Getting started
 
 **Prerequisites:** [Node.js](https://nodejs.org) ≥ 22 and [pnpm](https://pnpm.io). [Docker](https://www.docker.com) is only needed for the contract test suite.
