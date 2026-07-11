@@ -128,7 +128,7 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
-      <div className="flex items-center gap-2 p-2 border-b border-border">
+      <div className="flex items-center gap-2 overflow-x-auto border-b border-border p-2 [&>*]:shrink-0">
         <span className="text-sm text-muted-foreground">Collection</span>
         <span className="font-mono text-sm text-foreground">
           {doc.database}.{doc.collection}
@@ -349,7 +349,7 @@ export function QueryWorkbench(): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
-      <div className="flex flex-wrap items-center gap-1.5 border-b border-border bg-surface-1 p-2">
+      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-surface-1 p-2 [&>*]:shrink-0">
         <button
           className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
           onClick={() => void run(tab.id)}

@@ -114,7 +114,7 @@ export function ServerDashboard(): React.JSX.Element {
           data={connData}
         />
       </div>
-      <div className="flex gap-1 border-t border-border px-2 pt-2">
+      <div className="flex gap-1 overflow-x-auto border-t border-border px-2 pt-2 [&>*]:shrink-0">
         {(
           ['sessions', ...(adminSupported ? (['roles', 'settings'] as const) : [])] as DashTab[]
         ).map((id) => (
