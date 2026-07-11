@@ -93,6 +93,14 @@ export function fetchTables(qc: QueryClient, connId: string, schema: string): Pr
   })
 }
 
+/** Role names for the owner dropdown; reuses the server-admin listRoles. */
+export function fetchRoles(qc: QueryClient, connId: string): Promise<string[]> {
+  return qc.fetchQuery({
+    queryKey: qk.roles(connId),
+    queryFn: async () => (await hostApi()).listRoles(connId).then((rs) => rs.map((r) => r.name))
+  })
+}
+
 export function fetchObjects(
   qc: QueryClient,
   connId: string,

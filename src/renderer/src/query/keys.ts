@@ -2,6 +2,7 @@ export const qk = {
   profiles: (): readonly ['profiles'] => ['profiles'] as const,
   schemas: (connId: string): readonly ['conn', string, 'schemas'] =>
     ['conn', connId, 'schemas'] as const,
+  roles: (connId: string): readonly ['conn', string, 'roles'] => ['conn', connId, 'roles'] as const,
   tables: (connId: string, schema: string): readonly ['conn', string, 'tables', string] =>
     ['conn', connId, 'tables', schema] as const,
   columns: (
