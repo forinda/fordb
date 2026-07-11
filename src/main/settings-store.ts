@@ -6,6 +6,15 @@ const MODES: ReadonlySet<string> = new Set(['light', 'dark', 'system'])
 
 interface SettingsFile {
   theme?: string
+  mcpEnabled?: boolean
+  mcpPort?: number
+}
+
+/** Non-secret MCP settings. The bearer TOKEN is a credential (grants DB read
+ *  access) and is stored in the OS keychain via SecretStore — never here. */
+export interface McpSettings {
+  enabled: boolean
+  port: number
 }
 
 export class SettingsStore {
@@ -28,6 +37,19 @@ export class SettingsStore {
   async setTheme(mode: ThemeMode): Promise<void> {
     const data = await this.read()
     data.theme = mode
+    await mkdir(dirname(this.filePath), { recursive: true })
+    await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
+  }
+
+  async getMcp(): Promise<McpSettings> {
+    const raw = await this.read()
+    return { enabled: raw.mcpEnabled ?? false, port: raw.mcpPort ?? 8283 }
+  }
+
+  async setMcp(c: McpSettings): Promise<void> {
+    const data = await this.read()
+    data.mcpEnabled = c.enabled
+    data.mcpPort = c.port
     await mkdir(dirname(this.filePath), { recursive: true })
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }
