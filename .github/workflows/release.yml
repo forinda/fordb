@@ -47,7 +47,7 @@ jobs:
             dist/*.deb
             dist/*.rpm
             dist/*.exe
-            dist/*.yml
+            dist/latest*.yml
           if-no-files-found: ignore
 
   finalize:

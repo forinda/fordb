@@ -62,7 +62,7 @@ jobs:
           pnpm build
           pnpm exec electron-builder $TARGET --publish never
           shopt -s nullglob
-          files=(dist/*.AppImage dist/*.deb dist/*.rpm dist/*.exe dist/*.blockmap dist/*.yml)
+          files=(dist/*.AppImage dist/*.deb dist/*.rpm dist/*.exe dist/*.blockmap dist/latest*.yml)
           gh release upload "$TAG" "${files[@]}" --repo "$REPO" --clobber
       - name: Push to Cloudsmith
         if: ${{ runner.os == 'Linux' && env.CLOUDSMITH_API_KEY != '' }}
