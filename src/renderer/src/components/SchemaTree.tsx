@@ -18,6 +18,7 @@ import { buildDdl } from '@shared/ddl/build-ddl'
 import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
+import { CreateTableDialog } from './CreateTableDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
 import { useDocumentQuerySupported } from '../query/documents'
@@ -76,6 +77,7 @@ export function SchemaTree(): React.JSX.Element {
     title: string
     onSubmit: (name: string) => void
   } | null>(null)
+  const [createTable, setCreateTable] = useState<{ schema: string } | null>(null)
 
   const profileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
@@ -192,20 +194,7 @@ export function SchemaTree(): React.JSX.Element {
     if (ops?.createTable)
       items.push({
         label: 'New table…',
-        run: () =>
-          setNamePrompt({
-            title: `New table in ${m.schema}`,
-            onSubmit: (name) =>
-              void runDdl({
-                kind: 'createTable',
-                spec: {
-                  schema: m.schema,
-                  table: name,
-                  columns: [{ name: 'id', type: 'integer', notNull: true }],
-                  primaryKey: ['id']
-                }
-              })
-          })
+        run: () => setCreateTable({ schema: m.schema })
       })
     if (ops?.createSchema)
       items.push({
@@ -369,6 +358,16 @@ export function SchemaTree(): React.JSX.Element {
         </div>
       )}
       {namePrompt && <NamePrompt prompt={namePrompt} onClose={() => setNamePrompt(null)} />}
+      {createTable && (
+        <CreateTableDialog
+          open
+          onClose={() => setCreateTable(null)}
+          connId={connId!}
+          schema={createTable.schema}
+          dialect={dialect}
+          onSubmit={(change) => void runDdl(change)}
+        />
+      )}
       {newView && (
         <NewViewForm
           onCancel={() => setNewView(null)}
