@@ -40,3 +40,10 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   artifactName: fordb-${version}-setup.${ext}
+mac:
+  category: public.app-category.developer-tools
+  target:
+    - target: dmg
+      arch: universal
+dmg:
+  artifactName: fordb-${version}-${arch}.dmg

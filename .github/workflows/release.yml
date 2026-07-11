@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -34,7 +34,9 @@ jobs:
         shell: bash
         run: |
           FLAG=$([ "${{ github.ref_type }}" = "tag" ] && echo always || echo never)
-          if [ "${{ runner.os }}" = "Windows" ]; then TARGET=--win; else TARGET=--linux; fi
+          if [ "${{ runner.os }}" = "Windows" ]; then TARGET=--win
+          elif [ "${{ runner.os }}" = "macOS" ]; then TARGET=--mac
+          else TARGET=--linux; fi
           pnpm build
           pnpm exec electron-builder $TARGET --publish "$FLAG"
       - name: Upload artifacts (dry-run visibility)
@@ -46,6 +48,7 @@ jobs:
             dist/*.AppImage
             dist/*.deb
             dist/*.rpm
+            dist/*.dmg
             dist/*.exe
             dist/latest*.yml
           if-no-files-found: ignore
