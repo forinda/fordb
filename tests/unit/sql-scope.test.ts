@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseFromTables, resolveTable } from '../../src/renderer/src/query/sql-scope'
+import { parseFromTables, resolveTable } from '../../src/shared/sql/scope'
 
 describe('parseFromTables', () => {
   it('single table, no alias', () => {

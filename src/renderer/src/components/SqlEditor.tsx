@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
 import { defaultKeymap } from '@codemirror/commands'
-import { sql, PostgreSQL } from '@codemirror/lang-sql'
+import { sql, PostgreSQL, keywordCompletionSource } from '@codemirror/lang-sql'
 import { autocompletion } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
 import { cmTheme, editorHighlight } from '../query/cm-theme'
@@ -36,7 +36,16 @@ export function SqlEditor(props: {
         cmTheme,
         themeCompartment.current.of(editorHighlight(effectiveRef.current)),
         sql({ dialect: PostgreSQL, upperCaseKeywords: true }),
-        autocompletion(connId ? { override: [schemaCompletionSource(connId)] } : {}),
+        autocompletion(
+          connId
+            ? {
+                override: [
+                  keywordCompletionSource(PostgreSQL, true),
+                  schemaCompletionSource(connId)
+                ]
+              }
+            : {}
+        ),
         keymap.of([
           {
             key: 'Mod-Enter',

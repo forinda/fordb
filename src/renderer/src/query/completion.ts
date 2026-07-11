@@ -1,36 +1,70 @@
 import type { CompletionContext, CompletionResult, Completion } from '@codemirror/autocomplete'
 import { queryClient } from './client'
 import { fetchSchemas, fetchTables, fetchColumns } from './introspection'
+import { parseFromTables, resolveTable } from '@shared/sql/scope'
 
-// Completes: bare identifiers → schema/table names; `table.` → that table's
-// columns (looked up across schemas). Uses the shared React Query cache, so it
-// dedups with the schema tree. Alias resolution is out of scope (deferred).
+// Completes: `alias.`/`table.` → that table's columns (aliases resolved from the
+// statement's FROM/JOIN clauses); bare word → schema + table names + columns of
+// the in-scope FROM tables. Uses the shared React Query cache, so it dedups with
+// the schema tree.
 export function schemaCompletionSource(connId: string) {
   return async (ctx: CompletionContext): Promise<CompletionResult | null> => {
-    // `word.` — complete columns of `word` (a table name in any schema).
-    const dotted = ctx.matchBefore(/([A-Za-z_][\w]*)\.\w*/)
-    if (dotted) {
-      const table = dotted.text.split('.')[0]!
+    try {
+      const doc = ctx.state.doc.toString()
+      const from = parseFromTables(doc)
+
+      // `prefix.` — complete columns of the resolved table.
+      const dotted = ctx.matchBefore(/([A-Za-z_]\w*)\.\w*/)
+      if (dotted) {
+        const prefix = dotted.text.split('.')[0]!
+        const table = resolveTable(prefix, from)
+        const cols = await columnsOf(connId, table)
+        if (!cols) return null
+        return { from: dotted.from + prefix.length + 1, options: cols }
+      }
+
+      // Bare word → schemas + tables + in-scope columns.
+      const word = ctx.matchBefore(/\w+/)
+      if (!word || (word.from === word.to && !ctx.explicit)) return null
+
       const schemas = await fetchSchemas(queryClient, connId)
+      const options: Completion[] = schemas.map((s) => ({ label: s, type: 'namespace' }))
       for (const schema of schemas) {
         const tables = await fetchTables(queryClient, connId, schema)
-        if (tables.some((t) => t.name === table)) {
-          const cols = await fetchColumns(queryClient, connId, schema, table)
-          const options: Completion[] = cols.map((c) => ({ label: c.name, type: 'property' }))
-          return { from: dotted.from + table.length + 1, options }
+        for (const t of tables)
+          options.push({
+            label: t.name,
+            type: 'class',
+            ...(t.type === 'view' ? { detail: 'view' } : {})
+          })
+      }
+      // Columns of the in-scope FROM tables (de-duped by label).
+      const seen = new Set<string>()
+      for (const f of from) {
+        const cols = await columnsOf(connId, f.table)
+        for (const c of cols ?? []) {
+          if (seen.has(c.label)) continue
+          seen.add(c.label)
+          options.push(c)
         }
       }
+      return { from: word.from, options }
+    } catch {
       return null
     }
-    // Bare word → schema + table names.
-    const word = ctx.matchBefore(/[\w]+/)
-    if (!word || (word.from === word.to && !ctx.explicit)) return null
-    const schemas = await fetchSchemas(queryClient, connId)
-    const options: Completion[] = schemas.map((s) => ({ label: s, type: 'namespace' }))
-    for (const schema of schemas) {
-      const tables = await fetchTables(queryClient, connId, schema)
-      for (const t of tables) options.push({ label: t.name, type: 'class' })
-    }
-    return { from: word.from, options }
   }
+}
+
+/** Columns of a table found across any schema, as completion options
+ *  (label + type detail). null if the table isn't found in any schema. */
+async function columnsOf(connId: string, table: string): Promise<Completion[] | null> {
+  const schemas = await fetchSchemas(queryClient, connId)
+  for (const schema of schemas) {
+    const tables = await fetchTables(queryClient, connId, schema)
+    if (tables.some((t) => t.name === table)) {
+      const cols = await fetchColumns(queryClient, connId, schema, table)
+      return cols.map((c) => ({ label: c.name, type: 'property', detail: c.dataType }))
+    }
+  }
+  return null
 }
