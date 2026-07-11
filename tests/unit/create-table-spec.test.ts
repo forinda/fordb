@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildTableSpec, duplicateColumnNames, type ColRow } from '../../src/shared/ddl/table-spec'
+import {
+  buildTableSpec,
+  buildIndexChanges,
+  duplicateColumnNames,
+  type ColRow,
+  type FkRow,
+  type IdxRow
+} from '../../src/shared/ddl/table-spec'
 import { buildDdl } from '../../src/shared/ddl/build-ddl'
 
 const col = (over: Partial<ColRow> = {}): ColRow => ({
@@ -39,10 +46,9 @@ describe('buildTableSpec', () => {
       [
         {
           name: '',
-          columns: ['customer_id'],
           refSchema: 'app',
           refTable: 'customers',
-          refColumns: ['id']
+          pairs: [{ local: 'customer_id', ref: 'id' }]
         }
       ],
       'orders',
@@ -69,10 +75,9 @@ describe('buildTableSpec', () => {
       [
         {
           name: 'fk_x',
-          columns: ['customer_id'],
           refSchema: 'main',
           refTable: 'customers',
-          refColumns: ['id']
+          pairs: [{ local: 'customer_id', ref: 'id' }]
         }
       ],
       'orders',
@@ -80,6 +85,119 @@ describe('buildTableSpec', () => {
       'sqlite'
     )
     expect(spec.foreignKeys?.[0]?.refSchema).toBeUndefined()
+  })
+})
+
+describe('buildTableSpec — multi-column FK pairs', () => {
+  const idCol = (name: string): ColRow => ({
+    name,
+    type: 'integer',
+    nullable: true,
+    pk: false,
+    unique: false,
+    default: ''
+  })
+
+  it('maps ordered pairs to composite columns/refColumns (pg)', () => {
+    const fk: FkRow = {
+      name: 'fk_o_c',
+      refSchema: 'app',
+      refTable: 'customers',
+      pairs: [
+        { local: 'tenant_id', ref: 'tenant_id' },
+        { local: 'customer_id', ref: 'id' }
+      ]
+    }
+    const spec = buildTableSpec(
+      [idCol('tenant_id'), idCol('customer_id')],
+      [fk],
+      'orders',
+      'app',
+      'pg'
+    )
+    expect(spec.foreignKeys).toEqual([
+      {
+        name: 'fk_o_c',
+        columns: ['tenant_id', 'customer_id'],
+        refSchema: 'app',
+        refTable: 'customers',
+        refColumns: ['tenant_id', 'id']
+      }
+    ])
+    expect(buildDdl({ kind: 'createTable', spec }, 'pg')[0]).toContain(
+      'CONSTRAINT "fk_o_c" FOREIGN KEY ("tenant_id", "customer_id") REFERENCES "app"."customers" ("tenant_id", "id")'
+    )
+  })
+
+  it('drops pairs with an empty side and FK rows with no complete pair', () => {
+    const fks: FkRow[] = [
+      {
+        name: '',
+        refSchema: 'app',
+        refTable: 'customers',
+        pairs: [
+          { local: 'customer_id', ref: 'id' },
+          { local: 'x', ref: '' }
+        ]
+      },
+      { name: '', refSchema: 'app', refTable: 'customers', pairs: [{ local: '', ref: '' }] }
+    ]
+    const spec = buildTableSpec([idCol('customer_id')], fks, 'orders', 'app', 'pg')
+    expect(spec.foreignKeys).toEqual([
+      {
+        name: 'fk_orders_customer_id',
+        columns: ['customer_id'],
+        refSchema: 'app',
+        refTable: 'customers',
+        refColumns: ['id']
+      }
+    ])
+  })
+})
+
+describe('buildIndexChanges', () => {
+  const idx = (over: Partial<IdxRow>): IdxRow => ({
+    name: '',
+    columns: [],
+    unique: false,
+    ...over
+  })
+
+  it('single + multi column, unique, auto-name; drops empty', () => {
+    const changes = buildIndexChanges(
+      [
+        idx({ columns: ['email'], unique: true }),
+        idx({ name: 'orders_ci', columns: ['customer_id', 'placed_at'] }),
+        idx({ columns: [''] })
+      ],
+      'app',
+      'orders'
+    )
+    expect(changes).toEqual([
+      {
+        kind: 'createIndex',
+        spec: {
+          schema: 'app',
+          table: 'orders',
+          name: 'idx_orders_email',
+          columns: ['email'],
+          unique: true
+        }
+      },
+      {
+        kind: 'createIndex',
+        spec: {
+          schema: 'app',
+          table: 'orders',
+          name: 'orders_ci',
+          columns: ['customer_id', 'placed_at'],
+          unique: undefined
+        }
+      }
+    ])
+    expect(buildDdl(changes[0]!, 'pg')[0]).toBe(
+      'CREATE UNIQUE INDEX "idx_orders_email" ON "app"."orders" ("email")'
+    )
   })
 })
 
