@@ -38,19 +38,32 @@ const app = await electron.launch({
 const win = await app.firstWindow()
 await win.waitForFunction(() => typeof window.fordb !== 'undefined', null, { timeout: 15000 })
 
-// Connect to the seeded SQLite DB.
+// Configure a connection to the seeded SQLite DB.
 await win.getByText('+ New connection').click()
 await win.getByRole('radio', { name: 'SQLite' }).click()
 await win.getByPlaceholder('Name', { exact: true }).fill('Storefront')
 await win.getByPlaceholder('File', { exact: true }).fill(file)
 await win.getByText('Test & Save').click()
-await win.getByText('Storefront').click()
+
+// 1) Connection manager — the saved connection card.
+await win.getByText('Storefront').first().waitFor({ timeout: 15000 })
+await new Promise((r) => setTimeout(r, 400))
+await win.screenshot({ path: join(OUT, 'connections.png') })
+
+await win.getByText('Storefront').first().click()
 await win.getByText('Connect', { exact: true }).click()
 
 await win.getByText('main', { exact: true }).click()
-await win.getByText('orders').waitFor({ timeout: 15000 })
+await win.getByText('orders').first().waitFor({ timeout: 15000 })
 
-// 1) Query workbench with results.
+// 2) Browse grid — single-click a table node opens its data tab (do this before
+// typing any SQL so the tree "orders" node is the first match).
+await win.getByText('orders').first().click()
+await new Promise((r) => setTimeout(r, 900))
+await win.screenshot({ path: join(OUT, 'browse.png') })
+
+// 3) Query workbench with results.
+await win.getByText('Query 1').first().click()
 await win.locator('.cm-content').click()
 await win.keyboard.type(
   'SELECT c.name, count(*) AS orders, round(sum(o.total),2) AS spent\n' +
