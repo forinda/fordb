@@ -21,6 +21,9 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      - name: Install rpm tooling (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm
       # On a tag: build + publish artifacts to a DRAFT GitHub Release (+ the
       # latest*.yml updater metadata). On workflow_dispatch (no tag): build
       # only, no publish — a dry-run that proves the matrix + native rebuild
@@ -42,6 +45,7 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
+            dist/*.rpm
             dist/*.exe
             dist/*.yml
           if-no-files-found: ignore
