@@ -7,6 +7,7 @@ import { SQLITE_TYPES } from '@shared/ddl/sqlite-types'
 import { useSchemas, useTables, useColumns } from '../query/introspection'
 import {
   buildTableSpec,
+  duplicateColumnNames,
   emptyCol,
   type ColRow,
   type FkRow,
@@ -43,7 +44,8 @@ export function CreateTableDialog({
     [cols, fks, table, schema, dialect]
   )
 
-  const valid = spec.table.length > 0 && spec.columns.length > 0
+  const dups = useMemo(() => duplicateColumnNames(cols), [cols])
+  const valid = spec.table.length > 0 && spec.columns.length > 0 && dups.length === 0
   const preview = valid ? buildDdl({ kind: 'createTable', spec }, dialect)[0] : ''
 
   const setCol = (i: number, patch: Partial<ColRow>): void =>
@@ -214,6 +216,9 @@ export function CreateTableDialog({
         </div>
       )}
 
+      {dups.length > 0 && (
+        <p className="mt-3 text-xs text-red-500">Duplicate column name: {dups.join(', ')}</p>
+      )}
       {preview && <pre className="mt-3 overflow-auto rounded bg-muted p-2 text-xs">{preview}</pre>}
     </Modal>
   )
