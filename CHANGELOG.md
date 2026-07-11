@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/forinda/fordb/compare/v0.4.0...v0.4.1) (2026-07-11)
+
+
+### Bug Fixes
+
+* default-import electron-updater (CJS) so the packaged app launches ([#240](https://github.com/forinda/fordb/issues/240)) ([c402c0a](https://github.com/forinda/fordb/commit/c402c0a1e94185b30c31831b1e21ee4d0fa9d0d8))
+
 ## [0.4.0](https://github.com/forinda/fordb/compare/v0.3.0...v0.4.0) (2026-07-11)
 
 
