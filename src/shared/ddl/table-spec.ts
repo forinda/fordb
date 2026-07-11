@@ -27,6 +27,19 @@ export const emptyCol = (): ColRow => ({
   default: ''
 })
 
+/** Column names (trimmed, non-empty) that appear more than once. */
+export function duplicateColumnNames(cols: ColRow[]): string[] {
+  const seen = new Set<string>()
+  const dups = new Set<string>()
+  for (const c of cols) {
+    const n = c.name.trim()
+    if (!n) continue
+    if (seen.has(n)) dups.add(n)
+    seen.add(n)
+  }
+  return [...dups]
+}
+
 /** Pure assembly of the CREATE TABLE spec from the dialog rows. */
 export function buildTableSpec(
   cols: ColRow[],
