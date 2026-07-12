@@ -107,6 +107,10 @@ export function SchemaTree(): React.JSX.Element {
   )
   const [usersDb, setUsersDb] = useState<string | null>(null)
   const [ddlError, setDdlError] = useState<string | null>(null)
+  // Type-to-filter the tree. Matches loaded node names (react-arborist opens
+  // matching branches); collapsed schemas whose children aren't fetched yet
+  // won't match until expanded.
+  const [filter, setFilter] = useState('')
   // Electron has no window.prompt, so name-entry (new table/schema/database) uses
   // an inline input rendered above the tree.
   const [namePrompt, setNamePrompt] = useState<{
@@ -540,6 +544,24 @@ export function SchemaTree(): React.JSX.Element {
 
   return (
     <div className="p-2">
+      <div className="relative mb-1.5">
+        <input
+          aria-label="filter-tree"
+          className="w-full rounded border border-border bg-background px-2 py-1 pr-6 text-xs placeholder:text-muted-foreground"
+          placeholder="Filter tables, objects…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        {filter && (
+          <button
+            aria-label="clear-filter"
+            className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+            onClick={() => setFilter('')}
+          >
+            ✕
+          </button>
+        )}
+      </div>
       {ddlError && (
         <div className="mb-1 flex items-start gap-2 rounded bg-destructive/10 p-1 text-xs text-destructive">
           <span className="min-w-0 flex-1 break-words">DDL failed: {ddlError}</span>
@@ -595,6 +617,8 @@ export function SchemaTree(): React.JSX.Element {
         indent={16}
         rowHeight={24}
         onToggle={onToggle}
+        searchTerm={filter}
+        searchMatch={(node, term) => node.data.name.toLowerCase().includes(term.toLowerCase())}
       >
         {({ node, style, dragHandle }) => {
           const kind = node.data.kind
