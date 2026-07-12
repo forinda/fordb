@@ -13,6 +13,7 @@ import { quoteIdent } from '@shared/mutation/build-edits'
 import { splitStatements } from '@shared/sql/split-statements'
 import { parseCsv } from '@shared/csv/csv'
 import { parseRelaxed } from '@shared/mongo/relaxed-json'
+import { formatDocsExport } from '@shared/mongo/export-docs'
 import { noMatchWarning } from '@shared/mongo/mutation-warnings'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
@@ -106,6 +107,8 @@ interface QueryState {
   bulkCount: (tabId: string) => Promise<number>
   /** Runs the bulk-mode tab's updateMany/deleteMany, returns a summary string. */
   bulkApply: (tabId: string) => Promise<string>
+  /** Exports a document tab's full find/aggregate result to a JSON/NDJSON file. */
+  exportDocs: (tabId: string, format: 'json' | 'ndjson') => Promise<void>
   openFkTarget: (schema: string, refTable: string, filters: Filter[]) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
@@ -332,6 +335,51 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       update
     )
     return `Matched ${matched}, modified ${modified} document(s)`
+  },
+  exportDocs: async (tabId, format) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const src = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !src?.doc || src.doc.mode === 'bulk') return
+    const { database, collection, mode, text } = src.doc
+    set({ ioError: null })
+    const api = await hostApi()
+    const CAP = 100_000
+    try {
+      const parsed = parseRelaxed(text)
+      const open =
+        mode === 'aggregate'
+          ? await api.aggregateDocs(
+              connId,
+              database,
+              collection,
+              parsed as Record<string, unknown>[],
+              DOC_PAGE_SIZE
+            )
+          : await api.findDocs(
+              connId,
+              database,
+              collection,
+              parsed as Record<string, unknown>,
+              {},
+              DOC_PAGE_SIZE
+            )
+      const all: Record<string, unknown>[] = []
+      let done = false
+      while (!done && all.length < CAP) {
+        const page = await api.fetchDocs(connId, open.queryId)
+        all.push(...page.docs)
+        done = page.done
+      }
+      if (!done) await api.closeDocs(connId, open.queryId).catch(() => {})
+      const ext = format === 'ndjson' ? 'ndjson' : 'json'
+      await window.fordb.exportFile.save(
+        `${collection}.${ext}`,
+        formatDocsExport(all, format),
+        false
+      )
+    } catch (err) {
+      set({ ioError: err instanceof Error ? err.message : String(err) })
+    }
   },
   openFkTarget: async (schema, refTable, filters) => {
     await get().openTable(schema, refTable, filters)
