@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useConnStore } from '../store'
 import { useProfiles } from '../query/profiles'
-import { useColumns, useKeys, useIndexes } from '../query/introspection'
+import { useColumns, useKeys, useIndexes, useChecks } from '../query/introspection'
 import { hostApi } from '../rpc'
 import { buildDdl, reconstructDdl } from '@shared/ddl/build-ddl'
 import type { DdlChange } from '@shared/adapter/schema-types'
@@ -23,6 +23,7 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
   const { data: cols = [] } = useColumns(connId, schema, table)
   const { data: keys = [] } = useKeys(connId, schema, table)
   const { data: indexes = [] } = useIndexes(connId, schema, table)
+  const { data: checks = [] } = useChecks(connId, schema, table)
   const { data: ops } = useQuery({
     queryKey: connId ? ['conn', connId, 'schemaOps'] : ['conn', 'none', 'schemaOps'],
     queryFn: async () => (await hostApi()).schemaOps(connId!),
@@ -219,13 +220,25 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
         )}
       </Section>
 
-      {/* Check constraints — add only (Postgres). Existing checks aren't listed
-          yet (no introspection); drop one with a DROP CONSTRAINT in the editor. */}
+      {/* Check constraints (Postgres) — list existing, add, and drop. */}
       {dialect === 'pg' && (
         <Section
           title="Check constraints"
           action={{ label: '+ check', onClick: () => setForm('check') }}
         >
+          {checks.map((c) => (
+            <Row key={c.name}>
+              <span className="font-mono">{c.name}</span>
+              <span className="text-muted-foreground">{c.expression}</span>
+              <button
+                aria-label={`check-drop-${c.name}`}
+                className="ml-auto rounded px-1 text-destructive hover:bg-muted"
+                onClick={() => void run({ kind: 'dropCheck', schema, table, name: c.name })}
+              >
+                drop
+              </button>
+            </Row>
+          ))}
           {form === 'check' && (
             <CheckForm
               onCancel={() => setForm(null)}

@@ -61,6 +61,17 @@ export const GET_INDEXES = `
   WHERE nsp.nspname = $1 AND tc.relname = $2 AND NOT ix.indisprimary
   ORDER BY ic.relname`
 
+// CHECK constraints. pg_get_constraintdef yields e.g. "CHECK ((age >= 0))" —
+// the adapter strips the leading "CHECK " to store just the predicate.
+export const GET_CHECKS = `
+  SELECT con.conname AS name,
+         pg_get_constraintdef(con.oid, true) AS def
+  FROM pg_constraint con
+  JOIN pg_class rel ON rel.oid = con.conrelid
+  JOIN pg_namespace nsp ON nsp.oid = rel.relnamespace
+  WHERE nsp.nspname = $1 AND rel.relname = $2 AND con.contype = 'c'
+  ORDER BY con.conname`
+
 // Object browser (views/functions/triggers). Schema/name are bound params.
 export const LIST_VIEWS = `SELECT viewname AS name FROM pg_views WHERE schemaname = $1 ORDER BY name`
 // Collapse overloads to one node per name (avoids duplicate tree ids); functions

@@ -23,6 +23,12 @@ export const qk = {
     table: string
   ): readonly ['conn', string, 'indexes', string, string] =>
     ['conn', connId, 'indexes', schema, table] as const,
+  checks: (
+    connId: string,
+    schema: string,
+    table: string
+  ): readonly ['conn', string, 'checks', string, string] =>
+    ['conn', connId, 'checks', schema, table] as const,
   objects: (
     connId: string,
     schema: string,

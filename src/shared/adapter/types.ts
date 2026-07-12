@@ -115,6 +115,12 @@ export interface IndexInfo {
   unique: boolean
 }
 
+export interface CheckInfo {
+  name: string
+  /** The check predicate, e.g. "age >= 0" (from pg_get_constraintdef). */
+  expression: string
+}
+
 export interface FieldInfo {
   name: string
   dataType: string
