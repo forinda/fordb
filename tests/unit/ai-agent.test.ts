@@ -140,6 +140,23 @@ describe('runAgent', () => {
     expect(last?.kind === 'error' && last.message).toMatch(/steps/)
   })
 
+  it('forwards a usage stream event as a usage AiEvent', async () => {
+    const stream: typeof import('../../src/main/ai/openai-stream').streamChat =
+      async function* (): AsyncGenerator<StreamEvent> {
+        yield { kind: 'usage', usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 } }
+        yield { kind: 'text', delta: 'done' }
+      }
+    const { deps: d, events } = deps({ streamImpl: stream })
+    runAgent('q', d)
+    for (let i = 0; i < 5; i++) await flush()
+    expect(events).toContainEqual({
+      kind: 'usage',
+      promptTokens: 10,
+      completionTokens: 5,
+      totalTokens: 15
+    })
+  })
+
   it('omits run_write when writes are disabled', async () => {
     let seenTools: string[] = []
     const spy: typeof import('../../src/main/ai/openai-stream').streamChat = async function* (
