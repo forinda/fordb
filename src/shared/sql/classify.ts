@@ -44,3 +44,15 @@ export function isReadOnlyQuery(sql: string): boolean {
   if (/^with\b/i.test(body) && CTE_WRITE.test(body)) return false
   return true
 }
+
+/** UX brake for the AI write path (NOT a security boundary — approval is). True
+ *  for statements likely to lose data: DROP/TRUNCATE, ALTER ... DROP, and
+ *  DELETE/UPDATE with no WHERE. Conservative: unclassifiable input → true. */
+export function isDestructive(sql: string): boolean {
+  const s = stripLeading(sql).trim()
+  if (!s) return true
+  if (/^(drop|truncate)\b/i.test(s)) return true
+  if (/^alter\b/i.test(s) && /\bdrop\b/i.test(s)) return true
+  if (/^(delete|update)\b/i.test(s) && !/\bwhere\b/i.test(s)) return true
+  return false
+}
