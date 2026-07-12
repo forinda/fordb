@@ -113,9 +113,9 @@ export function SchemaTree(): React.JSX.Element {
   )
   const [usersDb, setUsersDb] = useState<string | null>(null)
   const [ddlError, setDdlError] = useState<string | null>(null)
-  // Type-to-filter the tree. Matches loaded node names (react-arborist opens
-  // matching branches); collapsed schemas whose children aren't fetched yet
-  // won't match until expanded.
+  // Type-to-filter the tree. react-arborist opens matching branches; while a
+  // filter is active an effect eagerly loads every schema's tables so matches
+  // surface across collapsed schemas too (see below).
   const [filter, setFilter] = useState('')
   // Electron has no window.prompt, so name-entry (new table/schema/database) uses
   // an inline input rendered above the tree.
@@ -542,6 +542,17 @@ export function SchemaTree(): React.JSX.Element {
     if (!connId || id.startsWith('c:') || id.startsWith('obj:') || childrenById[id]) return
     void loadChildren(id)
   }
+
+  // With a filter active, eagerly load every schema's tables so matches surface
+  // across collapsed schemas — not just the ones already expanded. childrenRef
+  // guards each fetch to once; only fires while the user is filtering.
+  useEffect(() => {
+    if (!filter.trim() || !connId || !schemas) return
+    for (const s of schemas) {
+      if (!childrenRef.current[`s:${s}`]) void loadChildren(`s:${s}`)
+      if (!childrenRef.current[`cat:${s}.table`]) void loadChildren(`cat:${s}.table`)
+    }
+  }, [filter, connId, schemas])
 
   const data = useMemo(() => buildTree(schemas ?? [], childrenById), [schemas, childrenById])
 
