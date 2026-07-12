@@ -181,9 +181,7 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
           <IndexForm
             columns={cols.map((c) => c.name)}
             onCancel={() => setForm(null)}
-            onSubmit={(name, columns, unique) =>
-              void run({ kind: 'createIndex', spec: { schema, table, name, columns, unique } })
-            }
+            onSubmit={(spec) => void run({ kind: 'createIndex', spec: { schema, table, ...spec } })}
           />
         )}
       </Section>
@@ -458,48 +456,94 @@ function ColumnForm(props: {
 
 function IndexForm(props: {
   columns: string[]
-  onSubmit: (name: string, columns: string[], unique: boolean) => void
+  onSubmit: (spec: {
+    name: string
+    columns: string[]
+    unique: boolean
+    expression?: string
+    where?: string
+  }) => void
   onCancel: () => void
 }): React.JSX.Element {
   const [name, setName] = useState('')
   const [col, setCol] = useState(props.columns[0] ?? '')
   const [unique, setUnique] = useState(false)
+  const [isExpr, setIsExpr] = useState(false)
+  const [expr, setExpr] = useState('')
+  const [where, setWhere] = useState('')
+
+  const valid = name.trim() && (isExpr ? expr.trim() : col)
+  const submit = (): void =>
+    props.onSubmit({
+      name: name.trim(),
+      columns: isExpr ? [] : [col],
+      unique,
+      expression: isExpr ? expr.trim() : undefined,
+      where: where.trim() || undefined
+    })
+
   return (
-    <Row>
-      <input
-        aria-label="ddl-index-name"
-        className={input}
-        placeholder="index name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <select
-        aria-label="ddl-index-column"
-        className={input}
-        value={col}
-        onChange={(e) => setCol(e.target.value)}
-      >
-        {props.columns.map((c) => (
-          <option key={c} value={c}>
-            {c}
-          </option>
-        ))}
-      </select>
-      <label className="flex items-center gap-1">
-        <input type="checkbox" checked={unique} onChange={(e) => setUnique(e.target.checked)} />
-        unique
-      </label>
-      <button
-        className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
-        disabled={!name || !col}
-        onClick={() => props.onSubmit(name, [col], unique)}
-      >
-        Add
-      </button>
-      <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
-        Cancel
-      </button>
-    </Row>
+    <div className="flex flex-col gap-1">
+      <Row>
+        <input
+          aria-label="ddl-index-name"
+          className={input}
+          placeholder="index name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        {isExpr ? (
+          <input
+            aria-label="ddl-index-expr"
+            className={`${input} font-mono`}
+            placeholder="expression, e.g. lower(email)"
+            value={expr}
+            onChange={(e) => setExpr(e.target.value)}
+          />
+        ) : (
+          <select
+            aria-label="ddl-index-column"
+            className={input}
+            value={col}
+            onChange={(e) => setCol(e.target.value)}
+          >
+            {props.columns.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
+          </select>
+        )}
+        <label className="flex items-center gap-1">
+          <input type="checkbox" checked={unique} onChange={(e) => setUnique(e.target.checked)} />
+          unique
+        </label>
+        <label className="flex items-center gap-1">
+          <input type="checkbox" checked={isExpr} onChange={(e) => setIsExpr(e.target.checked)} />
+          expression
+        </label>
+      </Row>
+      <Row>
+        <span className="text-muted-foreground">WHERE (partial, optional)</span>
+        <input
+          aria-label="ddl-index-where"
+          className={`${input} font-mono`}
+          placeholder="e.g. status = 'active'"
+          value={where}
+          onChange={(e) => setWhere(e.target.value)}
+        />
+        <button
+          className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
+          disabled={!valid}
+          onClick={submit}
+        >
+          Add
+        </button>
+        <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
+          Cancel
+        </button>
+      </Row>
+    </div>
   )
 }
 

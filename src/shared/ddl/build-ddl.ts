@@ -65,13 +65,16 @@ function createDatabase(name: string, o?: CreateDatabaseOptions): string {
 
 function createIndex(spec: IndexSpec, dialect: Dialect): string {
   const u = spec.unique ? 'UNIQUE ' : ''
-  const cols = spec.columns.map(qi).join(', ')
+  // Expression index (raw) or a quoted column list.
+  const target = spec.expression ? `(${spec.expression})` : `(${spec.columns.map(qi).join(', ')})`
   // SQLite: the schema qualifies the INDEX NAME and the ON-table must be bare
   // (a qualified ON-table is a syntax error). Postgres: bare index name, the
   // index lands in the ON-table's schema, so qualify the table.
-  return dialect === 'sqlite'
-    ? `CREATE ${u}INDEX ${qtable(spec.schema, spec.name)} ON ${qi(spec.table)} (${cols})`
-    : `CREATE ${u}INDEX ${qi(spec.name)} ON ${qtable(spec.schema, spec.table)} (${cols})`
+  const head =
+    dialect === 'sqlite'
+      ? `CREATE ${u}INDEX ${qtable(spec.schema, spec.name)} ON ${qi(spec.table)} ${target}`
+      : `CREATE ${u}INDEX ${qi(spec.name)} ON ${qtable(spec.schema, spec.table)} ${target}`
+  return spec.where ? `${head} WHERE (${spec.where})` : head
 }
 
 function addForeignKey(spec: ForeignKeySpec): string {
