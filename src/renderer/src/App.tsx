@@ -5,7 +5,7 @@ import { ConnectionManager, ConnectionDetails } from './components/ConnectionMan
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
-import { DatabaseSwitcher } from './components/DatabaseSwitcher'
+import { DatabaseHeader } from './components/DatabaseHeader'
 import { TitleBar } from './components/TitleBar'
 import { UpdateBanner } from './components/UpdateBanner'
 import { useUpdaterSubscription } from './store-updater'
@@ -268,7 +268,7 @@ export function App(): React.JSX.Element {
                               {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
                             </span>
                           </button>
-                          <DatabaseSwitcher />
+                          <DatabaseHeader />
                           <div className="flex justify-end border-b border-border px-2 py-1">
                             <RefreshSchemaButton />
                           </div>
