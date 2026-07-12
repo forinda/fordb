@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseConnectionUrl } from '../../src/shared/connection-url'
+import { parseConnectionUrl, buildPostgresUri } from '../../src/shared/connection-url'
 
 describe('parseConnectionUrl', () => {
   it('parses a full postgres URL', () => {
@@ -43,5 +43,46 @@ describe('parseConnectionUrl', () => {
   })
   it('throws on unparseable input', () => {
     expect(() => parseConnectionUrl('not a url')).toThrow()
+  })
+})
+
+describe('buildPostgresUri', () => {
+  it('builds a full URI with credentials + db', () => {
+    expect(
+      buildPostgresUri({ host: 'db.x', port: 5433, database: 'app', user: 'u', password: 'p' })
+    ).toBe('postgresql://u:p@db.x:5433/app')
+  })
+  it('omits auth when no user, omits port when absent', () => {
+    expect(buildPostgresUri({ host: 'localhost', database: 'app' })).toBe(
+      'postgresql://localhost/app'
+    )
+  })
+  it('percent-encodes special chars in credentials + db', () => {
+    expect(
+      buildPostgresUri({ host: 'h', user: 'a b', password: 'p@ss/w', database: 'my db' })
+    ).toBe('postgresql://a%20b:p%40ss%2Fw@h/my%20db')
+  })
+  it('emits sslmode from the ssl flag', () => {
+    expect(buildPostgresUri({ host: 'h', ssl: { rejectUnauthorized: true } })).toBe(
+      'postgresql://h?sslmode=verify-full'
+    )
+    expect(buildPostgresUri({ host: 'h', ssl: { rejectUnauthorized: false } })).toBe(
+      'postgresql://h?sslmode=require'
+    )
+  })
+  it('round-trips through parseConnectionUrl', () => {
+    const uri = buildPostgresUri({
+      host: 'db.x',
+      port: 5432,
+      database: 'app',
+      user: 'u',
+      password: 'p@w'
+    })
+    const p = parseConnectionUrl(uri)
+    expect(p.profile.host).toBe('db.x')
+    expect(p.profile.port).toBe(5432)
+    expect(p.profile.database).toBe('app')
+    expect(p.profile.user).toBe('u')
+    expect(p.password).toBe('p@w')
   })
 })
