@@ -15,4 +15,16 @@ export class MongoDocumentAdmin implements DocumentAdmin {
   async dropIndex(db: string, coll: string, name: string): Promise<void> {
     await this.dbFor(db).collection(coll).dropIndex(name)
   }
+
+  async createCollection(db: string, coll: string): Promise<void> {
+    await this.dbFor(db).createCollection(coll)
+  }
+
+  async dropCollection(db: string, coll: string): Promise<void> {
+    await this.dbFor(db).collection(coll).drop()
+  }
+
+  async renameCollection(db: string, from: string, to: string): Promise<void> {
+    await this.dbFor(db).renameCollection(from, to)
+  }
 }

@@ -310,6 +310,15 @@ export class HostApiImpl implements HostApi {
   dropDocIndex(id: ConnectionId, db: string, coll: string, name: string): Promise<void> {
     return this.docadmin(id).dropIndex(db, coll, name)
   }
+  createCollection(id: ConnectionId, db: string, coll: string): Promise<void> {
+    return this.docadmin(id).createCollection(db, coll)
+  }
+  dropCollection(id: ConnectionId, db: string, coll: string): Promise<void> {
+    return this.docadmin(id).dropCollection(db, coll)
+  }
+  renameCollection(id: ConnectionId, db: string, from: string, to: string): Promise<void> {
+    return this.docadmin(id).renameCollection(db, from, to)
+  }
 
   private mstats(id: ConnectionId): MongoStats {
     const s = this.registry.get(id).mongoStats

@@ -158,6 +158,19 @@ export function SchemaTree(): React.JSX.Element {
     }
   }
 
+  // MongoDB collection admin (create/drop/rename) — no SQL, so it calls the
+  // DocumentAdmin capability directly, then invalidates the connection so the
+  // tree's expanded schema node reloads its collections.
+  async function collectionOp(op: () => Promise<void>): Promise<void> {
+    setDdlError(null)
+    try {
+      await op()
+      await queryClient.invalidateQueries({ queryKey: ['conn', connId] })
+    } catch (err) {
+      setDdlError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
   // Table maintenance (VACUUM/ANALYZE/REINDEX) — VACUUM can't run in a
   // transaction, so it goes through executeQuery (autocommit), not applyDdl.
   async function runMaintenance(op: MaintenanceOp, schema: string, table: string): Promise<void> {
@@ -280,12 +293,33 @@ export function SchemaTree(): React.JSX.Element {
             ]),
         { label: 'Show columns', run: () => m.toggle() },
         { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
-        // Mongo collections: manage indexes (relational engines use Structure).
+        // Mongo collections: manage indexes (relational engines use Structure)
+        // and administer the collection itself.
         ...(docSupported
           ? [
               {
                 label: 'Indexes…',
                 run: () => setIndexColl({ schema: m.schema, table: m.table })
+              },
+              {
+                label: 'Rename collection…',
+                run: () =>
+                  setNamePrompt({
+                    title: `Rename ${m.table} to`,
+                    onSubmit: (to) =>
+                      void collectionOp(async () =>
+                        (await hostApi()).renameCollection(connId!, m.schema, m.table, to)
+                      )
+                  })
+              },
+              {
+                label: 'Drop collection',
+                run: () => {
+                  if (!window.confirm(`Drop collection ${m.schema}.${m.table}?`)) return
+                  void collectionOp(async () =>
+                    (await hostApi()).dropCollection(connId!, m.schema, m.table)
+                  )
+                }
               }
             ]
           : []),
@@ -332,6 +366,19 @@ export function SchemaTree(): React.JSX.Element {
       items.push({
         label: 'New table…',
         run: () => setCreateTable({ schema: m.schema })
+      })
+    // Mongo database node: create a collection (no relational createTable op).
+    if (docSupported)
+      items.push({
+        label: 'New collection…',
+        run: () =>
+          setNamePrompt({
+            title: `New collection in ${m.schema}`,
+            onSubmit: (name) =>
+              void collectionOp(async () =>
+                (await hostApi()).createCollection(connId!, m.schema, name)
+              )
+          })
       })
     if (ops?.createSchema)
       items.push({
