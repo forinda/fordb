@@ -3,8 +3,15 @@
 /** Events streamed main → renderer during one agent turn. */
 export type AiEvent =
   | { kind: 'text'; delta: string }
-  | { kind: 'tool-start'; id: string; name: string; args: string; gated: boolean }
-  | { kind: 'tool-result'; id: string; ok: boolean; summary: string }
+  | {
+      kind: 'tool-start'
+      id: string
+      name: string
+      args: string
+      gated: boolean
+      destructive?: boolean
+    }
+  | { kind: 'tool-result'; id: string; ok: boolean; summary: string; didWrite?: boolean }
   | { kind: 'done' }
   | { kind: 'error'; message: string }
 
@@ -13,4 +20,5 @@ export interface AiConfigPublic {
   baseUrl: string
   model: string
   hasKey: boolean
+  allowWrites: boolean
 }

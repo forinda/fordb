@@ -11,6 +11,7 @@ interface SettingsFile {
   autoUpdate?: boolean
   aiBaseUrl?: string
   aiModel?: string
+  aiAllowWrites?: boolean
 }
 
 /** Non-secret MCP settings. The bearer TOKEN is a credential (grants DB read
@@ -70,15 +71,20 @@ export class SettingsStore {
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }
 
-  async getAi(): Promise<{ baseUrl: string; model: string }> {
+  async getAi(): Promise<{ baseUrl: string; model: string; allowWrites: boolean }> {
     const raw = await this.read()
-    return { baseUrl: raw.aiBaseUrl ?? '', model: raw.aiModel ?? '' }
+    return {
+      baseUrl: raw.aiBaseUrl ?? '',
+      model: raw.aiModel ?? '',
+      allowWrites: raw.aiAllowWrites ?? false
+    }
   }
 
-  async setAi(c: { baseUrl: string; model: string }): Promise<void> {
+  async setAi(c: { baseUrl: string; model: string; allowWrites: boolean }): Promise<void> {
     const data = await this.read()
     data.aiBaseUrl = c.baseUrl
     data.aiModel = c.model
+    data.aiAllowWrites = c.allowWrites
     await mkdir(dirname(this.filePath), { recursive: true })
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }

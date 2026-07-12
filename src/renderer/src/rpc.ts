@@ -65,7 +65,7 @@ declare global {
       }
       ai: {
         getConfig: () => Promise<AiConfigPublic>
-        setConfig: (baseUrl: string, model: string) => Promise<void>
+        setConfig: (baseUrl: string, model: string, allowWrites: boolean) => Promise<void>
         setKey: (key: string) => Promise<void>
         test: () => Promise<{ ok: boolean; message?: string }>
         ask: (prompt: string, connectionId: string) => Promise<void>

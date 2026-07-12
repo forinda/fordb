@@ -120,8 +120,8 @@ contextBridge.exposeInMainWorld('fordb', {
   },
   ai: {
     getConfig: (): Promise<AiConfigPublic> => ipcRenderer.invoke('ai:get-config'),
-    setConfig: (baseUrl: string, model: string): Promise<void> =>
-      ipcRenderer.invoke('ai:set-config', baseUrl, model),
+    setConfig: (baseUrl: string, model: string, allowWrites: boolean): Promise<void> =>
+      ipcRenderer.invoke('ai:set-config', baseUrl, model, allowWrites),
     setKey: (key: string): Promise<void> => ipcRenderer.invoke('ai:set-key', key),
     test: (): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('ai:test'),
     ask: (prompt: string, connectionId: string): Promise<void> =>

@@ -41,6 +41,7 @@ function deps(over: Partial<AgentDeps>): { deps: AgentDeps; events: AiEvent[] } 
       baseUrl: 'http://x/v1',
       apiKey: 'k',
       model: 'm',
+      allowWrites: false,
       emit: (e) => events.push(e),
       ...over
     }
@@ -137,5 +138,48 @@ describe('runAgent', () => {
     const last = events.at(-1)
     expect(last?.kind).toBe('error')
     expect(last?.kind === 'error' && last.message).toMatch(/steps/)
+  })
+
+  it('omits run_write when writes are disabled', async () => {
+    let seenTools: string[] = []
+    const spy: typeof import('../../src/main/ai/openai-stream').streamChat = async function* (
+      opts
+    ): AsyncGenerator<StreamEvent> {
+      seenTools = opts.tools.map((t) => t.function.name)
+      yield { kind: 'text', delta: 'hi' }
+    }
+    const { deps: d } = deps({ streamImpl: spy, allowWrites: false })
+    runAgent('q', d)
+    for (let i = 0; i < 5; i++) await flush()
+    expect(seenTools).not.toContain('run_write')
+  })
+
+  it('gates run_write, flags destructive, executes on approve', async () => {
+    const calls: string[] = []
+    const h = {
+      executeQuery: async (_i: string, sql: string): Promise<QueryResult> => {
+        calls.push(sql)
+        return { fields: [], rows: [], rowCount: 1, command: 'DROP' }
+      }
+    } as unknown as HostApi
+    const stream = scriptedStream([
+      [
+        { kind: 'tool', call: { id: 'w1', name: 'run_write', arguments: '{"sql":"DROP TABLE t"}' } }
+      ],
+      [{ kind: 'text', delta: 'done' }]
+    ])
+    const { deps: d, events } = deps({ host: h, streamImpl: stream, allowWrites: true })
+    const run = runAgent('q', d)
+    await flush()
+    const start = events.find((e) => e.kind === 'tool-start')
+    expect(start).toMatchObject({ name: 'run_write', gated: true, destructive: true })
+    expect(calls).toEqual([]) // not executed before approval
+    run.approve('w1', true)
+    await flush()
+    await flush()
+    expect(calls).toEqual(['DROP TABLE t'])
+    expect(events).toContainEqual(
+      expect.objectContaining({ kind: 'tool-result', id: 'w1', ok: true, didWrite: true })
+    )
   })
 })

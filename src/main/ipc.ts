@@ -47,8 +47,8 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
 
   let currentRun: AgentRun | null = null
   ipcMain.handle('ai:get-config', () => getAiConfigPublic(settingsStore, secrets))
-  ipcMain.handle('ai:set-config', (_e, baseUrl: string, model: string) =>
-    settingsStore.setAi({ baseUrl, model })
+  ipcMain.handle('ai:set-config', (_e, baseUrl: string, model: string, allowWrites: boolean) =>
+    settingsStore.setAi({ baseUrl, model, allowWrites })
   )
   ipcMain.handle('ai:set-key', async (_e, key: string) => {
     if (key) await secrets.set(AI_KEY_ID, { authToken: key })
@@ -87,6 +87,7 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
       baseUrl: c.baseUrl,
       apiKey: c.apiKey,
       model: c.model,
+      allowWrites: c.allowWrites,
       emit
     })
   })

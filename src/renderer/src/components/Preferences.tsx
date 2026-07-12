@@ -96,7 +96,12 @@ function UpdatesSection(): React.JSX.Element {
 }
 
 function AiConfigSection(): React.JSX.Element {
-  const [cfg, setCfg] = useState<{ baseUrl: string; model: string; hasKey: boolean } | null>(null)
+  const [cfg, setCfg] = useState<{
+    baseUrl: string
+    model: string
+    hasKey: boolean
+    allowWrites: boolean
+  } | null>(null)
   const [key, setKey] = useState('')
   const [test, setTest] = useState('')
   useEffect(() => {
@@ -106,7 +111,7 @@ function AiConfigSection(): React.JSX.Element {
   const save = (patch: Partial<typeof cfg>): void => {
     const next = { ...cfg, ...patch }
     setCfg(next)
-    void window.fordb.ai.setConfig(next.baseUrl, next.model)
+    void window.fordb.ai.setConfig(next.baseUrl, next.model, next.allowWrites)
   }
   return (
     <div className="flex flex-col gap-2 text-sm">
@@ -142,6 +147,19 @@ function AiConfigSection(): React.JSX.Element {
           onChange={(e) => setKey(e.target.value)}
           onBlur={() => void window.fordb.ai.setKey(key)}
         />
+      </label>
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={cfg.allowWrites}
+          onChange={(e) => save({ allowWrites: e.target.checked })}
+        />
+        <span>
+          Allow the assistant to propose writes
+          <span className="block text-xs text-muted-foreground">
+            Still confirmed per write; destructive operations need extra confirmation.
+          </span>
+        </span>
       </label>
       <div className="flex items-center gap-2">
         <button
