@@ -259,17 +259,21 @@ export function QueryWorkbench(): React.JSX.Element {
 
   if (!tab) return <div className="p-4 text-muted-foreground">No query tab.</div>
 
-  async function exportData(kind: 'csv' | 'json'): Promise<void> {
+  async function exportData(kind: 'csv' | 'json', basename = 'result'): Promise<void> {
     const src = tab!.source
     if (!src) return
     await src.drainAll()
     const names = src.fields.map((f) => f.name)
     const rows = Array.from({ length: src.loadedRowCount() }, (_, i) => src.getRow(i) ?? [])
     if (kind === 'csv')
-      download('result.csv', stringifyCsv([names, ...rows.map((r) => r.map(cellStr))]), 'text/csv')
+      download(
+        `${basename}.csv`,
+        stringifyCsv([names, ...rows.map((r) => r.map(cellStr))]),
+        'text/csv'
+      )
     else
       download(
-        'result.json',
+        `${basename}.json`,
         JSON.stringify(
           rows.map((r) => Object.fromEntries(names.map((n, i) => [n, r[i]]))),
           null,
@@ -279,10 +283,40 @@ export function QueryWorkbench(): React.JSX.Element {
       )
   }
 
+  // Export the browse grid's current filtered/sorted rows. Draining an entire
+  // unfiltered table pulls every row into memory — warn on that one case.
+  async function exportBrowse(kind: 'csv' | 'json'): Promise<void> {
+    const d = tab!.data
+    if (
+      d &&
+      d.browse.filters.length === 0 &&
+      !window.confirm(`Export the entire "${d.table}" table? This fetches all rows.`)
+    )
+      return
+    await exportData(kind, d?.table ?? 'table')
+  }
+
   if (tab.kind === 'data') {
     return (
       <div className="flex flex-col h-full">
         <QueryTabs />
+        <div className="flex items-center gap-2 border-b border-border px-2 py-1 text-xs">
+          <span className="text-muted-foreground">Export{tab.data && ' ' + tab.data.table}:</span>
+          <button
+            className="rounded border border-border px-2 py-0.5 hover:bg-surface-2"
+            disabled={!tab.source}
+            onClick={() => void exportBrowse('csv')}
+          >
+            CSV
+          </button>
+          <button
+            className="rounded border border-border px-2 py-0.5 hover:bg-surface-2"
+            disabled={!tab.source}
+            onClick={() => void exportBrowse('json')}
+          >
+            JSON
+          </button>
+        </div>
         <div className="min-h-0 flex-1">
           <TableDataGrid key={tab.id} tab={tab} />
         </div>
