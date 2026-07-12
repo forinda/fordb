@@ -5,6 +5,8 @@ import { gzipSync, gunzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
 import { QueryLibraryStore } from './query-library-store'
+import { ConversationStore } from './conversation-store'
+import type { Conversation } from '@shared/ai/conversation-types'
 import { SettingsStore } from './settings-store'
 import { McpService } from './mcp/service'
 import type { McpConnectionInfo } from './mcp/server'
@@ -24,6 +26,7 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     safeStorage as unknown as SafeStorageLike
   )
   const queryLibrary = new QueryLibraryStore(join(dir, 'query-library.json'))
+  const conversations = new ConversationStore(join(dir, 'conversations.json'))
   const settingsStore = new SettingsStore(join(dir, 'settings.json'))
 
   // connectionId -> profileId for currently-open connections. The MCP allowlist
@@ -113,6 +116,17 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
   )
   ipcMain.handle('queries:saved-delete', (_e, profileId: string, id: string) =>
     queryLibrary.deleteSaved(profileId, id)
+  )
+
+  ipcMain.handle('conversations:list', (_e, profileId: string) => conversations.list(profileId))
+  ipcMain.handle('conversations:get', (_e, profileId: string, id: string) =>
+    conversations.get(profileId, id)
+  )
+  ipcMain.handle('conversations:save', (_e, profileId: string, c: Conversation) =>
+    conversations.save(profileId, c)
+  )
+  ipcMain.handle('conversations:delete', (_e, profileId: string, id: string) =>
+    conversations.delete(profileId, id)
   )
 
   ipcMain.handle('profiles:list', () => profiles.list())
