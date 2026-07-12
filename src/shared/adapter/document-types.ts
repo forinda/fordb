@@ -55,4 +55,19 @@ export interface DocumentMutator {
     patch: Record<string, unknown>
   ): Promise<{ matched: number }>
   deleteById(db: string, coll: string, id: unknown): Promise<{ deleted: number }>
+  /** Count documents matching a filter — the bulk preview uses this. */
+  countMatching(db: string, coll: string, filter: Record<string, unknown>): Promise<number>
+  /** Update every document matching `filter` with a Mongo update (e.g. {$set}). */
+  updateMany(
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>
+  ): Promise<{ matched: number; modified: number }>
+  /** Delete every document matching `filter`. */
+  deleteMany(
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): Promise<{ deleted: number }>
 }

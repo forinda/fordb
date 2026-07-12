@@ -150,6 +150,14 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
           >
             aggregate
           </Button>
+          <Button
+            size="sm"
+            variant={doc.mode === 'bulk' ? 'default' : 'ghost'}
+            className="rounded-none"
+            onClick={() => setDoc(tab.id, { mode: 'bulk', bulkOp: doc.bulkOp ?? 'update' })}
+          >
+            bulk
+          </Button>
         </div>
         {doc.database && (
           <Button
@@ -160,9 +168,11 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
             Indexes
           </Button>
         )}
-        <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
-          Run
-        </Button>
+        {doc.mode !== 'bulk' && (
+          <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
+            Run
+          </Button>
+        )}
         <span className="text-sm text-muted-foreground ml-auto">
           {tab.status === 'running' && 'running…'}
           {tab.status === 'error' && <span className="text-destructive">{tab.message}</span>}
@@ -182,8 +192,10 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
           </ResizablePanel>
           <ResizableHandle withHandle />
           <ResizablePanel minSize={20}>
-            <div className="h-full min-h-0">
-              {tab.docSource ? (
+            <div className="h-full min-h-0 overflow-auto">
+              {doc.mode === 'bulk' ? (
+                <BulkPanel tab={tab} />
+              ) : tab.docSource ? (
                 <>
                   {showIndexes && (
                     <div className="border-b border-border-soft bg-surface-1 px-3 py-2">
@@ -220,6 +232,104 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
             </div>
           </ResizablePanel>
         </ResizablePanelGroup>
+      </div>
+    </div>
+  )
+}
+
+function BulkPanel(props: { tab: QueryTab }): React.JSX.Element {
+  const { tab } = props
+  const doc = tab.doc!
+  const setDoc = useQueryStore((s) => s.setDoc)
+  const bulkCount = useQueryStore((s) => s.bulkCount)
+  const bulkApply = useQueryStore((s) => s.bulkApply)
+  const [msg, setMsg] = useState('')
+  const [busy, setBusy] = useState(false)
+  const op = doc.bulkOp ?? 'update'
+
+  async function preview(): Promise<void> {
+    setBusy(true)
+    setMsg('')
+    try {
+      setMsg(`Matches ${await bulkCount(tab.id)} document(s)`)
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function apply(): Promise<void> {
+    setBusy(true)
+    setMsg('')
+    try {
+      const count = await bulkCount(tab.id)
+      const emptyFilter = doc.text.trim() === '' || doc.text.trim() === '{}'
+      const warn =
+        op === 'delete' && emptyFilter
+          ? '\n\nWARNING: an empty filter deletes EVERY document in the collection.'
+          : ''
+      const verb = op === 'delete' ? 'Delete' : 'Update'
+      if (
+        !window.confirm(`${verb} ${count} document(s) in ${doc.database}.${doc.collection}?${warn}`)
+      )
+        return
+      setMsg(await bulkApply(tab.id))
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 p-3 text-sm">
+      <div className="text-xs text-muted-foreground">
+        The editor above is the <span className="font-mono">filter</span> (which documents to
+        match).
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-muted-foreground">Operation</span>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            checked={op === 'update'}
+            onChange={() => setDoc(tab.id, { bulkOp: 'update' })}
+          />
+          updateMany
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="radio"
+            checked={op === 'delete'}
+            onChange={() => setDoc(tab.id, { bulkOp: 'delete' })}
+          />
+          deleteMany
+        </label>
+      </div>
+      {op === 'update' && (
+        <div>
+          <div className="mb-1 text-xs text-muted-foreground">
+            Update document (e.g. <span className="font-mono">{'{ "$set": { "x": 1 } }'}</span>)
+          </div>
+          <div className="h-32 rounded border border-border">
+            <DocEditor
+              key={`${tab.id}:update`}
+              value={doc.updateText ?? '{ "$set": {} }'}
+              onChange={(v) => setDoc(tab.id, { updateText: v })}
+              onRun={() => void apply()}
+            />
+          </div>
+        </div>
+      )}
+      <div className="flex items-center gap-2">
+        <Button size="sm" variant="ghost" onClick={() => void preview()} disabled={busy}>
+          Preview count
+        </Button>
+        <Button size="sm" onClick={() => void apply()} disabled={busy}>
+          Apply
+        </Button>
+        {msg && <span className="text-muted-foreground">{msg}</span>}
       </div>
     </div>
   )
