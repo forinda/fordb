@@ -256,6 +256,15 @@ export class HostApiImpl implements HostApi {
   closeDocs(id: ConnectionId, queryId: string): Promise<void> {
     return this.docq(id).closeDocs(queryId)
   }
+  explainDoc(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    mode: 'find' | 'aggregate',
+    query: Record<string, unknown> | Record<string, unknown>[]
+  ): Promise<Record<string, unknown>> {
+    return this.docq(id).explain(db, coll, mode, query)
+  }
 
   private docmut(id: ConnectionId): DocumentMutator {
     const m = this.registry.get(id).documentMutator

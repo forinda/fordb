@@ -85,4 +85,20 @@ export class MongoDocumentQuery implements DocumentQuery {
     this.cursors.delete(queryId)
     await open.cursor.close()
   }
+
+  async explain(
+    db: string,
+    coll: string,
+    mode: 'find' | 'aggregate',
+    query: Record<string, unknown> | Record<string, unknown>[]
+  ): Promise<Record<string, unknown>> {
+    const c = this.dbFor(db).collection(coll)
+    const plan =
+      mode === 'aggregate'
+        ? await c
+            .aggregate(reviveEjson(query) as Record<string, unknown>[])
+            .explain('executionStats')
+        : await c.find(reviveEjson(query) as Record<string, unknown>).explain('executionStats')
+    return toJsonSafe(plan) as Record<string, unknown>
+  }
 }

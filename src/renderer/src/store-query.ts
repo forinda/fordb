@@ -120,6 +120,8 @@ interface QueryState {
   applyDdl: (statements: string[]) => Promise<void>
   formatActive: (sqlLang: 'postgresql' | 'sqlite') => void
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
+  /** Explains a document-mode tab's find filter / aggregate pipeline. */
+  explainDoc: (tabId: string) => Promise<void>
   exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<void>
   importSqlFile: () => Promise<void>
   /** Last export/import failure, shown in a global banner. */
@@ -383,6 +385,40 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     }
     set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
     await get().run(id)
+  },
+  explainDoc: async (srcId) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const src = get().tabs.find((t) => t.id === srcId)
+    if (!connId || !src?.doc || src.doc.mode === 'bulk') return
+    const { database, collection, mode, text } = src.doc
+    try {
+      const parsed = parseRelaxed(text)
+      const plan = await (
+        await hostApi()
+      ).explainDoc(
+        connId,
+        database,
+        collection,
+        mode === 'aggregate' ? 'aggregate' : 'find',
+        parsed as Record<string, unknown> | Record<string, unknown>[]
+      )
+      const id = tabId()
+      const tab: QueryTab = {
+        id,
+        sql: `explain ${database}.${collection}`,
+        status: 'done',
+        kind: 'explain',
+        explainRows: JSON.stringify(plan, null, 2).split('\n')
+      }
+      set((s) => ({ tabs: [...s.tabs, tab], activeTabId: id }))
+    } catch (err) {
+      set((s) => ({
+        tabs: patch(s.tabs, srcId, {
+          status: 'error',
+          message: err instanceof Error ? err.message : String(err)
+        })
+      }))
+    }
   },
   exportSql: async (scope, gzip, dialect) => {
     const connId = useConnStore.getState().activeConnectionId
