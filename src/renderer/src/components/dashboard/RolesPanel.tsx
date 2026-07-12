@@ -99,10 +99,10 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
           {roles.length === 0 && <div className="p-3 text-muted-foreground">No roles.</div>}
         </div>
         <div className="min-w-0 flex-1 overflow-auto">
-          {!selected && (
+          {!selectedRole && (
             <div className="p-4 text-muted-foreground">Select a role to see grants.</div>
           )}
-          {selected && (
+          {selectedRole && (
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-background text-muted-foreground">
                 <tr>
@@ -124,8 +124,10 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
               </tbody>
             </table>
           )}
-          {selected && grantsQ.data?.length === 0 && (
-            <div className="p-4 text-muted-foreground">No table grants for {selected}.</div>
+          {selectedRole && grantsQ.data?.length === 0 && (
+            <div className="p-4 text-muted-foreground">
+              No table grants for {selectedRole.name}.
+            </div>
           )}
         </div>
       </div>

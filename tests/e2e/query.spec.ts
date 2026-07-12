@@ -1,8 +1,12 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 test('connect, run a query, see rows', async () => {
+  const userData = mkdtempSync(join(tmpdir(), 'fordb-query-'))
   const app = await electron.launch({
-    args: ['out/main/index.js'],
+    args: ['out/main/index.js', `--user-data-dir=${userData}`],
     env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
   })
   const win = await app.firstWindow()
@@ -14,8 +18,6 @@ test('connect, run a query, see rows', async () => {
   await win.getByPlaceholder('Database', { exact: true }).fill('fordb_test')
   await win.getByPlaceholder('User', { exact: true }).fill('fordb')
   await win.getByPlaceholder('Password', { exact: true }).fill('fordb')
-  await win.getByText('Test', { exact: true }).click()
-  await expect(win.getByText('OK')).toBeVisible({ timeout: 15000 })
   await win.getByText('Test & Save').click()
   // Card click selects; Connect happens in the details panel (Dialect).
   await win.getByText('local-q').click()

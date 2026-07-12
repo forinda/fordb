@@ -18,12 +18,24 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HostApi } from '@shared/host/host-api'
 import type { AiEvent } from '@shared/ai/types'
 
+// Headless CI/e2e has no OS keyring, so safeStorage.isEncryptionAvailable() is
+// false and secret-bearing profiles can't be saved. This stand-in lets e2e
+// exercise those flows. DOUBLE-GATED — it only ever activates in an UNPACKAGED
+// build (never a real release) AND when FORDB_E2E_INSECURE_KEYCHAIN=1. The
+// "encryption" is plaintext base64; never enable it outside tests.
+const e2eKeychain: SafeStorageLike = {
+  isEncryptionAvailable: () => true,
+  encryptString: (s) => Buffer.from(s, 'utf8'),
+  decryptString: (b) => Buffer.from(b).toString('utf8')
+}
+
 export function registerIpc(getHostControl: () => HostApi | null): void {
   const dir = app.getPath('userData')
   const profiles = new ProfileStore(join(dir, 'profiles.json'))
+  const useTestKeychain = !app.isPackaged && process.env.FORDB_E2E_INSECURE_KEYCHAIN === '1'
   const secrets = new SecretStore(
     join(dir, 'secrets.json'),
-    safeStorage as unknown as SafeStorageLike
+    useTestKeychain ? e2eKeychain : (safeStorage as unknown as SafeStorageLike)
   )
   const queryLibrary = new QueryLibraryStore(join(dir, 'query-library.json'))
   const conversations = new ConversationStore(join(dir, 'conversations.json'))

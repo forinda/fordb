@@ -1,8 +1,12 @@
 import { test, expect, _electron as electron } from '@playwright/test'
+import { mkdtempSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 
 test('create profile, test, connect, see schema tree', async () => {
+  const userData = mkdtempSync(join(tmpdir(), 'fordb-connect-'))
   const app = await electron.launch({
-    args: ['out/main/index.js'],
+    args: ['out/main/index.js', `--user-data-dir=${userData}`],
     env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
   })
   const win = await app.firstWindow()
