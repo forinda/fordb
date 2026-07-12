@@ -4,6 +4,7 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
 import type { McpStatus } from '@shared/mcp/types'
+import type { Conversation, ConversationSummary } from '@shared/ai/conversation-types'
 import type { AiConfigPublic, AiEvent } from '@shared/ai/types'
 
 // contextBridge clones plain values across the isolated-world/main-world
@@ -67,6 +68,16 @@ contextBridge.exposeInMainWorld('fordb', {
       ipcRenderer.invoke('queries:save', profileId, name, sql),
     deleteSaved: (profileId: string, id: string): Promise<void> =>
       ipcRenderer.invoke('queries:saved-delete', profileId, id)
+  },
+  conversations: {
+    list: (profileId: string): Promise<ConversationSummary[]> =>
+      ipcRenderer.invoke('conversations:list', profileId),
+    get: (profileId: string, id: string): Promise<Conversation | null> =>
+      ipcRenderer.invoke('conversations:get', profileId, id),
+    save: (profileId: string, c: Conversation): Promise<void> =>
+      ipcRenderer.invoke('conversations:save', profileId, c),
+    delete: (profileId: string, id: string): Promise<void> =>
+      ipcRenderer.invoke('conversations:delete', profileId, id)
   },
   connection: {
     test: (profileId: string): Promise<{ ok: boolean; error?: string }> =>

@@ -4,6 +4,7 @@ import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
 import type { McpStatus } from '@shared/mcp/types'
 import type { AiConfigPublic, AiEvent } from '@shared/ai/types'
+import type { Conversation, ConversationSummary } from '@shared/ai/conversation-types'
 
 declare global {
   interface Window {
@@ -29,6 +30,12 @@ declare global {
         savedList: (profileId: string) => Promise<SavedQuery[]>
         save: (profileId: string, name: string, sql: string) => Promise<SavedQuery>
         deleteSaved: (profileId: string, id: string) => Promise<void>
+      }
+      conversations: {
+        list: (profileId: string) => Promise<ConversationSummary[]>
+        get: (profileId: string, id: string) => Promise<Conversation | null>
+        save: (profileId: string, c: Conversation) => Promise<void>
+        delete: (profileId: string, id: string) => Promise<void>
       }
       connection: {
         test: (profileId: string) => Promise<{ ok: boolean; error?: string }>
