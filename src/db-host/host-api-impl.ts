@@ -353,6 +353,21 @@ export class HostApiImpl implements HostApi {
   renameCollection(id: ConnectionId, db: string, from: string, to: string): Promise<void> {
     return this.docadmin(id).renameCollection(db, from, to)
   }
+  getValidator(
+    id: ConnectionId,
+    db: string,
+    coll: string
+  ): Promise<Record<string, unknown> | null> {
+    return this.docadmin(id).getValidator(db, coll)
+  }
+  setValidator(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    validator: Record<string, unknown> | null
+  ): Promise<void> {
+    return this.docadmin(id).setValidator(db, coll, validator)
+  }
 
   private mstats(id: ConnectionId): MongoStats {
     const s = this.registry.get(id).mongoStats

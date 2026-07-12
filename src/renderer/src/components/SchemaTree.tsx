@@ -31,6 +31,7 @@ import { CreateTableDialog } from './CreateTableDialog'
 import { CreateDatabaseDialog } from './CreateDatabaseDialog'
 import { ObjectEditorDialog } from './ObjectEditorDialog'
 import { CollectionIndexes } from './CollectionIndexes'
+import { CollectionValidation } from './CollectionValidation'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
 import { useDocumentQuerySupported } from '../query/documents'
@@ -100,6 +101,9 @@ export function SchemaTree(): React.JSX.Element {
   const [newView, setNewView] = useState<{ schema: string } | null>(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
   const [indexColl, setIndexColl] = useState<{ schema: string; table: string } | null>(null)
+  const [validationColl, setValidationColl] = useState<{ schema: string; table: string } | null>(
+    null
+  )
   const [ddlError, setDdlError] = useState<string | null>(null)
   // Electron has no window.prompt, so name-entry (new table/schema/database) uses
   // an inline input rendered above the tree.
@@ -300,6 +304,10 @@ export function SchemaTree(): React.JSX.Element {
               {
                 label: 'Indexes…',
                 run: () => setIndexColl({ schema: m.schema, table: m.table })
+              },
+              {
+                label: 'Validation…',
+                run: () => setValidationColl({ schema: m.schema, table: m.table })
               },
               {
                 label: 'Rename collection…',
@@ -733,6 +741,15 @@ export function SchemaTree(): React.JSX.Element {
           db={indexColl.schema}
           coll={indexColl.table}
           onClose={() => setIndexColl(null)}
+        />
+      )}
+
+      {validationColl && connId && (
+        <CollectionValidation
+          connId={connId}
+          db={validationColl.schema}
+          coll={validationColl.table}
+          onClose={() => setValidationColl(null)}
         />
       )}
     </div>
