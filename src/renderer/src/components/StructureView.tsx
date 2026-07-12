@@ -414,12 +414,13 @@ function AlterColumnForm(props: {
 }
 
 function ColumnForm(props: {
-  onSubmit: (column: { name: string; type: string; notNull?: boolean }) => void
+  onSubmit: (column: { name: string; type: string; notNull?: boolean; generated?: string }) => void
   onCancel: () => void
 }): React.JSX.Element {
   const [name, setName] = useState('')
   const [type, setType] = useState('')
   const [notNull, setNotNull] = useState(false)
+  const [generated, setGenerated] = useState('')
   return (
     <Row>
       <input
@@ -440,10 +441,20 @@ function ColumnForm(props: {
         <input type="checkbox" checked={notNull} onChange={(e) => setNotNull(e.target.checked)} />
         not null
       </label>
+      <input
+        aria-label="ddl-column-generated"
+        className={input}
+        placeholder="generated as… (optional)"
+        title="Generated-column expression (STORED), e.g. w * h"
+        value={generated}
+        onChange={(e) => setGenerated(e.target.value)}
+      />
       <button
         className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
         disabled={!name || !type}
-        onClick={() => props.onSubmit({ name, type, notNull })}
+        onClick={() =>
+          props.onSubmit({ name, type, notNull, generated: generated.trim() || undefined })
+        }
       >
         Add
       </button>

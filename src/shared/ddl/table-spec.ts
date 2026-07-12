@@ -9,6 +9,7 @@ export interface ColRow {
   pk: boolean
   unique: boolean
   default: string
+  generated?: string
 }
 export interface FkRow {
   name: string
@@ -28,7 +29,8 @@ export const emptyCol = (): ColRow => ({
   nullable: true,
   pk: false,
   unique: false,
-  default: ''
+  default: '',
+  generated: ''
 })
 
 /** Column names (trimmed, non-empty) that appear more than once. */
@@ -59,7 +61,8 @@ export function buildTableSpec(
       type: c.type.trim(),
       notNull: !c.nullable,
       default: c.default.trim() ? c.default.trim() : undefined,
-      unique: c.unique || undefined
+      unique: c.unique || undefined,
+      generated: c.generated?.trim() ? c.generated.trim() : undefined
     }))
   const primaryKey = cols.filter((c) => c.pk && c.name.trim()).map((c) => c.name.trim())
   const foreignKeys: InlineForeignKey[] = fks

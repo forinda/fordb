@@ -23,8 +23,11 @@ function columnClause(c: ColumnSpec): string {
   // type and DEFAULT are raw SQL text by design (a type/default IS a SQL
   // fragment); this path is preview+confirm gated, never a bound-value path.
   let s = `${qi(c.name)} ${c.type}`
+  // Generated column: computed, so it takes the place of DEFAULT (mutually
+  // exclusive). STORED works on both Postgres and SQLite.
+  if (c.generated) s += ` GENERATED ALWAYS AS (${c.generated}) STORED`
   if (c.notNull) s += ' NOT NULL'
-  if (c.default != null) s += ` DEFAULT ${c.default}`
+  if (!c.generated && c.default != null) s += ` DEFAULT ${c.default}`
   if (c.unique) s += ' UNIQUE'
   return s
 }

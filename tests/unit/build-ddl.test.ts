@@ -31,6 +31,34 @@ describe('buildDdl', () => {
       `ALTER TABLE "app"."t" ADD COLUMN "age" integer NOT NULL`
     ])
   })
+  it('addColumn: generated column emits GENERATED ALWAYS AS (...) STORED', () => {
+    const change: DdlChange = {
+      kind: 'addColumn',
+      schema: 'app',
+      table: 't',
+      column: { name: 'full', type: 'text', generated: `first || ' ' || last` }
+    }
+    expect(buildDdl(change, 'pg')).toEqual([
+      `ALTER TABLE "app"."t" ADD COLUMN "full" text GENERATED ALWAYS AS (first || ' ' || last) STORED`
+    ])
+  })
+  it('createTable: generated column ignores default, keeps NOT NULL', () => {
+    const change: DdlChange = {
+      kind: 'createTable',
+      spec: {
+        schema: 'app',
+        table: 't',
+        columns: [
+          { name: 'w', type: 'numeric' },
+          { name: 'h', type: 'numeric' },
+          { name: 'area', type: 'numeric', generated: 'w * h', default: '0', notNull: true }
+        ]
+      }
+    }
+    expect(buildDdl(change, 'pg')).toEqual([
+      `CREATE TABLE "app"."t" (\n  "w" numeric,\n  "h" numeric,\n  "area" numeric GENERATED ALWAYS AS (w * h) STORED NOT NULL\n)`
+    ])
+  })
   it('createIndex (unique) and dropIndex', () => {
     expect(
       buildDdl(
