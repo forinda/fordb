@@ -1,6 +1,11 @@
 import { MongoClient, type Db } from 'mongodb'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
-import type { DocumentAdmin, DocumentMutator, DocumentQuery } from '@shared/adapter/document-types'
+import type {
+  DocumentAdmin,
+  DocumentMutator,
+  DocumentQuery,
+  DocumentUserAdmin
+} from '@shared/adapter/document-types'
 import type {
   ColumnInfo,
   ConnectionProfile,
@@ -16,6 +21,7 @@ import { buildMongoUri } from './mongo-config'
 import { MongoDocumentQuery } from './mongo-query'
 import { MongoDocumentMutator } from './mongo-mutator'
 import { MongoDocumentAdmin } from './mongo-admin'
+import { MongoUserAdmin } from './mongo-users'
 import { MongoServerStats } from './mongo-stats'
 
 const SAMPLE = 100
@@ -27,6 +33,7 @@ export class MongoAdapter implements DbAdapter {
   readonly documentQuery: DocumentQuery = new MongoDocumentQuery((name) => this.dbFor(name))
   readonly documentMutator: DocumentMutator = new MongoDocumentMutator((name) => this.dbFor(name))
   readonly documentAdmin: DocumentAdmin = new MongoDocumentAdmin((name) => this.dbFor(name))
+  readonly documentUserAdmin: DocumentUserAdmin = new MongoUserAdmin((name) => this.dbFor(name))
   readonly mongoStats: MongoStats = new MongoServerStats(() => this.database())
 
   constructor(

@@ -26,8 +26,10 @@ import type {
   DocumentIndexSpec,
   DocumentMutator,
   DocumentQuery,
+  DocumentUserAdmin,
   DocsPage,
   FindOptions,
+  MongoUserInfo,
   OpenDocsResult
 } from '@shared/adapter/document-types'
 import type { MongoSnapshot, MongoStats } from '@shared/adapter/mongo-stats-types'
@@ -367,6 +369,30 @@ export class HostApiImpl implements HostApi {
     validator: Record<string, unknown> | null
   ): Promise<void> {
     return this.docadmin(id).setValidator(db, coll, validator)
+  }
+
+  private docuseradmin(id: ConnectionId): DocumentUserAdmin {
+    const a = this.registry.get(id).documentUserAdmin
+    if (!a) throw new Error('User administration is not supported by this engine')
+    return a
+  }
+  async documentUserAdminSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).documentUserAdmin != null
+  }
+  listMongoUsers(id: ConnectionId, db: string): Promise<MongoUserInfo[]> {
+    return this.docuseradmin(id).listUsers(db)
+  }
+  createMongoUser(
+    id: ConnectionId,
+    db: string,
+    user: string,
+    password: string,
+    roles: string[]
+  ): Promise<void> {
+    return this.docuseradmin(id).createUser(db, user, password, roles)
+  }
+  dropMongoUser(id: ConnectionId, db: string, user: string): Promise<void> {
+    return this.docuseradmin(id).dropUser(db, user)
   }
 
   private mstats(id: ConnectionId): MongoStats {

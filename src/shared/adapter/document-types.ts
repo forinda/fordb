@@ -56,6 +56,19 @@ export interface DocumentAdmin {
   setValidator(db: string, coll: string, validator: Record<string, unknown> | null): Promise<void>
 }
 
+export interface MongoUserInfo {
+  user: string
+  roles: { role: string; db: string }[]
+}
+
+/** Optional MongoDB user administration (db-level createUser/dropUser). The
+ *  password is transient — passed at call time, never persisted or logged. */
+export interface DocumentUserAdmin {
+  listUsers(db: string): Promise<MongoUserInfo[]>
+  createUser(db: string, user: string, password: string, roles: string[]): Promise<void>
+  dropUser(db: string, user: string): Promise<void>
+}
+
 export interface DocumentMutator {
   insertOne(
     db: string,

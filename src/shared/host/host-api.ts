@@ -20,6 +20,7 @@ import type {
   DocumentIndexSpec,
   DocumentMutator,
   FindOptions,
+  MongoUserInfo,
   OpenDocsResult
 } from '../adapter/document-types'
 import type { MongoSnapshot } from '../adapter/mongo-stats-types'
@@ -171,6 +172,17 @@ export interface HostApi {
     coll: string,
     validator: Record<string, unknown> | null
   ): Promise<void>
+
+  documentUserAdminSupported(id: ConnectionId): Promise<boolean>
+  listMongoUsers(id: ConnectionId, db: string): Promise<MongoUserInfo[]>
+  createMongoUser(
+    id: ConnectionId,
+    db: string,
+    user: string,
+    password: string,
+    roles: string[]
+  ): Promise<void>
+  dropMongoUser(id: ConnectionId, db: string, user: string): Promise<void>
 
   mongoStatsSupported(id: ConnectionId): Promise<boolean>
   mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot>

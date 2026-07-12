@@ -81,6 +81,9 @@ export interface DbAdapter {
   /** Optional collection/index administration (MongoDB). */
   readonly documentAdmin?: import('./document-types').DocumentAdmin
 
+  /** Optional MongoDB user administration (db-level users). */
+  readonly documentUserAdmin?: import('./document-types').DocumentUserAdmin
+
   /** Optional server-monitoring capability (MongoDB). Separate from
    *  `serverStats` — the Postgres `ServerSnapshot` shape doesn't fit Mongo. */
   readonly mongoStats?: import('./mongo-stats-types').MongoStats
