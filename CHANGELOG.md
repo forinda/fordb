@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.0](https://github.com/forinda/fordb/compare/v0.6.0...v0.7.0) (2026-07-12)
+
+
+### Features
+
+* in-app AI agent panel — NL→SQL, tool-using, read-only (MA8-B) ([#249](https://github.com/forinda/fordb/issues/249)) ([fc1af69](https://github.com/forinda/fordb/commit/fc1af69c4e3d2f2d7dbd68818259eb95a03acf17))
+
 ## [0.6.0](https://github.com/forinda/fordb/compare/v0.5.0...v0.6.0) (2026-07-12)
 
 
