@@ -9,8 +9,12 @@ import { SettingsStore } from './settings-store'
 import { McpService } from './mcp/service'
 import type { McpConnectionInfo } from './mcp/server'
 import { checkForUpdates, quitAndInstall } from './updater'
+import { getAiConfig, getAiConfigPublic, AI_KEY_ID } from './ai/config'
+import { runAgent, type AgentRun } from './ai/agent'
+import { streamChat } from './ai/openai-stream'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HostApi } from '@shared/host/host-api'
+import type { AiEvent } from '@shared/ai/types'
 
 export function registerIpc(getHostControl: () => HostApi | null): void {
   const dir = app.getPath('userData')
@@ -40,6 +44,56 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
   ipcMain.handle('mcp:set-enabled', (_e, enabled: boolean) => mcp.setEnabled(enabled))
   ipcMain.handle('mcp:set-port', (_e, port: number) => mcp.setPort(port))
   ipcMain.handle('mcp:regenerate-token', () => mcp.regenerateToken())
+
+  let currentRun: AgentRun | null = null
+  ipcMain.handle('ai:get-config', () => getAiConfigPublic(settingsStore, secrets))
+  ipcMain.handle('ai:set-config', (_e, baseUrl: string, model: string) =>
+    settingsStore.setAi({ baseUrl, model })
+  )
+  ipcMain.handle('ai:set-key', async (_e, key: string) => {
+    if (key) await secrets.set(AI_KEY_ID, { authToken: key })
+    else await secrets.delete(AI_KEY_ID)
+  })
+  ipcMain.handle('ai:test', async () => {
+    const c = await getAiConfig(settingsStore, secrets)
+    if (!c.baseUrl || !c.model) return { ok: false, message: 'set base URL and model first' }
+    try {
+      const ac = new AbortController()
+      const it = streamChat({
+        baseUrl: c.baseUrl,
+        apiKey: c.apiKey,
+        model: c.model,
+        messages: [{ role: 'user', content: 'ping' }],
+        tools: [],
+        signal: ac.signal
+      })
+      await it.next() // one round-trip is enough to validate auth + endpoint
+      ac.abort()
+      return { ok: true }
+    } catch (e) {
+      return { ok: false, message: (e as Error).message }
+    }
+  })
+  ipcMain.handle('ai:ask', async (e, prompt: string, connectionId: string) => {
+    const host = getHostControl()
+    if (!host) throw new Error('db-host unavailable')
+    const c = await getAiConfig(settingsStore, secrets)
+    const emit = (ev: AiEvent): void => e.sender.send('ai:event', ev)
+    if (!c.baseUrl || !c.model) return emit({ kind: 'error', message: 'AI is not configured' })
+    currentRun?.cancel()
+    currentRun = runAgent(prompt, {
+      host,
+      connectionId,
+      baseUrl: c.baseUrl,
+      apiKey: c.apiKey,
+      model: c.model,
+      emit
+    })
+  })
+  ipcMain.handle('ai:approve', (_e, toolId: string, approved: boolean) =>
+    currentRun?.approve(toolId, approved)
+  )
+  ipcMain.handle('ai:cancel', () => currentRun?.cancel())
 
   ipcMain.handle('updater:check', () => checkForUpdates())
   ipcMain.handle('updater:install', () => quitAndInstall())

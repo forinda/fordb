@@ -3,6 +3,7 @@ import type { HostApi } from '@shared/host/host-api'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
 import type { McpStatus } from '@shared/mcp/types'
+import type { AiConfigPublic, AiEvent } from '@shared/ai/types'
 
 declare global {
   interface Window {
@@ -61,6 +62,16 @@ declare global {
         setEnabled: (enabled: boolean) => Promise<McpStatus>
         setPort: (port: number) => Promise<McpStatus>
         regenerateToken: () => Promise<McpStatus>
+      }
+      ai: {
+        getConfig: () => Promise<AiConfigPublic>
+        setConfig: (baseUrl: string, model: string) => Promise<void>
+        setKey: (key: string) => Promise<void>
+        test: () => Promise<{ ok: boolean; message?: string }>
+        ask: (prompt: string, connectionId: string) => Promise<void>
+        approve: (toolId: string, approved: boolean) => Promise<void>
+        cancel: () => Promise<void>
+        onEvent: (cb: (e: AiEvent) => void) => () => void
       }
       appVersion: () => Promise<string>
       updater: {
