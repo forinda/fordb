@@ -1,4 +1,4 @@
-export type ObjectKind = 'view' | 'function' | 'trigger'
+export type ObjectKind = 'view' | 'function' | 'trigger' | 'sequence' | 'materializedView'
 export interface ObjectSummary {
   name: string
 }

@@ -15,6 +15,8 @@ export function buildDropObject(
 ): string {
   if (kind === 'view') return `DROP VIEW ${qi(schema)}.${qi(name)}`
   if (kind === 'function') return `DROP FUNCTION ${qi(schema)}.${qi(name)}`
+  if (kind === 'sequence') return `DROP SEQUENCE ${qi(schema)}.${qi(name)}`
+  if (kind === 'materializedView') return `DROP MATERIALIZED VIEW ${qi(schema)}.${qi(name)}`
   // trigger — `... ON <table> ...`; the table may be schema-qualified and/or quoted.
   const m = definition?.match(/\bON\s+((?:"[^"]+"|[^\s".]+)(?:\.(?:"[^"]+"|[^\s".]+))?)/i)
   const table = m ? m[1] : `${qi(schema)}.<table>`
@@ -35,4 +37,21 @@ export function triggerTemplate(schema: string): string {
 BEFORE INSERT ON ${qi(schema)}.some_table
 FOR EACH ROW
 EXECUTE FUNCTION ${qi(schema)}.some_function()`
+}
+
+export function sequenceTemplate(schema: string): string {
+  return `CREATE SEQUENCE ${qi(schema)}.new_sequence
+INCREMENT BY 1
+START 1`
+}
+
+export function matviewTemplate(schema: string): string {
+  return `CREATE MATERIALIZED VIEW ${qi(schema)}.new_matview AS
+SELECT 1 AS x
+WITH DATA`
+}
+
+/** REFRESH MATERIALIZED VIEW — recompute a matview's stored rows. */
+export function refreshMatview(schema: string, name: string): string {
+  return `REFRESH MATERIALIZED VIEW ${qi(schema)}.${qi(name)}`
 }

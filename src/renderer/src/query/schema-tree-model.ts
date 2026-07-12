@@ -10,7 +10,16 @@
 import type { ObjectKind } from '@shared/adapter/object-types'
 
 export type CategoryKind = 'table' | ObjectKind
-export type NodeKind = 'schema' | 'category' | 'table' | 'view' | 'function' | 'trigger' | 'column'
+export type NodeKind =
+  | 'schema'
+  | 'category'
+  | 'table'
+  | 'view'
+  | 'function'
+  | 'trigger'
+  | 'sequence'
+  | 'materializedView'
+  | 'column'
 
 export interface TreeNode {
   id: string
@@ -25,7 +34,12 @@ export interface TreeNode {
 }
 
 const isLeaf = (kind: NodeKind): boolean =>
-  kind === 'column' || kind === 'view' || kind === 'function' || kind === 'trigger'
+  kind === 'column' ||
+  kind === 'view' ||
+  kind === 'function' ||
+  kind === 'trigger' ||
+  kind === 'sequence' ||
+  kind === 'materializedView'
 
 /**
  * Resolve the full tree from `schemas` (root) and `childrenById` (each expanded
