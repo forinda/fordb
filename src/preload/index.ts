@@ -4,6 +4,7 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
 import type { McpStatus } from '@shared/mcp/types'
+import type { AiConfigPublic, AiEvent } from '@shared/ai/types'
 
 // contextBridge clones plain values across the isolated-world/main-world
 // boundary but does not preserve MessagePort identity/methods (Electron
@@ -116,6 +117,23 @@ contextBridge.exposeInMainWorld('fordb', {
       ipcRenderer.invoke('mcp:set-enabled', enabled),
     setPort: (port: number): Promise<McpStatus> => ipcRenderer.invoke('mcp:set-port', port),
     regenerateToken: (): Promise<McpStatus> => ipcRenderer.invoke('mcp:regenerate-token')
+  },
+  ai: {
+    getConfig: (): Promise<AiConfigPublic> => ipcRenderer.invoke('ai:get-config'),
+    setConfig: (baseUrl: string, model: string): Promise<void> =>
+      ipcRenderer.invoke('ai:set-config', baseUrl, model),
+    setKey: (key: string): Promise<void> => ipcRenderer.invoke('ai:set-key', key),
+    test: (): Promise<{ ok: boolean; message?: string }> => ipcRenderer.invoke('ai:test'),
+    ask: (prompt: string, connectionId: string): Promise<void> =>
+      ipcRenderer.invoke('ai:ask', prompt, connectionId),
+    approve: (toolId: string, approved: boolean): Promise<void> =>
+      ipcRenderer.invoke('ai:approve', toolId, approved),
+    cancel: (): Promise<void> => ipcRenderer.invoke('ai:cancel'),
+    onEvent: (cb: (e: AiEvent) => void): (() => void) => {
+      const listener = (_e: Electron.IpcRendererEvent, ev: AiEvent): void => cb(ev)
+      ipcRenderer.on('ai:event', listener)
+      return () => ipcRenderer.removeListener('ai:event', listener)
+    }
   },
   appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   updater: {
