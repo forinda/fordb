@@ -16,6 +16,7 @@ import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
 import { buildDdl } from '@shared/ddl/build-ddl'
 import { buildDropObject, functionTemplate, triggerTemplate } from '@shared/ddl/object-ddl'
+import { buildMaintenance, MAINTENANCE_LABELS, type MaintenanceOp } from '@shared/ddl/maintenance'
 import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
@@ -132,6 +133,19 @@ export function SchemaTree(): React.JSX.Element {
     setDdlError(null)
     try {
       await useQueryStore.getState().applyDdl([sql])
+    } catch (err) {
+      setDdlError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  // Table maintenance (VACUUM/ANALYZE/REINDEX) — VACUUM can't run in a
+  // transaction, so it goes through executeQuery (autocommit), not applyDdl.
+  async function runMaintenance(op: MaintenanceOp, schema: string, table: string): Promise<void> {
+    const sql = buildMaintenance(op, schema, table)
+    if (!window.confirm(`Run maintenance?\n\n${sql}`)) return
+    setDdlError(null)
+    try {
+      await (await hostApi()).executeQuery(connId!, sql)
     } catch (err) {
       setDdlError(err instanceof Error ? err.message : String(err))
     }
@@ -254,7 +268,14 @@ export function SchemaTree(): React.JSX.Element {
         {
           label: 'Copy name',
           run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
-        }
+        },
+        // Maintenance is Postgres-only and meaningless for a view.
+        ...(dialect === 'pg' && !m.isView && !docSupported
+          ? MAINTENANCE_LABELS.map(({ op, label }) => ({
+              label,
+              run: () => void runMaintenance(op, m.schema, m.table)
+            }))
+          : [])
       ]
     }
     // Schema node — DDL entries gated on the engine's advertised ops.
