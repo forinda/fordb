@@ -10,6 +10,7 @@ import {
 } from '@glideapps/glide-data-grid'
 import '@glideapps/glide-data-grid/dist/index.css'
 import { buildEdits, previewEdits, type PendingEdits } from '@shared/mutation/build-edits'
+import { fanoutEdit, cloneRows } from '@shared/mutation/bulk-edits'
 import type { Cell } from '@shared/adapter/mutation-types'
 import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
 import { buildBrowseSql } from '@shared/browse/build-browse'
@@ -56,6 +57,14 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   })
   const [error, setError] = useState<string | null>(null)
   const [reviewStmts, setReviewStmts] = useState<string[] | null>(null) // non-null = modal open
+  // "Edit selected" bulk-edit form; non-null = open. Rows snapshotted on open so
+  // the grid selection can't change out from under it.
+  const [editSel, setEditSel] = useState<{
+    rows: number[]
+    col: string
+    val: string
+    isNull: boolean
+  } | null>(null)
   // Track the loaded row count in state so background paging triggers a
   // re-render (the source's row array grows mutably otherwise). Re-sync on
   // tab.status too: run() sets the source BEFORE awaiting the first page, so the
@@ -88,6 +97,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     inserts.filter((r) => Object.keys(r).length > 0).length +
     deletes.size
 
+  const selectedCount = selection.rows.toArray().filter((r) => r < baseRows).length
   const fkColumns = data?.fkColumns ?? {}
   const sortFor = (name: string): Sort | undefined =>
     data?.browse.sort.find((s) => s.column === name)
@@ -228,6 +238,39 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     })
   }
 
+  // Duplicate the selected rows as new insert rows (pk columns dropped so
+  // auto-increment/assigned keys work; editable before apply).
+  function cloneSelected(): void {
+    if (!data) return
+    const sel = selection.rows.toArray().filter((r) => r < baseRows)
+    if (sel.length === 0) return
+    const rows = sel.map((r) => {
+      const obj: Record<string, Val> = {}
+      fields.forEach((f, idx) => {
+        const raw = source?.getRow(r)?.[idx]
+        obj[f.name] = raw === null || raw === undefined ? null : String(raw)
+      })
+      return obj
+    })
+    setInserts((ins) => [...ins, ...cloneRows(rows, data.pkColumns)])
+  }
+
+  // Bulk edit: open a form to set one column across all selected rows. (Inline
+  // cell editing can't do this — activating a cell clears the row selection.)
+  function openEditSelected(): void {
+    const rows = selection.rows.toArray().filter((r) => r < baseRows)
+    if (rows.length === 0) return
+    const pk = new Set(data?.pkColumns ?? [])
+    const firstEditable = fields.find((f) => !pk.has(f.name)) ?? fields[0]
+    setEditSel({ rows, col: firstEditable?.name ?? '', val: '', isNull: false })
+  }
+
+  function applyEditSelected(): void {
+    if (!editSel) return
+    setEdits((e) => fanoutEdit(e, editSel.rows, editSel.col, editSel.isNull ? null : editSel.val))
+    setEditSel(null)
+  }
+
   function toPending(): PendingEdits {
     if (!data) return { schema: '', table: '', updates: [], inserts: [], deletes: [] }
     const pkCells = (row: number): Cell[] =>
@@ -333,6 +376,16 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
             </button>
             <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={toggleDeleteSelected}>
               Delete row
+            </button>
+            <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={cloneSelected}>
+              Clone
+            </button>
+            <button
+              className="rounded px-2 py-0.5 hover:bg-muted disabled:opacity-40"
+              disabled={selectedCount === 0}
+              onClick={openEditSelected}
+            >
+              Edit selected
             </button>
             <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={setNull}>
               Set NULL
@@ -508,6 +561,68 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
         <pre className="max-h-[50vh] overflow-auto rounded border border-border bg-surface-2 p-3 font-mono text-xs">
           {(reviewStmts ?? []).map((s) => `${s};`).join('\n')}
         </pre>
+      </Modal>
+      <Modal
+        open={editSel !== null}
+        onClose={() => setEditSel(null)}
+        title={`Edit ${editSel?.rows.length ?? 0} selected row${editSel?.rows.length === 1 ? '' : 's'}`}
+        footer={
+          <>
+            <button
+              className="rounded border border-border px-3 py-1 text-sm hover:bg-muted"
+              onClick={() => setEditSel(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-40"
+              disabled={!editSel?.col}
+              onClick={applyEditSelected}
+            >
+              Set value
+            </button>
+          </>
+        }
+      >
+        {editSel && (
+          <div className="flex flex-col gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <span className="w-16">Column</span>
+              <select
+                className="flex-1 rounded border border-border bg-background px-2 py-1"
+                value={editSel.col}
+                onChange={(e) => setEditSel({ ...editSel, col: e.target.value })}
+              >
+                {fields.map((f) => (
+                  <option key={f.name} value={f.name}>
+                    {f.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex items-center gap-2">
+              <span className="w-16">Value</span>
+              <input
+                className="flex-1 rounded border border-border bg-background px-2 py-1 disabled:opacity-40"
+                value={editSel.val}
+                disabled={editSel.isNull}
+                onChange={(e) => setEditSel({ ...editSel, val: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && applyEditSelected()}
+              />
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={editSel.isNull}
+                onChange={(e) => setEditSel({ ...editSel, isNull: e.target.checked })}
+              />
+              Set NULL
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Applies to every selected row; review the generated UPDATEs before applying.
+            </p>
+          </div>
+        )}
       </Modal>
     </div>
   )
