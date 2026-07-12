@@ -17,6 +17,7 @@ import type { ObjectKind, ObjectSummary } from '../adapter/object-types'
 import type { RoleInfo, GrantInfo, SettingRow } from '../adapter/admin-types'
 import type {
   DocsPage,
+  DocumentIndexSpec,
   DocumentMutator,
   FindOptions,
   OpenDocsResult
@@ -130,6 +131,10 @@ export interface HostApi {
     coll: string,
     docId: unknown
   ): ReturnType<DocumentMutator['deleteById']>
+
+  documentAdminSupported(id: ConnectionId): Promise<boolean>
+  createDocIndex(id: ConnectionId, db: string, coll: string, spec: DocumentIndexSpec): Promise<void>
+  dropDocIndex(id: ConnectionId, db: string, coll: string, name: string): Promise<void>
 
   mongoStatsSupported(id: ConnectionId): Promise<boolean>
   mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot>

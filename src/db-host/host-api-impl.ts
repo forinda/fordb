@@ -22,6 +22,8 @@ import type { SchemaEditor, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectBrowser, ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import type { ServerAdmin, RoleInfo, GrantInfo, SettingRow } from '@shared/adapter/admin-types'
 import type {
+  DocumentAdmin,
+  DocumentIndexSpec,
   DocumentMutator,
   DocumentQuery,
   DocsPage,
@@ -287,6 +289,26 @@ export class HostApiImpl implements HostApi {
     docId: unknown
   ): Promise<{ deleted: number }> {
     return this.docmut(id).deleteById(db, coll, docId)
+  }
+
+  private docadmin(id: ConnectionId): DocumentAdmin {
+    const a = this.registry.get(id).documentAdmin
+    if (!a) throw new Error('Collection administration is not supported by this engine')
+    return a
+  }
+  async documentAdminSupported(id: ConnectionId): Promise<boolean> {
+    return this.registry.get(id).documentAdmin != null
+  }
+  createDocIndex(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    spec: DocumentIndexSpec
+  ): Promise<void> {
+    return this.docadmin(id).createIndex(db, coll, spec)
+  }
+  dropDocIndex(id: ConnectionId, db: string, coll: string, name: string): Promise<void> {
+    return this.docadmin(id).dropIndex(db, coll, name)
   }
 
   private mstats(id: ConnectionId): MongoStats {
