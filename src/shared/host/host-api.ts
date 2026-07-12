@@ -157,6 +157,13 @@ export interface HostApi {
   createCollection(id: ConnectionId, db: string, coll: string): Promise<void>
   dropCollection(id: ConnectionId, db: string, coll: string): Promise<void>
   renameCollection(id: ConnectionId, db: string, from: string, to: string): Promise<void>
+  getValidator(id: ConnectionId, db: string, coll: string): Promise<Record<string, unknown> | null>
+  setValidator(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    validator: Record<string, unknown> | null
+  ): Promise<void>
 
   mongoStatsSupported(id: ConnectionId): Promise<boolean>
   mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot>

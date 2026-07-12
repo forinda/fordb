@@ -43,6 +43,10 @@ export interface DocumentAdmin {
   createCollection(db: string, coll: string): Promise<void>
   dropCollection(db: string, coll: string): Promise<void>
   renameCollection(db: string, from: string, to: string): Promise<void>
+  /** The collection's schema-validation rule (e.g. {$jsonSchema}), or null. */
+  getValidator(db: string, coll: string): Promise<Record<string, unknown> | null>
+  /** Set (non-null) or clear (null) the collection's validator via collMod. */
+  setValidator(db: string, coll: string, validator: Record<string, unknown> | null): Promise<void>
 }
 
 export interface DocumentMutator {
