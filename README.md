@@ -1,6 +1,6 @@
 # fordb
 
-**A lean, keyboard-first, open-source desktop database client.** Postgres and SQLite today, MongoDB planned — every engine free in core. Electron + TypeScript.
+**A lean, keyboard-first, open-source desktop database client.** PostgreSQL, SQLite, and MongoDB — every engine free in core. Electron + TypeScript.
 
 Lighter than DataGrip/DBeaver, but multi-engine unlike the single-database clients. Fast to open, driven from the keyboard, and honest about your data — every destructive change is previewed as SQL and confirmed before it runs.
 

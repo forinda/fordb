@@ -12,7 +12,7 @@ This file orients Claude Code (and other AI agents) in the fordb repo. It is a p
 
 ## Quick facts
 
-- fordb: lean, keyboard-first, MIT desktop DB client. Electron + TypeScript. Postgres now; SQLite + MongoDB planned. All engines free.
+- fordb: lean, keyboard-first, MIT desktop DB client. Electron + TypeScript. PostgreSQL, SQLite, and MongoDB — all shipped, all free.
 - Three processes: renderer (React 19 + Tailwind + Zustand), main (windows, keychain, stores, supervision), db-host (utilityProcess, all DB drivers).
 - **Secrets never reach the renderer.** Connections are addressed by opaque `connectionId`. The `DbAdapter` interface is the core contract; a shared contract suite enforces it.
 
