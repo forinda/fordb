@@ -69,8 +69,8 @@ export function buildTree(schemas: string[], childrenById: Record<string, TreeNo
  *   ['conn', id, 'columns', schema, table]   → the table node
  */
 export function invalidatedNodeId(key: readonly unknown[]): string | null {
-  // Tables live directly under the schema node; object kinds under a category.
-  if (key[2] === 'tables' && typeof key[3] === 'string') return `s:${key[3]}`
+  // Tables live under the schema's Tables category; object kinds under theirs.
+  if (key[2] === 'tables' && typeof key[3] === 'string') return `cat:${key[3]}.table`
   if (key[2] === 'objects' && typeof key[3] === 'string' && typeof key[4] === 'string')
     return `cat:${key[3]}.${key[4]}`
   if (key[2] === 'columns' && typeof key[3] === 'string' && typeof key[4] === 'string')

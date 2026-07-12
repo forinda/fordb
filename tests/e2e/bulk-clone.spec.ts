@@ -29,6 +29,7 @@ test('clone selected rows persists duplicates', async () => {
   await win.getByText('clone-sqlite').click()
   await win.getByText('Connect', { exact: true }).click()
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await win.getByText('widgets').dblclick()
   await expect(win.getByText('+ Row')).toBeVisible({ timeout: 15000 })
 

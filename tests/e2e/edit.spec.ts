@@ -36,6 +36,7 @@ test('open a table data tab with the editable toolbar', async () => {
   await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await win.getByText('widgets').dblclick() // open the data tab
 
   // Editable toolbar renders (widgets has a PK + SQLite supports mutation).

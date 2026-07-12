@@ -49,6 +49,7 @@ test('export a table to SQL and import a CSV', async () => {
   await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
 
   // Export the table to SQL → assert the captured dump has structure + data.
   // Export / Import live under the "Data" submenu (hover to open the flyout).

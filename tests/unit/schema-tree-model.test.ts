@@ -36,7 +36,7 @@ describe('buildTree', () => {
 
 describe('invalidatedNodeId', () => {
   it('maps tables/objects/columns keys to the right node ids', () => {
-    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('s:app')
+    expect(invalidatedNodeId(['conn', 'c1', 'tables', 'app'])).toBe('cat:app.table')
     expect(invalidatedNodeId(['conn', 'c1', 'objects', 'app', 'view'])).toBe('cat:app.view')
     expect(invalidatedNodeId(['conn', 'c1', 'columns', 'app', 'users'])).toBe('t:app.users')
   })
