@@ -14,6 +14,7 @@ import { fanoutEdit, cloneRows } from '@shared/mutation/bulk-edits'
 import type { Cell } from '@shared/adapter/mutation-types'
 import type { Filter, FilterOp, Sort } from '@shared/adapter/browse-types'
 import { buildBrowseSql } from '@shared/browse/build-browse'
+import { fkForColumn, fkFilters } from '@shared/browse/fk-nav'
 import { useDialect } from '../query/use-dialect'
 import { dialectGlideTheme, liveStyleGetter } from '../query/glide-theme'
 import { useThemeStore } from '../store-theme'
@@ -22,7 +23,8 @@ import { Modal } from './ui/modal'
 
 type Val = string | null
 
-const OPS: { v: FilterOp; label: string }[] = [
+type OpDef = { v: FilterOp; label: string }
+const CORE_OPS: OpDef[] = [
   { v: 'eq', label: '=' },
   { v: 'ne', label: '≠' },
   { v: 'lt', label: '<' },
@@ -30,8 +32,25 @@ const OPS: { v: FilterOp; label: string }[] = [
   { v: 'le', label: '≤' },
   { v: 'ge', label: '≥' },
   { v: 'contains', label: 'contains' },
+  { v: 'notContains', label: 'not contains' },
+  { v: 'startsWith', label: 'starts with' },
+  { v: 'endsWith', label: 'ends with' },
+  { v: 'like', label: 'LIKE' },
+  { v: 'in', label: 'in (a,b,c)' }
+]
+const PG_ONLY_OPS: OpDef[] = [
+  { v: 'ilike', label: 'ILIKE' },
+  { v: 'regex', label: '~ (regex)' },
+  { v: 'notRegex', label: '!~ (not regex)' }
+]
+const NULL_OPS: OpDef[] = [
   { v: 'isNull', label: 'is null' },
   { v: 'isNotNull', label: 'is not null' }
+]
+const opsFor = (dialect: 'pg' | 'sqlite'): OpDef[] => [
+  ...CORE_OPS,
+  ...(dialect === 'pg' ? PG_ONLY_OPS : []),
+  ...NULL_OPS
 ]
 const isNullOp = (op: FilterOp): boolean => op === 'isNull' || op === 'isNotNull'
 
@@ -98,7 +117,12 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     deletes.size
 
   const selectedCount = selection.rows.toArray().filter((r) => r < baseRows).length
-  const fkColumns = data?.fkColumns ?? {}
+  const foreignKeys = data?.foreignKeys ?? []
+  const fkColSet = useMemo(
+    () => new Set(foreignKeys.flatMap((fk) => fk.columns)),
+    // foreignKeys is stable per tab; JSON key keeps the memo honest if it changes.
+    [JSON.stringify(foreignKeys)]
+  )
   const sortFor = (name: string): Sort | undefined =>
     data?.browse.sort.find((s) => s.column === name)
   const columns = fields.map((f) => {
@@ -131,7 +155,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
         touched = true
       }
       const text = value === null ? '∅' : value
-      const isFk = name in fkColumns && value !== null
+      const isFk = fkColSet.has(name) && value !== null
       const theme = {
         ...(touched ? { bgCell: '#3b3b1f' } : {}),
         ...(isFk ? { textDark: '#6ea8fe', textLight: '#0a58ca' } : {})
@@ -144,7 +168,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
         ...(Object.keys(theme).length ? { themeOverride: theme } : {})
       }
     },
-    [source, baseRows, edits, inserts, deletes, editable, fkColumns]
+    [source, baseRows, edits, inserts, deletes, editable, fkColSet]
   )
 
   const onCellEdited = useCallback(
@@ -210,11 +234,16 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
   function onCellClicked(cell: Item): void {
     const [col, row] = cell
     if (!data || row >= baseRows) return
-    const refTable = data.fkColumns[colName(col)]
-    if (!refTable) return
-    const raw = source?.getRow(row)?.[col]
-    if (raw === null || raw === undefined) return
-    void openFkTarget(data.schema, refTable, raw)
+    const fk = fkForColumn(data.foreignKeys, colName(col))
+    if (!fk) return
+    // Composite FK: gather this row's values for every local FK column, then
+    // navigate to the referenced table filtered on all referenced columns.
+    const values = fk.columns.map((c) => {
+      const idx = fields.findIndex((f) => f.name === c)
+      return source?.getRow(row)?.[idx]
+    })
+    if (values.some((v) => v === null || v === undefined)) return
+    void openFkTarget(data.schema, fk.refTable, fkFilters(fk, values))
   }
 
   function setNull(): void {
@@ -425,7 +454,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
                 )
               }
             >
-              {OPS.map((o) => (
+              {opsFor(dialect).map((o) => (
                 <option key={o.v} value={o.v}>
                   {o.label}
                 </option>

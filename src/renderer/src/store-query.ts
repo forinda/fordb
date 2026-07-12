@@ -16,6 +16,7 @@ import { parseRelaxed } from '@shared/mongo/relaxed-json'
 import { noMatchWarning } from '@shared/mongo/mutation-warnings'
 import type { RowEdit } from '@shared/adapter/mutation-types'
 import type { Filter, Sort } from '@shared/adapter/browse-types'
+import type { FkNav } from '@shared/browse/fk-nav'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { buildDdl } from '@shared/ddl/build-ddl'
 import { DocumentResultSource } from './query/documents'
@@ -39,14 +40,14 @@ export interface QueryTab {
   /** Present on data tabs — the table being browsed/edited. `editable` is true
    *  only when the engine supports mutation AND the table has a pk/unique key.
    *  `browse` holds the current filter/sort (run() sends it to openBrowse);
-   *  `fkColumns` maps a single-column FK's local column → its referenced table. */
+   *  `foreignKeys` carries every FK (single or composite) for click-through. */
   data?: {
     schema: string
     table: string
     pkColumns: string[]
     editable: boolean
     browse: { filters: Filter[]; sort: Sort[] }
-    fkColumns: Record<string, string>
+    foreignKeys: FkNav[]
   }
   /** Present on structure tabs — the table whose DDL structure is shown/edited. */
   structure?: { schema: string; table: string }
@@ -98,7 +99,7 @@ interface QueryState {
   updateDoc: (tabId: string, docId: unknown, patch: Record<string, unknown>) => Promise<void>
   /** Deletes a document by `_id`, then refetches the tab. */
   deleteDoc: (tabId: string, docId: unknown) => Promise<void>
-  openFkTarget: (schema: string, refTable: string, value: unknown) => Promise<void>
+  openFkTarget: (schema: string, refTable: string, filters: Filter[]) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
   openObjectDefinition: (schema: string, kind: ObjectKind, name: string) => void
@@ -202,11 +203,14 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     ])
     const pk = keys.find((k) => k.kind === 'primary') ?? keys.find((k) => k.kind === 'unique')
     const pkColumns = pk?.columns ?? []
-    // Single-column FKs → clickable navigation to the referenced table.
-    const fkColumns: Record<string, string> = {}
-    for (const k of keys)
-      if (k.kind === 'foreign' && k.columns.length === 1 && k.referencedTable)
-        fkColumns[k.columns[0]!] = k.referencedTable
+    // Every FK (single or composite) → clickable navigation to the referenced table.
+    const foreignKeys: FkNav[] = keys
+      .filter((k) => k.kind === 'foreign' && k.referencedTable && k.referencedColumns)
+      .map((k) => ({
+        columns: k.columns,
+        refTable: k.referencedTable!,
+        refColumns: k.referencedColumns!
+      }))
     const id = tabId()
     const tab: QueryTab = {
       id,
@@ -218,7 +222,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         table,
         pkColumns,
         editable: mutable && pkColumns.length > 0,
-        fkColumns,
+        foreignKeys,
         // Default sort = pk (stable row index within a page); empty → no ORDER BY.
         browse: {
           filters: initialFilters ?? [],
@@ -292,13 +296,7 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       }))
     }
   },
-  openFkTarget: async (schema, refTable, value) => {
-    const connId = useConnStore.getState().activeConnectionId
-    if (!connId) return
-    const keys = await (await hostApi()).getKeys(connId, schema, refTable)
-    const pk = keys.find((k) => k.kind === 'primary')
-    const filters: Filter[] =
-      pk && pk.columns.length === 1 ? [{ column: pk.columns[0]!, op: 'eq', value }] : []
+  openFkTarget: async (schema, refTable, filters) => {
     await get().openTable(schema, refTable, filters)
   },
   applyEdits: async (tabId, edits) => {
