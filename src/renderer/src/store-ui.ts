@@ -11,6 +11,11 @@ interface UiState {
   toast: { id: number; kind: 'ok' | 'error'; message: string } | null
   showToast: (kind: 'ok' | 'error', message: string) => void
   clearToast: () => void
+
+  /** A one-shot request to open the server dashboard on a specific sub-tab
+   *  (e.g. the server header's "Roles…"). ServerDashboard consumes and clears it. */
+  dashboardTab: 'sessions' | 'roles' | 'settings' | null
+  requestDashboardTab: (tab: 'sessions' | 'roles' | 'settings' | null) => void
 }
 
 let toastSeq = 1
@@ -20,5 +25,7 @@ export const useUiStore = create<UiState>((set) => ({
   setConnecting: (connecting) => set({ connecting }),
   toast: null,
   showToast: (kind, message) => set({ toast: { id: toastSeq++, kind, message } }),
-  clearToast: () => set({ toast: null })
+  clearToast: () => set({ toast: null }),
+  dashboardTab: null,
+  requestDashboardTab: (dashboardTab) => set({ dashboardTab })
 }))

@@ -26,8 +26,10 @@ test('create then drop a role through the dashboard', async () => {
   await win.getByText('roles-pg').click()
   await win.getByText('Connect', { exact: true }).click()
 
-  await win.getByText('Dashboard', { exact: true }).click()
-  await win.getByRole('button', { name: 'roles' }).click()
+  // Reach roles via the server-header "⋯" menu (deep-links to the dashboard's
+  // roles tab) — roles are cluster/server level.
+  await win.getByLabel('server-actions').click()
+  await win.getByText('Roles & privileges…', { exact: true }).click()
 
   // Create.
   await win.getByText('+ New role').click()
