@@ -51,7 +51,9 @@ test('export a table to SQL and import a CSV', async () => {
   await win.getByText('main', { exact: true }).click()
 
   // Export the table to SQL → assert the captured dump has structure + data.
+  // Export / Import live under the "Data" submenu (hover to open the flyout).
   await win.getByText('t', { exact: true }).click({ button: 'right' })
+  await win.getByText('Data', { exact: true }).hover()
   await win.getByText('Export (SQL)', { exact: true }).click()
   await expect
     .poll(async () =>
@@ -66,6 +68,7 @@ test('export a table to SQL and import a CSV', async () => {
 
   // Import the fixture CSV (id,label auto-map) into the same table.
   await win.getByText('t', { exact: true }).click({ button: 'right' })
+  await win.getByText('Data', { exact: true }).hover()
   await win.getByText('Import CSV…', { exact: true }).click()
   await win.getByText('Import', { exact: true }).click()
 

@@ -61,6 +61,12 @@ const KIND_NOUN: Record<ObjectKind, string> = {
   materializedView: 'materialized view'
 }
 
+// A context-menu is a list of these: a clickable action (danger = destructive,
+// rendered in red), a visual separator, or a submenu that flies out on hover.
+type MenuAction = { label: string; run: () => void; danger?: boolean }
+type MenuEntry = MenuAction | { sep: true } | { label: string; sub: MenuAction[] }
+const SEP: MenuEntry = { sep: true }
+
 // Lazy tree: schemas come from React Query; a schema's tables load on first
 // expand, a table's columns on first expand. Fetches go through the shared
 // query cache (fetchTables/fetchColumns), so expanding here warms the SQL
@@ -228,85 +234,66 @@ export function SchemaTree(): React.JSX.Element {
     await applyRawDdl(sql)
   }
 
-  function menuItems(m: NonNullable<typeof menu>): { label: string; run: () => void }[] {
+  // Menus are grouped by concern: navigation/info first, then a submenu for
+  // data movement and one for maintenance, then destructive actions (danger,
+  // red) last — separated so a Drop is never adjacent to a benign item.
+  function menuItems(m: NonNullable<typeof menu>): MenuEntry[] {
+    const qs = useQueryStore.getState
+
     if (m.kind === 'object') {
-      const items: { label: string; run: () => void }[] = [
+      const items: MenuEntry[] = [
         {
           label: 'Definition',
-          run: () => useQueryStore.getState().openObjectDefinition(m.schema, m.objectKind, m.name)
+          run: () => qs().openObjectDefinition(m.schema, m.objectKind, m.name)
         }
       ]
-      if (m.objectKind === 'view')
-        items.push({
-          label: 'Drop view',
-          // Preview the generated DROP VIEW (runDdl confirms the SQL), like every
-          // other DDL action.
-          run: () => void runDdl({ kind: 'dropView', schema: m.schema, name: m.name })
-        })
-      if (m.objectKind === 'function' || m.objectKind === 'trigger') {
+      if (m.objectKind === 'function' || m.objectKind === 'trigger')
         items.push({
           label: 'Edit definition…',
           run: () => void openEditObject(m.schema, m.objectKind, m.name)
         })
-      }
       if (m.objectKind === 'materializedView')
+        items.push({ label: 'Refresh', run: () => void refreshMatviewObject(m.schema, m.name) })
+      items.push(SEP)
+      if (m.objectKind === 'view')
+        // Preview the generated DROP VIEW (runDdl confirms), like every DDL action.
         items.push({
-          label: 'Refresh',
-          run: () => void refreshMatviewObject(m.schema, m.name)
+          label: 'Drop view…',
+          danger: true,
+          run: () => void runDdl({ kind: 'dropView', schema: m.schema, name: m.name })
         })
-      if (m.objectKind !== 'view') {
-        // View has its own preview-gated Drop above; every other kind drops here.
+      else
         items.push({
-          label: `Drop ${KIND_NOUN[m.objectKind]}`,
+          label: `Drop ${KIND_NOUN[m.objectKind]}…`,
+          danger: true,
           run: () => void dropObject(m.schema, m.objectKind, m.name)
         })
-      }
       return items
     }
-    if (m.kind === 'newobject') {
-      return [
-        {
-          label: `New ${m.objectKind}…`,
-          run: () => openNewObject(m.schema, m.objectKind)
-        }
-      ]
-    }
-    if (m.kind === 'newview') {
+
+    if (m.kind === 'newobject')
+      return [{ label: `New ${m.objectKind}…`, run: () => openNewObject(m.schema, m.objectKind) }]
+
+    if (m.kind === 'newview')
       return [{ label: 'New view…', run: () => setNewView({ schema: m.schema }) }]
-    }
+
     if (m.kind === 'table') {
-      return [
-        // Document-mode connections (Mongo) open collections via the primary
-        // click into a document-query tab; the relational "Open data" path
-        // dead-ends there (openBrowse isn't supported), so hide it.
-        ...(docSupported
-          ? []
-          : [
-              {
-                label: 'Open data',
-                run: () => void useQueryStore.getState().openTable(m.schema, m.table)
-              }
-            ]),
-        // Structure reconstructs a CREATE TABLE, which is nonsensical for a
-        // document-mode (Mongo) collection — relational-only, gate on docSupported.
-        ...(docSupported
-          ? []
-          : [
-              {
-                label: 'Structure',
-                run: () => useQueryStore.getState().openStructure(m.schema, m.table)
-              }
-            ]),
-        { label: 'Show columns', run: () => m.toggle() },
-        { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
-        // Mongo collections: manage indexes (relational engines use Structure)
-        // and administer the collection itself.
-        ...(docSupported
-          ? [
-              {
-                label: 'Indexes…',
-                run: () => setIndexColl({ schema: m.schema, table: m.table })
-              },
+      const copy: MenuAction = {
+        label: 'Copy name',
+        run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
+      }
+      // Mongo collection: navigation via left-click; the menu is info + an Admin
+      // submenu + a destructive drop.
+      if (docSupported) {
+        return [
+          { label: 'Show fields', run: () => m.toggle() },
+          { label: 'Collection info', run: () => setInfo({ schema: m.schema, table: m.table }) },
+          copy,
+          SEP,
+          {
+            label: 'Admin',
+            sub: [
+              { label: 'Indexes…', run: () => setIndexColl({ schema: m.schema, table: m.table }) },
               {
                 label: 'Validation…',
                 run: () => setValidationColl({ schema: m.schema, table: m.table })
@@ -321,63 +308,78 @@ export function SchemaTree(): React.JSX.Element {
                         (await hostApi()).renameCollection(connId!, m.schema, m.table, to)
                       )
                   })
-              },
-              {
-                label: 'Drop collection',
-                run: () => {
-                  if (!window.confirm(`Drop collection ${m.schema}.${m.table}?`)) return
-                  void collectionOp(async () =>
-                    (await hostApi()).dropCollection(connId!, m.schema, m.table)
-                  )
-                }
               }
             ]
-          : []),
-        // Export/CSV-import reconstruct a CREATE TABLE + rows — only meaningful for
-        // real (relational) tables, not views, and not Mongo collections.
-        ...(m.isView || docSupported
-          ? []
-          : [
-              {
-                label: 'Export (SQL)',
-                run: () =>
-                  void useQueryStore
-                    .getState()
-                    .exportSql({ kind: 'table', schema: m.schema, table: m.table }, false, dialect)
-              },
-              {
-                label: 'Export (SQL, gzip)',
-                run: () =>
-                  void useQueryStore
-                    .getState()
-                    .exportSql({ kind: 'table', schema: m.schema, table: m.table }, true, dialect)
-              },
-              {
-                label: 'Import CSV…',
-                run: () => void useQueryStore.getState().beginCsvImport(m.schema, m.table)
-              }
-            ]),
+          },
+          SEP,
+          {
+            label: 'Drop collection…',
+            danger: true,
+            run: () => {
+              if (!window.confirm(`Drop collection ${m.schema}.${m.table}?`)) return
+              void collectionOp(async () =>
+                (await hostApi()).dropCollection(connId!, m.schema, m.table)
+              )
+            }
+          }
+        ]
+      }
+      // Relational table.
+      const items: MenuEntry[] = [
+        { label: 'Open data', run: () => void qs().openTable(m.schema, m.table) },
+        { label: 'Structure', run: () => qs().openStructure(m.schema, m.table) },
+        { label: 'Show columns', run: () => m.toggle() },
+        { label: 'Table info', run: () => setInfo({ schema: m.schema, table: m.table }) },
+        copy,
+        SEP,
         {
-          label: 'Copy name',
-          run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
-        },
-        // Maintenance is Postgres-only and meaningless for a view.
-        ...(dialect === 'pg' && !m.isView && !docSupported
-          ? MAINTENANCE_LABELS.map(({ op, label }) => ({
-              label,
-              run: () => void runMaintenance(op, m.schema, m.table)
-            }))
-          : [])
+          label: 'Data',
+          sub: [
+            {
+              label: 'Export (SQL)',
+              run: () =>
+                void qs().exportSql(
+                  { kind: 'table', schema: m.schema, table: m.table },
+                  false,
+                  dialect
+                )
+            },
+            {
+              label: 'Export (SQL, gzip)',
+              run: () =>
+                void qs().exportSql(
+                  { kind: 'table', schema: m.schema, table: m.table },
+                  true,
+                  dialect
+                )
+            },
+            { label: 'Import CSV…', run: () => void qs().beginCsvImport(m.schema, m.table) }
+          ]
+        }
       ]
+      if (dialect === 'pg')
+        items.push({
+          label: 'Maintenance',
+          sub: MAINTENANCE_LABELS.map(({ op, label }) => ({
+            label,
+            run: () => void runMaintenance(op, m.schema, m.table)
+          }))
+        })
+      if (ops?.dropTable) {
+        items.push(SEP)
+        items.push({
+          label: 'Drop table…',
+          danger: true,
+          run: () => void runDdl({ kind: 'dropTable', schema: m.schema, table: m.table })
+        })
+      }
+      return items
     }
-    // Schema node — DDL entries gated on the engine's advertised ops.
-    const items: { label: string; run: () => void }[] = []
+
+    // Schema / database node — create actions, then admin, then destructive.
+    const items: MenuEntry[] = []
     if (ops?.createTable)
-      items.push({
-        label: 'New table…',
-        run: () => setCreateTable({ schema: m.schema })
-      })
-    // Mongo database node: create a collection (no relational createTable op).
+      items.push({ label: 'New table…', run: () => setCreateTable({ schema: m.schema }) })
     if (docSupported)
       items.push({
         label: 'New collection…',
@@ -390,7 +392,6 @@ export function SchemaTree(): React.JSX.Element {
               )
           })
       })
-    if (docSupported) items.push({ label: 'Users…', run: () => setUsersDb(m.schema) })
     if (ops?.createSchema)
       items.push({
         label: 'New schema…',
@@ -400,34 +401,33 @@ export function SchemaTree(): React.JSX.Element {
             onSubmit: (name) => void runDdl({ kind: 'createSchema', name })
           })
       })
+    if (ops?.createDatabase)
+      items.push({ label: 'New database…', run: () => setCreateDatabase(true) })
+
+    if (items.length) items.push(SEP)
+    if (docSupported) items.push({ label: 'Users…', run: () => setUsersDb(m.schema) })
+    if (!docSupported)
+      items.push({
+        label: 'Export database (SQL)',
+        run: () => void qs().exportSql({ kind: 'database', schema: m.schema }, false, dialect)
+      })
+
+    if (ops?.dropSchema || ops?.dropDatabase) items.push(SEP)
     if (ops?.dropSchema)
       items.push({
-        label: 'Drop schema',
+        label: 'Drop schema…',
+        danger: true,
         run: () => void runDdl({ kind: 'dropSchema', name: m.schema })
-      })
-    if (ops?.createDatabase)
-      items.push({
-        label: 'New database…',
-        run: () => setCreateDatabase(true)
       })
     if (ops?.dropDatabase)
       items.push({
         label: 'Drop database…',
+        danger: true,
         run: () =>
           setNamePrompt({
             title: 'Database to drop',
             onSubmit: (name) => void runDdl({ kind: 'dropDatabase', name })
           })
-      })
-    // Relational-only (reconstructs a SQL dump) — hide on a Mongo (document-mode)
-    // connection.
-    if (!docSupported)
-      items.push({
-        label: 'Export database (SQL)',
-        run: () =>
-          void useQueryStore
-            .getState()
-            .exportSql({ kind: 'database', schema: m.schema }, false, dialect)
       })
     return items
   }
@@ -715,21 +715,50 @@ export function SchemaTree(): React.JSX.Element {
           {/* Click-away backdrop. */}
           <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
           <div
-            className="fixed z-50 min-w-40 rounded border border-border bg-background py-1 text-sm shadow-md"
+            className="fixed z-50 min-w-44 rounded border border-border bg-background py-1 text-sm shadow-md"
             style={{ left: menu.x, top: menu.y }}
           >
-            {menuItems(menu).map((item) => (
-              <button
-                key={item.label}
-                className="block w-full px-3 py-1 text-left text-foreground hover:bg-muted"
-                onClick={() => {
-                  item.run()
-                  setMenu(null)
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
+            {menuItems(menu).map((entry, i) => {
+              if ('sep' in entry)
+                return <div key={`sep${i}`} className="my-1 border-t border-border" />
+              if ('sub' in entry)
+                return (
+                  <div key={entry.label} className="group relative">
+                    <button className="flex w-full items-center justify-between px-3 py-1 text-left text-foreground hover:bg-muted">
+                      <span>{entry.label}</span>
+                      <span className="text-muted-foreground">›</span>
+                    </button>
+                    <div className="absolute left-full top-0 z-50 hidden min-w-40 rounded border border-border bg-background py-1 shadow-md group-hover:block">
+                      {entry.sub.map((a) => (
+                        <button
+                          key={a.label}
+                          className="block w-full px-3 py-1 text-left text-foreground hover:bg-muted"
+                          onClick={() => {
+                            a.run()
+                            setMenu(null)
+                          }}
+                        >
+                          {a.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )
+              return (
+                <button
+                  key={entry.label}
+                  className={`block w-full px-3 py-1 text-left hover:bg-muted ${
+                    entry.danger ? 'text-destructive' : 'text-foreground'
+                  }`}
+                  onClick={() => {
+                    entry.run()
+                    setMenu(null)
+                  }}
+                >
+                  {entry.label}
+                </button>
+              )
+            })}
           </div>
         </>
       )}
