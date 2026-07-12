@@ -396,15 +396,8 @@ export function SchemaTree(): React.JSX.Element {
               )
           })
       })
-    if (ops?.createSchema)
-      items.push({
-        label: 'New schema…',
-        run: () =>
-          setNamePrompt({
-            title: 'New schema name',
-            onSubmit: (name) => void runDdl({ kind: 'createSchema', name })
-          })
-      })
+    // New schema is a database-level action → it lives on the DatabaseHeader,
+    // not here on a specific schema node.
     if (ops?.createDatabase)
       items.push({ label: 'New database…', run: () => setCreateDatabase(true) })
 
