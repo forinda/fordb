@@ -42,6 +42,8 @@ function createTable(spec: TableSpec): string {
         `REFERENCES ${ref} (${fk.refColumns.map(qi).join(', ')})`
     )
   }
+  for (const chk of spec.checks ?? [])
+    lines.push(`CONSTRAINT ${qi(chk.name)} CHECK (${chk.expression})`)
   return `CREATE TABLE ${qtable(spec.schema, spec.table)} (\n  ${lines.join(',\n  ')}\n)`
 }
 
@@ -213,6 +215,16 @@ export function buildDdl(change: DdlChange, dialect: Dialect, context?: TableStr
     case 'dropIndex':
       // Both engines accept a schema-qualified index name here.
       return [`DROP INDEX ${qtable(change.schema, change.name)}`]
+    case 'addCheck':
+      // ALTER TABLE ADD/DROP CONSTRAINT is Postgres; SQLite can't alter a check
+      // in place, so the UI only offers this on Postgres.
+      return [
+        `ALTER TABLE ${qtable(change.schema, change.table)} ADD CONSTRAINT ${qi(change.name)} CHECK (${change.expression})`
+      ]
+    case 'dropCheck':
+      return [
+        `ALTER TABLE ${qtable(change.schema, change.table)} DROP CONSTRAINT ${qi(change.name)}`
+      ]
     case 'addForeignKey':
       if (dialect === 'pg') return [addForeignKey(change.spec)]
       if (!context) throw new Error('SQLite addForeignKey requires a TableStructure context')

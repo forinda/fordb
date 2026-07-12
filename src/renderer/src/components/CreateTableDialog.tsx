@@ -34,17 +34,23 @@ export function CreateTableDialog({
   onSubmit
 }: Props): ReactNode {
   const [table, setTable] = useState('')
-  const [tab, setTab] = useState<'columns' | 'fks' | 'idx'>('columns')
+  const [tab, setTab] = useState<'columns' | 'fks' | 'idx' | 'checks'>('columns')
   const [cols, setCols] = useState<ColRow[]>([emptyCol()])
   const [fks, setFks] = useState<FkRow[]>([])
   const [idxs, setIdxs] = useState<IdxRow[]>([])
+  const [checks, setChecks] = useState<{ name: string; expression: string }[]>([])
 
   const typeOptions = dialect === 'pg' ? PG_TYPES : SQLITE_TYPES
   const { data: schemas } = useSchemas(connId)
 
   const spec = useMemo(
-    () => buildTableSpec(cols, fks, table, schema, dialect),
-    [cols, fks, table, schema, dialect]
+    () => ({
+      ...buildTableSpec(cols, fks, table, schema, dialect),
+      checks: checks
+        .filter((c) => c.name.trim() && c.expression.trim())
+        .map((c) => ({ name: c.name.trim(), expression: c.expression.trim() }))
+    }),
+    [cols, fks, table, schema, dialect, checks]
   )
 
   const dups = useMemo(() => duplicateColumnNames(cols), [cols])
@@ -126,7 +132,57 @@ export function CreateTableDialog({
         >
           Indexes
         </button>
+        <button
+          className={tab === 'checks' ? 'font-medium underline' : ''}
+          onClick={() => setTab('checks')}
+        >
+          Checks
+        </button>
       </div>
+
+      {tab === 'checks' && (
+        <div className="space-y-1">
+          {checks.map((c, i) => (
+            <div key={i} className="flex items-center gap-1 text-xs">
+              <input
+                aria-label="check-name"
+                placeholder="constraint name"
+                className="w-40 rounded border border-border bg-background px-1"
+                value={c.name}
+                onChange={(e) =>
+                  setChecks((cs) =>
+                    cs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x))
+                  )
+                }
+              />
+              <input
+                aria-label="check-expr"
+                placeholder="expression, e.g. age >= 0"
+                className="flex-1 rounded border border-border bg-background px-1 font-mono"
+                value={c.expression}
+                onChange={(e) =>
+                  setChecks((cs) =>
+                    cs.map((x, j) => (j === i ? { ...x, expression: e.target.value } : x))
+                  )
+                }
+              />
+              <button
+                className="px-1 text-muted-foreground hover:text-foreground"
+                aria-label="remove-check"
+                onClick={() => setChecks((cs) => cs.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            className="rounded px-2 py-0.5 text-xs hover:bg-muted"
+            onClick={() => setChecks((cs) => [...cs, { name: '', expression: '' }])}
+          >
+            + check
+          </button>
+        </div>
+      )}
 
       {tab === 'columns' && (
         <div className="space-y-1">
