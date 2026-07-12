@@ -32,6 +32,7 @@ import { CreateDatabaseDialog } from './CreateDatabaseDialog'
 import { ObjectEditorDialog } from './ObjectEditorDialog'
 import { CollectionIndexes } from './CollectionIndexes'
 import { CollectionValidation } from './CollectionValidation'
+import { MongoUsers } from './MongoUsers'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
 import { useDocumentQuerySupported } from '../query/documents'
@@ -104,6 +105,7 @@ export function SchemaTree(): React.JSX.Element {
   const [validationColl, setValidationColl] = useState<{ schema: string; table: string } | null>(
     null
   )
+  const [usersDb, setUsersDb] = useState<string | null>(null)
   const [ddlError, setDdlError] = useState<string | null>(null)
   // Electron has no window.prompt, so name-entry (new table/schema/database) uses
   // an inline input rendered above the tree.
@@ -388,6 +390,7 @@ export function SchemaTree(): React.JSX.Element {
               )
           })
       })
+    if (docSupported) items.push({ label: 'Users…', run: () => setUsersDb(m.schema) })
     if (ops?.createSchema)
       items.push({
         label: 'New schema…',
@@ -751,6 +754,10 @@ export function SchemaTree(): React.JSX.Element {
           coll={validationColl.table}
           onClose={() => setValidationColl(null)}
         />
+      )}
+
+      {usersDb && connId && (
+        <MongoUsers connId={connId} db={usersDb} onClose={() => setUsersDb(null)} />
       )}
     </div>
   )
