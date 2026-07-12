@@ -395,4 +395,32 @@ describe('reconstructDdl', () => {
     expect(ddl).toContain(`PRIMARY KEY ("id")`)
     expect(ddl).toContain(`CREATE UNIQUE INDEX "users_email_idx" ON "app"."users" ("email")`)
   })
+
+  it('createTable: emits CHECK constraints', () => {
+    const ddl = buildDdl(
+      {
+        kind: 'createTable',
+        spec: {
+          schema: 'app',
+          table: 't',
+          columns: [{ name: 'age', type: 'integer' }],
+          checks: [{ name: 'age_positive', expression: 'age >= 0' }]
+        }
+      },
+      'pg'
+    )[0]
+    expect(ddl).toContain(`CONSTRAINT "age_positive" CHECK (age >= 0)`)
+  })
+
+  it('addCheck / dropCheck build ALTER TABLE constraint statements', () => {
+    expect(
+      buildDdl(
+        { kind: 'addCheck', schema: 'app', table: 't', name: 'c1', expression: 'x > 0' },
+        'pg'
+      )[0]
+    ).toBe(`ALTER TABLE "app"."t" ADD CONSTRAINT "c1" CHECK (x > 0)`)
+    expect(buildDdl({ kind: 'dropCheck', schema: 'app', table: 't', name: 'c1' }, 'pg')[0]).toBe(
+      `ALTER TABLE "app"."t" DROP CONSTRAINT "c1"`
+    )
+  })
 })

@@ -40,12 +40,17 @@ export interface InlineForeignKey {
   refTable: string
   refColumns: string[]
 }
+export interface CheckSpec {
+  name: string
+  expression: string // raw SQL boolean expression, e.g. "age >= 0"
+}
 export interface TableSpec {
   schema: string
   table: string
   columns: ColumnSpec[]
   primaryKey?: string[]
   foreignKeys?: InlineForeignKey[]
+  checks?: CheckSpec[]
 }
 export interface CreateDatabaseOptions {
   owner?: string
@@ -93,6 +98,8 @@ export type DdlChange =
   | { kind: 'dropIndex'; schema: string; name: string }
   | { kind: 'addForeignKey'; spec: ForeignKeySpec }
   | { kind: 'dropForeignKey'; schema: string; table: string; name: string }
+  | { kind: 'addCheck'; schema: string; table: string; name: string; expression: string }
+  | { kind: 'dropCheck'; schema: string; table: string; name: string }
   | { kind: 'dropTable'; schema: string; table: string }
   | { kind: 'createSchema'; name: string }
   | { kind: 'dropSchema'; name: string }

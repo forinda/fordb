@@ -30,7 +30,7 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
   })
 
   const [error, setError] = useState<string | null>(null)
-  const [form, setForm] = useState<null | 'column' | 'index' | 'fk'>(null)
+  const [form, setForm] = useState<null | 'column' | 'index' | 'fk' | 'check'>(null)
   // Which column's inline Alter / Rename form is open (by name). Electron has no
   // window.prompt, so rename uses an inline input too.
   const [editCol, setEditCol] = useState<string | null>(null)
@@ -221,6 +221,24 @@ export function StructureView(props: { tab: QueryTab }): React.JSX.Element {
         )}
       </Section>
 
+      {/* Check constraints — add only (Postgres). Existing checks aren't listed
+          yet (no introspection); drop one with a DROP CONSTRAINT in the editor. */}
+      {dialect === 'pg' && (
+        <Section
+          title="Check constraints"
+          action={{ label: '+ check', onClick: () => setForm('check') }}
+        >
+          {form === 'check' && (
+            <CheckForm
+              onCancel={() => setForm(null)}
+              onSubmit={(name, expression) =>
+                void run({ kind: 'addCheck', schema, table, name, expression })
+              }
+            />
+          )}
+        </Section>
+      )}
+
       <div className="mt-3">
         <div className="mb-1 text-muted-foreground">Reconstructed DDL</div>
         <pre className="overflow-x-auto rounded bg-muted/40 p-2 font-mono text-xs">{ddlText}</pre>
@@ -284,6 +302,46 @@ function RenameColumnForm(props: {
       />
       <button className="rounded bg-primary px-2 py-0.5 text-primary-foreground" onClick={submit}>
         Rename
+      </button>
+      <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
+        Cancel
+      </button>
+    </Row>
+  )
+}
+
+function CheckForm(props: {
+  onSubmit: (name: string, expression: string) => void
+  onCancel: () => void
+}): React.JSX.Element {
+  const [name, setName] = useState('')
+  const [expr, setExpr] = useState('')
+  const submit = (): void => {
+    if (name.trim() && expr.trim()) props.onSubmit(name.trim(), expr.trim())
+  }
+  return (
+    <Row>
+      <input
+        aria-label="check-name"
+        className={input}
+        placeholder="name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        aria-label="check-expr"
+        className={`${input} font-mono`}
+        placeholder="expression, e.g. age >= 0"
+        value={expr}
+        onChange={(e) => setExpr(e.target.value)}
+        onKeyDown={(e) => e.key === 'Enter' && submit()}
+      />
+      <button
+        className="rounded bg-primary px-2 py-0.5 text-primary-foreground disabled:opacity-50"
+        disabled={!name.trim() || !expr.trim()}
+        onClick={submit}
+      >
+        Add
       </button>
       <button className="rounded px-2 py-0.5 hover:bg-muted" onClick={props.onCancel}>
         Cancel
