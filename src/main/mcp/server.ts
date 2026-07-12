@@ -32,9 +32,18 @@ export interface RunningMcp {
   stop(): Promise<void>
 }
 
-const ok = (data: unknown) => ({ content: [{ type: 'text' as const, text: JSON.stringify(data) }] })
-const err = (message: string) => ({
-  content: [{ type: 'text' as const, text: `Error: ${message}` }],
+interface ToolResult {
+  // Index signature matches the SDK's CallToolResult so these satisfy the
+  // registerTool callback return type.
+  [k: string]: unknown
+  content: { type: 'text'; text: string }[]
+  isError?: boolean
+}
+const ok = (data: unknown): ToolResult => ({
+  content: [{ type: 'text', text: JSON.stringify(data) }]
+})
+const err = (message: string): ToolResult => ({
+  content: [{ type: 'text', text: `Error: ${message}` }],
   isError: true
 })
 
@@ -181,7 +190,11 @@ function readJsonBody(req: IncomingMessage): Promise<unknown> {
 
 /** Start the read-only MCP server bound to `host` (always 127.0.0.1 in prod).
  *  Stateless: a fresh MCP server + transport per POST. Bearer-gated. */
-export function startMcpServer(deps: McpServerDeps, host: string, port: number): Promise<RunningMcp> {
+export function startMcpServer(
+  deps: McpServerDeps,
+  host: string,
+  port: number
+): Promise<RunningMcp> {
   const httpServer: Server = createServer((req, res) => {
     void (async () => {
       if (req.method !== 'POST') {
@@ -191,7 +204,11 @@ export function startMcpServer(deps: McpServerDeps, host: string, port: number):
       if (!checkBearer(deps.token, req.headers.authorization)) {
         res.writeHead(401, { 'content-type': 'application/json' })
         res.end(
-          JSON.stringify({ jsonrpc: '2.0', error: { code: -32001, message: 'Unauthorized' }, id: null })
+          JSON.stringify({
+            jsonrpc: '2.0',
+            error: { code: -32001, message: 'Unauthorized' },
+            id: null
+          })
         )
         return
       }
@@ -201,7 +218,11 @@ export function startMcpServer(deps: McpServerDeps, host: string, port: number):
       } catch {
         res.writeHead(400, { 'content-type': 'application/json' })
         res.end(
-          JSON.stringify({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null })
+          JSON.stringify({
+            jsonrpc: '2.0',
+            error: { code: -32700, message: 'Parse error' },
+            id: null
+          })
         )
         return
       }
@@ -223,8 +244,7 @@ export function startMcpServer(deps: McpServerDeps, host: string, port: number):
       const bound = typeof addr === 'object' && addr ? addr.port : port
       resolve({
         port: bound,
-        stop: () =>
-          new Promise<void>((res, rej) => httpServer.close((e) => (e ? rej(e) : res())))
+        stop: () => new Promise<void>((res, rej) => httpServer.close((e) => (e ? rej(e) : res())))
       })
     })
   })

@@ -3,18 +3,10 @@ import { startMcpServer, type McpConnectionInfo, type RunningMcp } from './serve
 import type { HostApi } from '@shared/host/host-api'
 import type { SettingsStore } from '../settings-store'
 import type { SecretStore } from '../secret-store'
+import type { McpStatus } from '@shared/mcp/types'
 
 /** Reserved SecretStore id under which the MCP bearer token lives (keychain). */
 const TOKEN_ID = '__mcp__'
-
-export interface McpStatus {
-  enabled: boolean
-  port: number
-  running: boolean
-  /** The bearer token, surfaced to the settings UI so the user can copy it into
-   *  their agent's config. It never leaves the local machine otherwise. */
-  token: string
-}
 
 /** Owns the MCP server lifecycle + its keychain-backed token. Bound to 127.0.0.1
  *  only — never exposed off the loopback interface. */
@@ -42,7 +34,12 @@ export class McpService {
 
   async status(): Promise<McpStatus> {
     const c = await this.settings.getMcp()
-    return { enabled: c.enabled, port: c.port, running: this.running !== null, token: await this.token() }
+    return {
+      enabled: c.enabled,
+      port: c.port,
+      running: this.running !== null,
+      token: await this.token()
+    }
   }
 
   /** Reconcile the running server with the persisted settings. Idempotent. */

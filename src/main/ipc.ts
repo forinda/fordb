@@ -43,6 +43,9 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
 
   ipcMain.handle('updater:check', () => checkForUpdates())
   ipcMain.handle('updater:install', () => quitAndInstall())
+  ipcMain.handle('updater:get-auto', () => settingsStore.getAutoUpdate())
+  ipcMain.handle('updater:set-auto', (_e, enabled: boolean) => settingsStore.setAutoUpdate(enabled))
+  ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('queries:history-list', (_e, profileId: string) =>
     queryLibrary.listHistory(profileId)
   )

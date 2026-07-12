@@ -131,7 +131,9 @@ function createWindow(): void {
   // failure can never block launch; the check is delayed off the startup path.
   initUpdater((s) => win.webContents.send('updater:status', s))
   if (canAutoUpdate(app.isPackaged, process.platform, !!process.env.APPIMAGE))
-    setTimeout(() => checkForUpdates(), 5000)
+    void settings?.getAutoUpdate().then((on) => {
+      if (on) setTimeout(() => checkForUpdates(), 5000)
+    })
 }
 
 // Frameless window controls, addressed to the sender's window (multi-window safe).

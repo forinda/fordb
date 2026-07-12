@@ -26,7 +26,12 @@ function fakeHost(): { host: HostApi; lastReadOnlySql: () => string | null } {
     getIndexes: async () => [],
     executeReadOnly: async (_id: string, sql: string): Promise<QueryResult> => {
       lastSql = sql
-      return { fields: [{ name: 'n', dataType: 'int' }], rows: [[1]], rowCount: 1, command: 'SELECT' }
+      return {
+        fields: [{ name: 'n', dataType: 'int' }],
+        rows: [[1]],
+        rowCount: 1,
+        command: 'SELECT'
+      }
     }
   } as unknown as HostApi
   return { host, lastReadOnlySql: () => lastSql }
