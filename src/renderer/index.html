@@ -7,5 +7,8 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <!-- glide-data-grid renders its cell edit overlay into this portal; without
+         it the overlay silently fails and cells can't be edited. -->
+    <div id="portal" style="position: fixed; left: 0; top: 0; z-index: 9999"></div>
   </body>
 </html>

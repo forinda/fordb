@@ -4,13 +4,10 @@ import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-// Glide Data Grid renders cells to a <canvas>, so Playwright can't click grid
-// cells / row markers directly (the query e2e likewise asserts DOM status text,
-// never grid contents). So this e2e proves the DOM-observable edit WIRING —
-// open a table's data tab from the tree, the editable toolbar renders, and the
-// pending count reacts. The mutation correctness itself (update/insert/delete +
-// rollback, bound values) is covered end-to-end by the adapter + HostApi
-// contract tests on both engines.
+// The editable toolbar is the discoverability signal for editing; the pending
+// tray only appears once a row is manipulated (see edit-roundtrip.spec.ts for a
+// full edit → apply → persist drive). Mutation correctness (update/insert/delete
+// + rollback) is covered by the adapter + HostApi contract tests on both engines.
 test('open a table data tab with the editable toolbar', async () => {
   const file = join(mkdtempSync(join(tmpdir(), 'fordb-edit-')), 'edit.sqlite')
   const db = createClient({ url: `file:${file}` })
@@ -42,9 +39,10 @@ test('open a table data tab with the editable toolbar', async () => {
   await win.getByText('widgets').dblclick() // open the data tab
 
   // Editable toolbar renders (widgets has a PK + SQLite supports mutation).
-  await expect(win.getByText('Review & apply')).toBeVisible({ timeout: 15000 })
-  await expect(win.getByText('+ Row')).toBeVisible()
-  await expect(win.getByText('0 pending')).toBeVisible()
+  await expect(win.getByText('+ Row')).toBeVisible({ timeout: 15000 })
+  await expect(win.getByText('Set NULL')).toBeVisible()
+  // The pending tray stays hidden until a row is actually manipulated.
+  await expect(win.getByText('pending')).toHaveCount(0)
 
   await app.close()
 })
