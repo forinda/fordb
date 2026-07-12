@@ -17,6 +17,7 @@ import { useDialect } from '../query/use-dialect'
 import { dialectGlideTheme, liveStyleGetter } from '../query/glide-theme'
 import { useThemeStore } from '../store-theme'
 import { useQueryStore, type QueryTab, PAGE_SIZE } from '../store-query'
+import { Modal } from './ui/modal'
 
 type Val = string | null
 
@@ -54,6 +55,7 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     rows: CompactSelection.empty()
   })
   const [error, setError] = useState<string | null>(null)
+  const [reviewStmts, setReviewStmts] = useState<string[] | null>(null) // non-null = modal open
   // Track the loaded row count in state so background paging triggers a
   // re-render (the source's row array grows mutably otherwise). Re-sync on
   // tab.status too: run() sets the source BEFORE awaiting the first page, so the
@@ -255,12 +257,17 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
     }
   }
 
-  async function review(): Promise<void> {
+  // Open the review modal with the generated SQL preview.
+  function openReview(): void {
     setError(null)
     const list = buildEdits(toPending())
     if (list.length === 0) return
-    const ok = window.confirm(`Apply these changes?\n\n${previewEdits(list).join(';\n')}`)
-    if (!ok) return
+    setReviewStmts(previewEdits(list))
+  }
+
+  async function confirmApply(): Promise<void> {
+    const list = buildEdits(toPending())
+    setReviewStmts(null)
     try {
       await applyEdits(tab.id, list)
       setEdits({})
@@ -434,51 +441,74 @@ export function TableDataGrid(props: { tab: QueryTab }): React.JSX.Element {
           height="100%"
         />
       </div>
-      {/* Pending-changes tray (Dialect): floats over the grid bottom. Always
-          mounted for editable tabs so the apply affordance is discoverable
-          (and e2e-visible) even at 0 pending. */}
-      {editable && (
+      {/* Pending-changes tray (Dialect): floats over the grid bottom, shown only
+          once at least one row has been edited/inserted/deleted. */}
+      {editable && dirty > 0 && (
         <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
           <div
             className="pointer-events-auto flex max-w-[92%] items-center gap-3 rounded-xl px-3 py-2 text-xs text-chrome-foreground shadow-[var(--shadow-pop)]"
             style={{ background: 'linear-gradient(180deg, var(--chrome), var(--chrome-2))' }}
           >
             <span className="flex items-center gap-1.5 whitespace-nowrap">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${dirty > 0 ? 'bg-warning' : 'bg-success'}`}
-              />
+              <span className="h-1.5 w-1.5 rounded-full bg-warning" />
               {dirty} pending
             </span>
             <div className="flex min-w-0 items-center gap-1 overflow-x-auto">
-              {dirty > 0 &&
-                previewEdits(buildEdits(toPending()))
-                  .slice(0, 3)
-                  .map((sql, i) => (
-                    <span
-                      key={i}
-                      className="whitespace-nowrap rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-chrome-foreground/80"
-                    >
-                      {sql.length > 60 ? `${sql.slice(0, 60)}…` : sql}
-                    </span>
-                  ))}
+              {previewEdits(buildEdits(toPending()))
+                .slice(0, 3)
+                .map((sql, i) => (
+                  <span
+                    key={i}
+                    className="whitespace-nowrap rounded bg-white/10 px-1.5 py-0.5 font-mono text-[10px] text-chrome-foreground/80"
+                  >
+                    {sql.length > 60 ? `${sql.slice(0, 60)}…` : sql}
+                  </span>
+                ))}
             </div>
             <button
-              className="rounded px-2 py-1 text-chrome-foreground/80 hover:bg-white/10 disabled:opacity-40"
-              disabled={dirty === 0}
+              className="rounded px-2 py-1 text-chrome-foreground/80 hover:bg-white/10"
               onClick={discard}
             >
               Discard
             </button>
             <button
-              className="whitespace-nowrap rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-40"
-              disabled={dirty === 0}
-              onClick={() => void review()}
+              className="whitespace-nowrap rounded bg-primary px-2.5 py-1 font-medium text-primary-foreground hover:bg-primary-hover"
+              onClick={openReview}
             >
               Review &amp; apply
             </button>
           </div>
         </div>
       )}
+      <Modal
+        open={reviewStmts !== null}
+        onClose={() => setReviewStmts(null)}
+        title="Review changes"
+        footer={
+          <>
+            <button
+              className="rounded border border-border px-3 py-1 text-sm hover:bg-muted"
+              onClick={() => setReviewStmts(null)}
+            >
+              Cancel
+            </button>
+            <button
+              className="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary-hover"
+              onClick={() => void confirmApply()}
+            >
+              Apply
+            </button>
+          </>
+        }
+      >
+        <p className="mb-2 text-sm text-muted-foreground">
+          {reviewStmts?.length ?? 0} statement{(reviewStmts?.length ?? 0) === 1 ? '' : 's'} will run
+          in one transaction.
+        </p>
+        <pre className="max-h-[50vh] overflow-auto rounded border border-border bg-surface-2 p-3 font-mono text-xs">
+          {(reviewStmts ?? []).map((s) => `${s};`).join('\n')}
+        </pre>
+      </Modal>
     </div>
   )
 }

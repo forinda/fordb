@@ -22,7 +22,6 @@ test('editing a cell persists to the database', async () => {
     env: { ...process.env, ELECTRON_DISABLE_SANDBOX: '1' }
   })
   const win = await app.firstWindow()
-  win.on('dialog', (d) => void d.accept()) // the "Apply these changes?" confirm
 
   await win.getByText('+ New connection').click()
   await win.getByRole('radio', { name: 'SQLite' }).click()
@@ -33,7 +32,7 @@ test('editing a cell persists to the database', async () => {
   await win.getByText('Connect', { exact: true }).click()
   await win.getByText('main', { exact: true }).click()
   await win.getByText('widgets').dblclick()
-  await expect(win.getByText('0 pending')).toBeVisible({ timeout: 15000 })
+  await expect(win.getByText('+ Row')).toBeVisible({ timeout: 15000 })
 
   // Select the "label" cell of row 0, then second-click to activate → the overlay
   // input opens in #portal. The label column centre is ~x=204, row 0 at y=53.
@@ -47,8 +46,15 @@ test('editing a cell persists to the database', async () => {
   await win.keyboard.press('Enter')
 
   await expect(win.getByText('1 pending')).toBeVisible({ timeout: 5000 })
+  // Review & apply opens the themed modal (not a native confirm); its SQL
+  // preview shows the UPDATE, and Apply commits.
   await win.getByText('Review & apply').click()
-  await expect(win.getByText('0 pending')).toBeVisible({ timeout: 10000 })
+  const modal = win.getByRole('dialog')
+  await expect(modal).toBeVisible()
+  await expect(modal.locator('pre')).toContainText('UPDATE')
+  await modal.getByText('Apply', { exact: true }).click()
+  // Applied → the pending tray disappears.
+  await expect(win.getByText('1 pending')).toHaveCount(0, { timeout: 10000 })
   await app.close()
 
   const verify = createClient({ url: `file:${file}` })
