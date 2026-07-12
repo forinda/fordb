@@ -19,7 +19,7 @@ hero:
       link: https://github.com/forinda/fordb
 features:
   - title: Multi-engine, all free
-    details: Postgres and SQLite today, MongoDB in v0.3 — no paid tier gates an engine.
+    details: Postgres, SQLite, and MongoDB — all shipped, all deep, no paid tier gating an engine.
   - title: Keyboard-first
     details: A command palette reaches every action; the SQL editor runs on Mod-Enter.
   - title: Secrets never reach the UI
@@ -36,6 +36,10 @@ Schema tree, SQL editor with autocomplete, and a fast result grid — with forma
 
 ## Design tables without hand-writing DDL
 
-A tabbed designer for columns (type, nullable, primary key, unique, default) and foreign keys — with a live `CREATE TABLE` preview you confirm before it runs.
+A tabbed designer for columns (type, nullable, primary key, unique, default, generated) and foreign keys — with a live `CREATE TABLE` preview you confirm before it runs. Sequences, materialized views, check constraints, partial and expression indexes, role grants, and table maintenance are all one click away.
 
 ![fordb create-table designer](/screenshots/designer.png)
+
+## Full-fledged MongoDB, not an afterthought
+
+Browse and query collections (find + aggregate), edit documents, run bulk `updateMany` / `deleteMany`, manage indexes and collections, read query plans, export to JSON/NDJSON, set schema-validation rules, and administer database users — all from the same keyboard-first UI.

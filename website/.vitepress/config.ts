@@ -23,6 +23,7 @@ export default defineConfig({
             { text: 'Connections', link: '/guide/connections' },
             { text: 'Query Workbench', link: '/guide/query-workbench' },
             { text: 'Schema & Structure', link: '/guide/schema-structure' },
+            { text: 'MongoDB', link: '/guide/mongodb' },
             { text: 'Keyboard & Palette', link: '/guide/keyboard' }
           ]
         }

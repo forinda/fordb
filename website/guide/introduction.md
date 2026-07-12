@@ -1,6 +1,6 @@
 # Introduction
 
-**fordb** is a lean, keyboard-first, open-source (MIT) desktop database client. Postgres and SQLite work today, MongoDB lands in v0.3 — every engine is free in core. Built with Electron + TypeScript.
+**fordb** is a lean, keyboard-first, open-source (MIT) desktop database client. Postgres, SQLite, and MongoDB are all shipped and all deep — every engine is free in core. Built with Electron + TypeScript.
 
 It sits between the two extremes: lighter than DataGrip/DBeaver, but multi-engine unlike the single-database clients. Fast to open, driven from the keyboard, and honest about your data — every destructive change is previewed as SQL and confirmed before it runs.
 
