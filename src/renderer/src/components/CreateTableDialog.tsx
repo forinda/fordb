@@ -230,9 +230,19 @@ export function CreateTableDialog({
               <input
                 aria-label="col-default"
                 placeholder="default"
-                className="w-24 rounded border border-border bg-background px-1"
+                className="w-24 rounded border border-border bg-background px-1 disabled:opacity-50"
                 value={c.default}
+                disabled={!!c.generated?.trim()}
+                title={c.generated?.trim() ? 'generated columns cannot have a default' : undefined}
                 onChange={(e) => setCol(i, { default: e.target.value })}
+              />
+              <input
+                aria-label="col-generated"
+                placeholder="generated as…"
+                className="w-28 rounded border border-border bg-background px-1"
+                value={c.generated ?? ''}
+                title="Generated-column expression (STORED), e.g. w * h"
+                onChange={(e) => setCol(i, { generated: e.target.value })}
               />
               <button title="move up" onClick={() => move(i, -1)}>
                 ↑

@@ -32,6 +32,9 @@ export interface ColumnSpec {
   notNull?: boolean
   default?: string | null // raw SQL expression; null/absent = none
   unique?: boolean
+  /** Generated-column expression → GENERATED ALWAYS AS (expr) STORED. Mutually
+   *  exclusive with `default`. */
+  generated?: string
 }
 export interface InlineForeignKey {
   name: string
