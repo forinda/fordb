@@ -86,4 +86,26 @@ describe('streamChat', () => {
       { kind: 'text', delta: 'b' }
     ])
   })
+
+  it('emits a usage event from the final include_usage chunk', async () => {
+    const fetchImpl = sseFetch([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+      'data: {"choices":[],"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}\n\n',
+      'data: [DONE]\n\n'
+    ])
+    const events = await collect({ ...base, fetchImpl })
+    expect(events).toEqual([
+      { kind: 'text', delta: 'hi' },
+      { kind: 'usage', usage: { promptTokens: 10, completionTokens: 5, totalTokens: 15 } }
+    ])
+  })
+
+  it('emits no usage event when the endpoint omits it', async () => {
+    const fetchImpl = sseFetch([
+      'data: {"choices":[{"delta":{"content":"hi"}}]}\n\n',
+      'data: [DONE]\n\n'
+    ])
+    const events = await collect({ ...base, fetchImpl })
+    expect(events).toEqual([{ kind: 'text', delta: 'hi' }])
+  })
 })

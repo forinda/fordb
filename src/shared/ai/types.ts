@@ -12,6 +12,7 @@ export type AiEvent =
       destructive?: boolean
     }
   | { kind: 'tool-result'; id: string; ok: boolean; summary: string; didWrite?: boolean }
+  | { kind: 'usage'; promptTokens: number; completionTokens: number; totalTokens: number }
   | { kind: 'done' }
   | { kind: 'error'; message: string }
 

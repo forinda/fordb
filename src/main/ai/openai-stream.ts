@@ -28,11 +28,26 @@ export interface StreamOpts {
   fetchImpl?: typeof fetch
 }
 
-export type StreamEvent = { kind: 'text'; delta: string } | { kind: 'tool'; call: ToolCall }
+export interface TokenUsage {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
+
+export type StreamEvent =
+  | { kind: 'text'; delta: string }
+  | { kind: 'tool'; call: ToolCall }
+  | { kind: 'usage'; usage: TokenUsage }
 
 interface Delta {
   content?: string
   tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[]
+}
+
+interface RawUsage {
+  prompt_tokens?: number
+  completion_tokens?: number
+  total_tokens?: number
 }
 
 /** Stream a chat completion from any OpenAI-compatible endpoint. Reassembles
@@ -63,6 +78,7 @@ export async function* streamChat(opts: StreamOpts): AsyncGenerator<StreamEvent>
     body: JSON.stringify({
       model: opts.model,
       stream: true,
+      stream_options: { include_usage: true },
       messages,
       ...(opts.tools.length ? { tools: opts.tools } : {})
     }),
@@ -88,12 +104,25 @@ export async function* streamChat(opts: StreamOpts): AsyncGenerator<StreamEvent>
       if (!line) continue
       const data = line.slice(5).trim()
       if (data === '[DONE]') continue
-      let delta: Delta | undefined
+      let parsed: { choices?: { delta?: Delta }[]; usage?: RawUsage }
       try {
-        delta = JSON.parse(data).choices?.[0]?.delta as Delta
+        parsed = JSON.parse(data)
       } catch {
         continue
       }
+      // The final chunk (include_usage) carries usage with an empty choices array.
+      if (parsed.usage) {
+        const u = parsed.usage
+        yield {
+          kind: 'usage',
+          usage: {
+            promptTokens: u.prompt_tokens ?? 0,
+            completionTokens: u.completion_tokens ?? 0,
+            totalTokens: u.total_tokens ?? 0
+          }
+        }
+      }
+      const delta = parsed.choices?.[0]?.delta
       if (delta?.content) yield { kind: 'text', delta: delta.content }
       for (const tc of delta?.tool_calls ?? []) {
         const cur = acc.get(tc.index) ?? { id: '', name: '', arguments: '' }

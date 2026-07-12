@@ -98,6 +98,13 @@ export function runAgent(prompt: string, deps: AgentDeps): AgentRun {
         if (e.kind === 'text') {
           text += e.delta
           deps.emit({ kind: 'text', delta: e.delta })
+        } else if (e.kind === 'usage') {
+          deps.emit({
+            kind: 'usage',
+            promptTokens: e.usage.promptTokens,
+            completionTokens: e.usage.completionTokens,
+            totalTokens: e.usage.totalTokens
+          })
         } else {
           calls.push(e.call)
         }

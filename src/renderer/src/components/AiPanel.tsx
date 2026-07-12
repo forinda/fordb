@@ -16,6 +16,8 @@ export function AiPanel(): React.JSX.Element {
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [threads, setThreads] = useState<ConversationSummary[]>([])
+  const [sessionTokens, setSessionTokens] = useState(0)
+  const [turnTokens, setTurnTokens] = useState(0)
   const cur = useRef<Turn | null>(null)
   // onEvent closes over mount-time state; read live values through refs.
   const convIdRef = useRef<string | null>(null)
@@ -39,6 +41,11 @@ export function AiPanel(): React.JSX.Element {
 
   useEffect(() => {
     return window.fordb.ai.onEvent((e: AiEvent) => {
+      if (e.kind === 'usage') {
+        setSessionTokens((n) => n + e.totalTokens)
+        setTurnTokens((n) => n + e.totalTokens)
+        return
+      }
       const a = cur.current
       if (!a) return
       if (e.kind === 'text') a.text += e.delta
@@ -85,6 +92,7 @@ export function AiPanel(): React.JSX.Element {
       convIdRef.current = crypto.randomUUID()
       titleRef.current = input.trim().slice(0, 60)
     }
+    setTurnTokens(0)
     setTurns((t) => [...t, { role: 'user', text: input, steps: [] }])
     const assistant: Turn = { role: 'assistant', text: '', steps: [] }
     cur.current = assistant
@@ -107,6 +115,8 @@ export function AiPanel(): React.JSX.Element {
     titleRef.current = ''
     cur.current = null
     setTurns([])
+    setSessionTokens(0)
+    setTurnTokens(0)
   }
   const openThread = async (id: string): Promise<void> => {
     const pid = profileIdRef.current
@@ -190,6 +200,11 @@ export function AiPanel(): React.JSX.Element {
           </div>
         ))}
       </div>
+      {sessionTokens > 0 && (
+        <div className="border-t border-border px-3 py-0.5 text-right text-xs text-muted-foreground">
+          session {sessionTokens.toLocaleString()} tok · turn {turnTokens.toLocaleString()} tok
+        </div>
+      )}
       <div className="flex items-center gap-2 border-t border-border p-2">
         <input
           className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 text-sm"
