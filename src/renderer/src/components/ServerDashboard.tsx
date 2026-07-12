@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConnStore } from '../store'
+import { useUiStore } from '../store-ui'
 import { useServerSnapshot, useSessions, useLocks } from '../query/stats'
 import { useServerAdminSupported } from '../query/admin'
 import { hostApi } from '../rpc'
@@ -31,6 +32,16 @@ export function ServerDashboard(): React.JSX.Element {
   const [tab, setTab] = useState<DashTab>('sessions')
   // Switching to a non-admin engine (SQLite) must not strand us on a hidden tab.
   const activeTab: DashTab = adminSupported ? tab : 'sessions'
+
+  // Honor a deep-link from the server header ("Roles…"), then clear it.
+  const requestedTab = useUiStore((s) => s.dashboardTab)
+  const requestDashboardTab = useUiStore((s) => s.requestDashboardTab)
+  useEffect(() => {
+    if (requestedTab) {
+      setTab(requestedTab)
+      requestDashboardTab(null)
+    }
+  }, [requestedTab, requestDashboardTab])
 
   const admin =
     connId && adminSupported
