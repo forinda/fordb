@@ -2,19 +2,33 @@
 import type { HostApi } from '@shared/host/host-api'
 import type { AiEvent } from '@shared/ai/types'
 import { streamChat, type ChatMessage, type StreamEvent, type ToolCall } from './openai-stream'
-import { dispatchTool, GATED_TOOLS, TOOL_SPECS } from './tools'
+import { dispatchTool, GATED_TOOLS, toolSpecs } from './tools'
+import { isDestructive } from '@shared/sql/classify'
 
 /** Max LLM round-trips per turn. Bounds a model that emits a tool call every
  *  turn (metadata tools auto-run) from looping forever against the DB + the paid
  *  endpoint — the user's only other stop is the Stop button. */
 const MAX_STEPS = 12
 
-const SYSTEM = [
-  'You are a database assistant embedded in fordb.',
-  'Use the tools to introspect the schema and run READ-ONLY SQL against the active connection.',
-  'You cannot modify data. If the user needs a write, return the SQL for them to run themselves.',
-  'Prefer running a query to verify before answering. Answer concisely.'
-].join(' ')
+/** Parse the run_write sql arg for the destructive brake; unparseable → true. */
+function isDestructiveArg(argsJson: string): boolean {
+  try {
+    return isDestructive(String((JSON.parse(argsJson) as { sql?: unknown }).sql ?? ''))
+  } catch {
+    return true
+  }
+}
+
+function systemPrompt(allowWrites: boolean): string {
+  return [
+    'You are a database assistant embedded in fordb.',
+    'Use the tools to introspect the schema and run READ-ONLY SQL against the active connection.',
+    allowWrites
+      ? 'You may also propose a write with the run_write tool (one statement per call); the user must confirm each write, and destructive statements need extra confirmation.'
+      : 'You cannot modify data. If the user needs a write, return the SQL for them to run themselves.',
+    'Prefer running a query to verify before answering. Answer concisely.'
+  ].join(' ')
+}
 
 export interface AgentDeps {
   host: HostApi
@@ -22,6 +36,7 @@ export interface AgentDeps {
   baseUrl: string
   apiKey: string
   model: string
+  allowWrites: boolean
   emit: (e: AiEvent) => void
   streamImpl?: typeof streamChat
 }
@@ -57,7 +72,7 @@ export function runAgent(prompt: string, deps: AgentDeps): AgentRun {
     new Promise((resolve) => pending.set(id, resolve))
 
   const messages: ChatMessage[] = [
-    { role: 'system', content: SYSTEM },
+    { role: 'system', content: systemPrompt(deps.allowWrites) },
     { role: 'user', content: prompt }
   ]
 
@@ -75,7 +90,7 @@ export function runAgent(prompt: string, deps: AgentDeps): AgentRun {
         apiKey: deps.apiKey,
         model: deps.model,
         messages,
-        tools: TOOL_SPECS,
+        tools: toolSpecs(deps.allowWrites),
         signal: ac.signal
       })
       for await (const e of it) {
@@ -96,14 +111,29 @@ export function runAgent(prompt: string, deps: AgentDeps): AgentRun {
       messages.push({ role: 'assistant', content: text, tool_calls: calls })
       for (const call of calls) {
         const gated = GATED_TOOLS.has(call.name)
-        deps.emit({ kind: 'tool-start', id: call.id, name: call.name, args: call.arguments, gated })
+        const destructive = call.name === 'run_write' ? isDestructiveArg(call.arguments) : undefined
+        deps.emit({
+          kind: 'tool-start',
+          id: call.id,
+          name: call.name,
+          args: call.arguments,
+          gated,
+          destructive
+        })
         let approved = true
         if (gated) approved = await waitApproval(call.id)
         if (ac.signal.aborted) return
         const outcome = approved
           ? await dispatchTool(deps.host, deps.connectionId, call)
           : { ok: false, summary: 'denied by user', payload: { error: 'denied by user' } }
-        deps.emit({ kind: 'tool-result', id: call.id, ok: outcome.ok, summary: outcome.summary })
+        const didWrite = call.name === 'run_write' && outcome.ok
+        deps.emit({
+          kind: 'tool-result',
+          id: call.id,
+          ok: outcome.ok,
+          summary: outcome.summary,
+          ...(didWrite ? { didWrite: true } : {})
+        })
         messages.push({
           role: 'tool',
           tool_call_id: call.id,

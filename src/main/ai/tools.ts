@@ -4,7 +4,7 @@ import { isReadOnlyQuery } from '@shared/sql/classify'
 import { MCP_MAX_ROWS } from '../mcp/server'
 import type { ToolCall, ToolSpec } from './openai-stream'
 
-export const GATED_TOOLS: ReadonlySet<string> = new Set(['run_query'])
+export const GATED_TOOLS: ReadonlySet<string> = new Set(['run_query', 'run_write'])
 
 const idParam = { type: 'object', properties: {}, required: [] }
 const tableParam = {
@@ -55,6 +55,26 @@ export const TOOL_SPECS: ToolSpec[] = [
     }
   }
 ]
+
+const RUN_WRITE_SPEC: ToolSpec = {
+  type: 'function',
+  function: {
+    name: 'run_write',
+    description:
+      'Run a single write statement (INSERT/UPDATE/DELETE or DDL). The user must confirm each write; destructive statements require extra confirmation. Use one statement per call.',
+    parameters: {
+      type: 'object',
+      properties: { sql: { type: 'string' } },
+      required: ['sql']
+    }
+  }
+}
+
+/** The tool set exposed to the agent. Writes are present only when the user has
+ *  opted in — off by default the agent is exactly the read-only agent. */
+export function toolSpecs(allowWrites: boolean): ToolSpec[] {
+  return allowWrites ? [...TOOL_SPECS, RUN_WRITE_SPEC] : TOOL_SPECS
+}
 
 export interface ToolOutcome {
   ok: boolean
@@ -109,6 +129,11 @@ export async function dispatchTool(
           },
           `${Math.min(r.rows.length, MCP_MAX_ROWS)} rows`
         )
+      }
+      case 'run_write': {
+        const sql = s('sql')
+        const r = await host.executeQuery(connectionId, sql)
+        return ok({ rowCount: r.rowCount, command: r.command }, `${r.rowCount} rows, ${r.command}`)
       }
       default:
         return fail(`unknown tool ${call.name}`)
