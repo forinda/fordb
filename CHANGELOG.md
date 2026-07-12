@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.0](https://github.com/forinda/fordb/compare/v0.8.0...v0.9.0) (2026-07-12)
+
+
+### Features
+
+* database-level header in the sidebar (level cue) ([#286](https://github.com/forinda/fordb/issues/286)) ([44e7db4](https://github.com/forinda/fordb/commit/44e7db4cf169551ef1172ac646c79c0e58ddb85f))
+* filter box for the schema tree ([#281](https://github.com/forinda/fordb/issues/281)) ([c5636f5](https://github.com/forinda/fordb/commit/c5636f5bde5c18d4e55eb80ba44e502b8ad25345))
+* fold tables into a Tables/Collections folder with a count ([#284](https://github.com/forinda/fordb/issues/284)) ([92d30c7](https://github.com/forinda/fordb/commit/92d30c7c85442cf18163f6abf0af8cab7624e842))
+* move New schema to the database header ([#289](https://github.com/forinda/fordb/issues/289)) ([9b190eb](https://github.com/forinda/fordb/commit/9b190eb009f27148e8124be882eb700157d99e4f))
+* regroup schema-tree context menus (sections, submenus, drop last) ([#282](https://github.com/forinda/fordb/issues/282)) ([11df446](https://github.com/forinda/fordb/commit/11df446b0f77c35f2f398b01e286ccb7ad7719ff))
+* server-level actions on the connection header (roles home + level cue) ([#285](https://github.com/forinda/fordb/issues/285)) ([19eea79](https://github.com/forinda/fordb/commit/19eea792863d0fbd4fe6e0e34b744324b8bfec24))
+* tree filter finds tables across unexpanded schemas ([#288](https://github.com/forinda/fordb/issues/288)) ([c08d325](https://github.com/forinda/fordb/commit/c08d325055256a51ec8cd0bae23f0b67f9947689))
+
 ## [0.8.0](https://github.com/forinda/fordb/compare/v0.7.0...v0.8.0) (2026-07-12)
 
 
