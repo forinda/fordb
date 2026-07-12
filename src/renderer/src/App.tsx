@@ -242,84 +242,84 @@ export function App(): React.JSX.Element {
                 {/* Editor sidebar: active-connection bar + schema tree. Switching
                 connections happens on the title bar's Connections screen. */}
                 {showSidebar && (
-              <ResizablePanel
-                defaultSize={18}
-                minSize={12}
-                maxSize={40}
-                className="flex flex-col bg-surface-1"
-              >
-                {connected ? (
-                  <>
-                    <ActiveConnectionBar
-                      onDisconnect={() => {
-                        if (activeConnectionId)
-                          void window.fordb.connection.close(activeConnectionId)
-                        clearActive()
-                        setScreen('connections')
-                      }}
-                    />
-                    <div className="flex min-h-0 flex-1 flex-col">
-                      <button
-                        className="mx-2 mt-2 flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-1 text-xs text-muted-foreground hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                        onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
-                      >
-                        <span>Search…</span>
-                        <span className="rounded border border-border bg-background px-1 text-[10px]">
-                          {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
-                        </span>
-                      </button>
-                      <DatabaseSwitcher />
-                      <div className="flex justify-end border-b border-border px-2 py-1">
-                        <RefreshSchemaButton />
+                  <ResizablePanel
+                    defaultSize={18}
+                    minSize={12}
+                    maxSize={40}
+                    className="flex flex-col bg-surface-1"
+                  >
+                    {connected ? (
+                      <>
+                        <ActiveConnectionBar
+                          onDisconnect={() => {
+                            if (activeConnectionId)
+                              void window.fordb.connection.close(activeConnectionId)
+                            clearActive()
+                            setScreen('connections')
+                          }}
+                        />
+                        <div className="flex min-h-0 flex-1 flex-col">
+                          <button
+                            className="mx-2 mt-2 flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-1 text-xs text-muted-foreground hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
+                          >
+                            <span>Search…</span>
+                            <span className="rounded border border-border bg-background px-1 text-[10px]">
+                              {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
+                            </span>
+                          </button>
+                          <DatabaseSwitcher />
+                          <div className="flex justify-end border-b border-border px-2 py-1">
+                            <RefreshSchemaButton />
+                          </div>
+                          <div className="min-h-0 flex-1 overflow-auto">
+                            <SchemaTree />
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex-1 p-3 text-sm text-muted-foreground">
+                        Select a connection to get started.
                       </div>
-                      <div className="min-h-0 flex-1 overflow-auto">
-                        <SchemaTree />
+                    )}
+                  </ResizablePanel>
+                )}
+                {showSidebar && <ResizableHandle withHandle />}
+                <ResizablePanel className="min-w-0">
+                  <div className="h-full overflow-auto">
+                    {connected && (
+                      <div className="flex h-full flex-col">
+                        <div className="flex gap-1 border-b border-border p-1">
+                          {dashboardSupported && (
+                            <button
+                              aria-pressed={mainView === 'dashboard'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('dashboard')}
+                            >
+                              Dashboard
+                            </button>
+                          )}
+                          <button
+                            aria-pressed={mainView === 'query'}
+                            className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                            onClick={() => setMainView('query')}
+                          >
+                            Query
+                          </button>
+                        </div>
+                        <div className="min-h-0 flex-1">
+                          {mainView === 'dashboard' && mongoStatsSupported ? (
+                            <MongoDashboard />
+                          ) : mainView === 'dashboard' && statsSupported ? (
+                            <ServerDashboard />
+                          ) : (
+                            <QueryWorkbench />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex-1 p-3 text-sm text-muted-foreground">
-                    Select a connection to get started.
+                    )}
                   </div>
-                )}
-              </ResizablePanel>
-            )}
-            {showSidebar && <ResizableHandle withHandle />}
-            <ResizablePanel className="min-w-0">
-              <div className="h-full overflow-auto">
-                {connected && (
-                  <div className="flex h-full flex-col">
-                    <div className="flex gap-1 border-b border-border p-1">
-                      {dashboardSupported && (
-                        <button
-                          aria-pressed={mainView === 'dashboard'}
-                          className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                          onClick={() => setMainView('dashboard')}
-                        >
-                          Dashboard
-                        </button>
-                      )}
-                      <button
-                        aria-pressed={mainView === 'query'}
-                        className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                        onClick={() => setMainView('query')}
-                      >
-                        Query
-                      </button>
-                    </div>
-                    <div className="min-h-0 flex-1">
-                      {mainView === 'dashboard' && mongoStatsSupported ? (
-                        <MongoDashboard />
-                      ) : mainView === 'dashboard' && statsSupported ? (
-                        <ServerDashboard />
-                      ) : (
-                        <QueryWorkbench />
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ResizablePanel>
+                </ResizablePanel>
               </ResizablePanelGroup>
             </div>
             {aiOpen && (

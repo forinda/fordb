@@ -78,11 +78,12 @@ export async function* streamChat(opts: StreamOpts): AsyncGenerator<StreamEvent>
     const { done, value } = await reader.read()
     if (done) break
     buf += dec.decode(value, { stream: true })
-    // SSE events are separated by a blank line.
-    let nl: number
-    while ((nl = buf.indexOf('\n\n')) !== -1) {
-      const event = buf.slice(0, nl)
-      buf = buf.slice(nl + 2)
+    // SSE events are separated by a blank line — LF or CRLF, since "any
+    // OpenAI-compatible endpoint" (proxies, local servers) may emit either.
+    let m: RegExpExecArray | null
+    while ((m = /\r?\n\r?\n/.exec(buf)) !== null) {
+      const event = buf.slice(0, m.index)
+      buf = buf.slice(m.index + m[0].length)
       const line = event.split('\n').find((l) => l.startsWith('data:'))
       if (!line) continue
       const data = line.slice(5).trim()

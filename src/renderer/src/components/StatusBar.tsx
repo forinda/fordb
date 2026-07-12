@@ -9,10 +9,7 @@ import { Preferences } from './Preferences'
 /** Dialect status bar: connection state + engine on the left, the active
  *  tab's result summary (message + elapsed) in the middle, theme toggle on
  *  the right. Everything degrades gracefully when disconnected/idle. */
-export function StatusBar(props: {
-  aiOpen: boolean
-  onToggleAi: () => void
-}): React.JSX.Element {
+export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): React.JSX.Element {
   const activeProfileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
   const profile = profiles.find((p) => p.id === activeProfileId)

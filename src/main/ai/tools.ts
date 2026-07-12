@@ -14,7 +14,10 @@ const tableParam = {
 }
 
 export const TOOL_SPECS: ToolSpec[] = [
-  { type: 'function', function: { name: 'list_schemas', description: 'List schemas.', parameters: idParam } },
+  {
+    type: 'function',
+    function: { name: 'list_schemas', description: 'List schemas.', parameters: idParam }
+  },
   {
     type: 'function',
     function: {
@@ -27,9 +30,18 @@ export const TOOL_SPECS: ToolSpec[] = [
       }
     }
   },
-  { type: 'function', function: { name: 'get_columns', description: 'Describe a table.', parameters: tableParam } },
-  { type: 'function', function: { name: 'get_keys', description: 'Keys of a table.', parameters: tableParam } },
-  { type: 'function', function: { name: 'get_indexes', description: 'Indexes of a table.', parameters: tableParam } },
+  {
+    type: 'function',
+    function: { name: 'get_columns', description: 'Describe a table.', parameters: tableParam }
+  },
+  {
+    type: 'function',
+    function: { name: 'get_keys', description: 'Keys of a table.', parameters: tableParam }
+  },
+  {
+    type: 'function',
+    function: { name: 'get_indexes', description: 'Indexes of a table.', parameters: tableParam }
+  },
   {
     type: 'function',
     function: {

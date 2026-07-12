@@ -4,6 +4,11 @@ import type { AiEvent } from '@shared/ai/types'
 import { streamChat, type ChatMessage, type StreamEvent, type ToolCall } from './openai-stream'
 import { dispatchTool, GATED_TOOLS, TOOL_SPECS } from './tools'
 
+/** Max LLM round-trips per turn. Bounds a model that emits a tool call every
+ *  turn (metadata tools auto-run) from looping forever against the DB + the paid
+ *  endpoint — the user's only other stop is the Stop button. */
+const MAX_STEPS = 12
+
 const SYSTEM = [
   'You are a database assistant embedded in fordb.',
   'Use the tools to introspect the schema and run READ-ONLY SQL against the active connection.',
@@ -57,8 +62,12 @@ export function runAgent(prompt: string, deps: AgentDeps): AgentRun {
   ]
 
   const loop = async (): Promise<void> => {
-    for (;;) {
+    for (let step = 0; ; step++) {
       if (ac.signal.aborted) return
+      if (step >= MAX_STEPS) {
+        deps.emit({ kind: 'error', message: `agent stopped after ${MAX_STEPS} steps` })
+        return
+      }
       const calls: ToolCall[] = []
       let text = ''
       const it: AsyncGenerator<StreamEvent> = stream({

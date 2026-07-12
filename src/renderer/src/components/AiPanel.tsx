@@ -76,7 +76,10 @@ export function AiPanel(): React.JSX.Element {
           <div key={i} className={t.role === 'user' ? 'font-medium' : ''}>
             {t.text && <div className="whitespace-pre-wrap">{t.text}</div>}
             {t.steps.map((s) => (
-              <div key={s.id} className="my-1 rounded border border-border bg-surface-2 p-2 text-xs">
+              <div
+                key={s.id}
+                className="my-1 rounded border border-border bg-surface-2 p-2 text-xs"
+              >
                 <div className="font-mono">
                   {s.name}
                   {s.name === 'run_query' ? `: ${JSON.parse(s.args || '{}').sql ?? ''}` : ''}
@@ -98,7 +101,9 @@ export function AiPanel(): React.JSX.Element {
                   </div>
                 ) : (
                   <div className="mt-1 text-muted-foreground">
-                    {s.status === 'pending' ? 'running…' : `${s.status}${s.summary ? ` · ${s.summary}` : ''}`}
+                    {s.status === 'pending'
+                      ? 'running…'
+                      : `${s.status}${s.summary ? ` · ${s.summary}` : ''}`}
                   </div>
                 )}
               </div>

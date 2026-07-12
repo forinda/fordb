@@ -13,7 +13,12 @@ function fakeHost(): { host: HostApi; calls: string[] } {
     },
     executeReadOnly: async (_id: string, sql: string): Promise<QueryResult> => {
       calls.push(`ro:${sql}`)
-      return { fields: [{ name: 'n', dataType: 'int' }], rows: [[1]], rowCount: 1, command: 'SELECT' }
+      return {
+        fields: [{ name: 'n', dataType: 'int' }],
+        rows: [[1]],
+        rowCount: 1,
+        command: 'SELECT'
+      }
     }
   } as unknown as HostApi
   return { host, calls }

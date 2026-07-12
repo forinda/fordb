@@ -24,7 +24,7 @@ const base: Omit<StreamOpts, 'fetchImpl'> = {
   signal: new AbortController().signal
 }
 
-async function collect(opts: StreamOpts) {
+async function collect(opts: StreamOpts): Promise<unknown[]> {
   const out = []
   for await (const e of streamChat(opts)) out.push(e)
   return out
@@ -70,8 +70,20 @@ describe('streamChat', () => {
   })
 
   it('throws on a non-200 response', async () => {
-    const fetchImpl = (async () =>
-      new Response('nope', { status: 401 })) as unknown as typeof fetch
+    const fetchImpl = (async () => new Response('nope', { status: 401 })) as unknown as typeof fetch
     await expect(collect({ ...base, fetchImpl })).rejects.toThrow(/401/)
+  })
+
+  it('parses CRLF-separated SSE events (non-OpenAI compatible endpoints)', async () => {
+    const fetchImpl = sseFetch([
+      'data: {"choices":[{"delta":{"content":"a"}}]}\r\n\r\n',
+      'data: {"choices":[{"delta":{"content":"b"}}]}\r\n\r\n',
+      'data: [DONE]\r\n\r\n'
+    ])
+    const events = await collect({ ...base, fetchImpl })
+    expect(events).toEqual([
+      { kind: 'text', delta: 'a' },
+      { kind: 'text', delta: 'b' }
+    ])
   })
 })
