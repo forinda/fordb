@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { RoleInfo } from '@shared/adapter/admin-types'
 import { buildDropRole, maskRolePassword } from '@shared/ddl/role-ddl'
+import { buildGrant, buildRevoke, TABLE_PRIVILEGES } from '@shared/ddl/grant-ddl'
 import { useRoles, useRoleGrants } from '../../query/admin'
 import { useQueryStore } from '../../store-query'
 import { queryClient } from '../../query/client'
@@ -24,6 +25,7 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
   // form: undefined = closed, null = create, RoleInfo = edit.
   const [form, setForm] = useState<RoleInfo | null | undefined>(undefined)
   const [previewStmts, setPreviewStmts] = useState<string[] | null>(null)
+  const [granting, setGranting] = useState(false)
 
   const roles = rolesQ.data ?? []
   const selectedRole = roles.find((r) => r.name === selected) ?? null
@@ -33,7 +35,8 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
     const stmts = previewStmts
     setPreviewStmts(null)
     await useQueryStore.getState().applyDdl(stmts)
-    await queryClient.invalidateQueries({ queryKey: ['conn', props.connId, 'roles'] })
+    // Broad invalidation: covers both roles and roleGrants for this connection.
+    await queryClient.invalidateQueries({ queryKey: ['conn', props.connId] })
   }
 
   if (rolesQ.isError)
@@ -55,6 +58,12 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
               onClick={() => setForm(selectedRole)}
             >
               Edit {selectedRole.name}
+            </button>
+            <button
+              className="rounded border border-border px-2 py-0.5 hover:bg-muted"
+              onClick={() => setGranting(true)}
+            >
+              + Grant
             </button>
             <button
               className="rounded border border-border px-2 py-0.5 text-destructive hover:bg-muted"
@@ -110,6 +119,7 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
                   <th className="px-2 py-1 text-left font-medium">Table</th>
                   <th className="px-2 py-1 text-left font-medium">Privilege</th>
                   <th className="px-2 py-1 text-left font-medium">Grantor</th>
+                  <th className="px-2 py-1"></th>
                 </tr>
               </thead>
               <tbody>
@@ -119,6 +129,18 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
                     <td className="px-2 py-1">{g.table}</td>
                     <td className="px-2 py-1">{g.privilege}</td>
                     <td className="px-2 py-1 text-muted-foreground">{g.grantor ?? '—'}</td>
+                    <td className="px-2 py-1 text-right">
+                      <button
+                        className="rounded px-1 text-destructive hover:bg-muted"
+                        onClick={() =>
+                          setPreviewStmts([
+                            buildRevoke([g.privilege], g.schema, g.table, selectedRole.name)
+                          ])
+                        }
+                      >
+                        revoke
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -166,6 +188,103 @@ export function RolesPanel(props: { connId: string }): React.JSX.Element {
           {(previewStmts ?? []).map((s) => `${maskRolePassword(s)};`).join('\n')}
         </pre>
       </Modal>
+      {selectedRole && (
+        <GrantForm
+          open={granting}
+          role={selectedRole.name}
+          onClose={() => setGranting(false)}
+          onSubmit={(stmt) => {
+            setGranting(false)
+            setPreviewStmts([stmt])
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function GrantForm(props: {
+  open: boolean
+  role: string
+  onClose: () => void
+  onSubmit: (stmt: string) => void
+}): React.JSX.Element {
+  const [schema, setSchema] = useState('public')
+  const [table, setTable] = useState('')
+  const [privs, setPrivs] = useState<Set<string>>(new Set())
+  const [withGrant, setWithGrant] = useState(false)
+
+  const toggle = (p: string): void =>
+    setPrivs((s) => {
+      const n = new Set(s)
+      if (n.has(p)) n.delete(p)
+      else n.add(p)
+      return n
+    })
+
+  const canSubmit = schema.trim() && table.trim() && privs.size > 0
+  const input = 'rounded border border-border bg-background px-2 py-1 text-sm'
+
+  return (
+    <Modal
+      open={props.open}
+      onClose={props.onClose}
+      title={`Grant privileges to ${props.role}`}
+      footer={
+        <>
+          <button
+            className="rounded border border-border px-3 py-1 text-sm hover:bg-muted"
+            onClick={props.onClose}
+          >
+            Cancel
+          </button>
+          <button
+            className="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-foreground hover:bg-primary-hover disabled:opacity-50"
+            disabled={!canSubmit}
+            onClick={() =>
+              props.onSubmit(
+                buildGrant([...privs], schema.trim(), table.trim(), props.role, withGrant)
+              )
+            }
+          >
+            Preview
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-3 text-sm">
+        <div className="flex gap-2">
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-muted-foreground">Schema</span>
+            <input className={input} value={schema} onChange={(e) => setSchema(e.target.value)} />
+          </label>
+          <label className="flex flex-1 flex-col gap-1">
+            <span className="text-muted-foreground">Table</span>
+            <input
+              className={input}
+              placeholder="table name"
+              value={table}
+              onChange={(e) => setTable(e.target.value)}
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {[...TABLE_PRIVILEGES, 'ALL'].map((p) => (
+            <label key={p} className="flex items-center gap-1">
+              <input type="checkbox" checked={privs.has(p)} onChange={() => toggle(p)} />
+              {p}
+            </label>
+          ))}
+        </div>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={withGrant}
+            onChange={(e) => setWithGrant(e.target.checked)}
+          />
+          WITH GRANT OPTION
+        </label>
+      </div>
+    </Modal>
   )
 }
