@@ -1,6 +1,23 @@
 import type { OpenQueryResult } from './types'
 
-export type FilterOp = 'eq' | 'ne' | 'lt' | 'gt' | 'le' | 'ge' | 'contains' | 'isNull' | 'isNotNull'
+export type FilterOp =
+  | 'eq'
+  | 'ne'
+  | 'lt'
+  | 'gt'
+  | 'le'
+  | 'ge'
+  | 'contains'
+  | 'notContains'
+  | 'startsWith'
+  | 'endsWith'
+  | 'like' // raw LIKE pattern (user supplies %)
+  | 'ilike' // case-insensitive (Postgres ILIKE; falls back to LIKE on SQLite)
+  | 'in' // comma-separated list → IN (...)
+  | 'regex' // Postgres ~
+  | 'notRegex' // Postgres !~
+  | 'isNull'
+  | 'isNotNull'
 
 export interface Filter {
   column: string

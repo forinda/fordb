@@ -67,4 +67,67 @@ describe('buildBrowseSql', () => {
     expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "email" = $1`)
     expect(r.params).toEqual(["x' OR '1'='1"])
   })
+
+  it('startsWith / endsWith / notContains build escaped LIKE patterns', () => {
+    const r = buildBrowseSql(
+      opts({
+        filters: [
+          { column: 'a', op: 'startsWith', value: 'foo' },
+          { column: 'b', op: 'endsWith', value: 'bar' },
+          { column: 'c', op: 'notContains', value: 'baz' }
+        ]
+      }),
+      'pg'
+    )
+    expect(r.sql).toBe(
+      `SELECT * FROM "app"."users" WHERE "a" LIKE $1 ESCAPE '\\' AND "b" LIKE $2 ESCAPE '\\' AND "c" NOT LIKE $3 ESCAPE '\\'`
+    )
+    expect(r.params).toEqual(['foo%', '%bar', '%baz%'])
+  })
+
+  it('like passes the raw pattern through (user controls %)', () => {
+    const r = buildBrowseSql(opts({ filters: [{ column: 'a', op: 'like', value: 'a%b_c' }] }), 'pg')
+    expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "a" LIKE $1`)
+    expect(r.params).toEqual(['a%b_c'])
+  })
+
+  it('ilike → ILIKE on pg, LIKE on sqlite', () => {
+    const pg = buildBrowseSql(opts({ filters: [{ column: 'a', op: 'ilike', value: 'x' }] }), 'pg')
+    expect(pg.sql).toContain(`"a" ILIKE $1 ESCAPE '\\'`)
+    const lite = buildBrowseSql(
+      opts({ filters: [{ column: 'a', op: 'ilike', value: 'x' }] }),
+      'sqlite'
+    )
+    expect(lite.sql).toContain(`"a" LIKE ? ESCAPE '\\'`)
+    expect(pg.params).toEqual(['%x%'])
+  })
+
+  it('in fans a comma list into bound placeholders', () => {
+    const r = buildBrowseSql(
+      opts({ filters: [{ column: 'id', op: 'in', value: '1, 2 ,3' }] }),
+      'pg'
+    )
+    expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "id" IN ($1, $2, $3)`)
+    expect(r.params).toEqual(['1', '2', '3'])
+  })
+
+  it('empty in matches nothing', () => {
+    const r = buildBrowseSql(opts({ filters: [{ column: 'id', op: 'in', value: '' }] }), 'pg')
+    expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "id" IN (NULL)`)
+    expect(r.params).toEqual([])
+  })
+
+  it('regex / notRegex use ~ and !~ (pg), value bound', () => {
+    const r = buildBrowseSql(
+      opts({
+        filters: [
+          { column: 'a', op: 'regex', value: '^x' },
+          { column: 'b', op: 'notRegex', value: 'y$' }
+        ]
+      }),
+      'pg'
+    )
+    expect(r.sql).toBe(`SELECT * FROM "app"."users" WHERE "a" ~ $1 AND "b" !~ $2`)
+    expect(r.params).toEqual(['^x', 'y$'])
+  })
 })
