@@ -1,4 +1,5 @@
 import type {
+  CheckInfo,
   ColumnInfo,
   ConnectionProfile,
   IndexInfo,
@@ -84,6 +85,9 @@ export class HostApiImpl implements HostApi {
   }
   getIndexes(id: ConnectionId, schema: string, table: string): Promise<IndexInfo[]> {
     return this.registry.get(id).getIndexes(schema, table)
+  }
+  getChecks(id: ConnectionId, schema: string, table: string): Promise<CheckInfo[]> {
+    return this.registry.get(id).getChecks?.(schema, table) ?? Promise.resolve([])
   }
 
   executeQuery(id: ConnectionId, sql: string): Promise<QueryResult> {

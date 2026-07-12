@@ -2,6 +2,7 @@ import pg from 'pg'
 import Cursor from 'pg-cursor'
 import type { DbAdapter } from '@shared/adapter/db-adapter'
 import type {
+  CheckInfo,
   ColumnInfo,
   ConnectionProfile,
   IndexInfo,
@@ -154,6 +155,15 @@ export class PostgresAdapter implements DbAdapter {
   async getIndexes(schema: string, table: string): Promise<IndexInfo[]> {
     const r = await this.conn.query(SQL.GET_INDEXES, [schema, table])
     return r.rows as IndexInfo[]
+  }
+
+  async getChecks(schema: string, table: string): Promise<CheckInfo[]> {
+    const r = await this.conn.query(SQL.GET_CHECKS, [schema, table])
+    // pg_get_constraintdef returns "CHECK (expr)"; keep only the predicate.
+    return (r.rows as { name: string; def: string }[]).map((row) => ({
+      name: row.name,
+      expression: row.def.replace(/^CHECK\s*/i, '')
+    }))
   }
 
   async executeQuery(sql: string): Promise<QueryResult> {

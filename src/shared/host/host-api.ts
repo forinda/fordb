@@ -1,4 +1,5 @@
 import type {
+  CheckInfo,
   ColumnInfo,
   ConnectionProfile,
   IndexInfo,
@@ -43,6 +44,8 @@ export interface HostApi {
   getColumns(id: ConnectionId, schema: string, table: string): Promise<ColumnInfo[]>
   getKeys(id: ConnectionId, schema: string, table: string): Promise<KeyInfo[]>
   getIndexes(id: ConnectionId, schema: string, table: string): Promise<IndexInfo[]>
+  /** CHECK constraints; [] on engines without check introspection. */
+  getChecks(id: ConnectionId, schema: string, table: string): Promise<CheckInfo[]>
 
   executeQuery(id: ConnectionId, sql: string): Promise<QueryResult>
   /** Engine-enforced read-only execution (MCP surface). Throws if the engine

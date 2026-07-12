@@ -1,5 +1,5 @@
 import { useQuery, type QueryClient, type UseQueryResult } from '@tanstack/react-query'
-import type { ColumnInfo, IndexInfo, KeyInfo, TableInfo } from '@shared/adapter/types'
+import type { CheckInfo, ColumnInfo, IndexInfo, KeyInfo, TableInfo } from '@shared/adapter/types'
 import type { ObjectKind, ObjectSummary } from '@shared/adapter/object-types'
 import { hostApi } from '../rpc'
 import { qk } from './keys'
@@ -71,6 +71,21 @@ export function useIndexes(
         ? qk.indexes(connId, schema, table)
         : ['conn', 'none', 'indexes', '', ''],
     queryFn: async () => (await hostApi()).getIndexes(connId!, schema!, table!),
+    enabled: !!connId && !!schema && !!table
+  })
+}
+
+export function useChecks(
+  connId: string | null,
+  schema: string | null,
+  table: string | null
+): UseQueryResult<CheckInfo[]> {
+  return useQuery({
+    queryKey:
+      connId && schema && table
+        ? qk.checks(connId, schema, table)
+        : ['conn', 'none', 'checks', '', ''],
+    queryFn: async () => (await hostApi()).getChecks(connId!, schema!, table!),
     enabled: !!connId && !!schema && !!table
   })
 }

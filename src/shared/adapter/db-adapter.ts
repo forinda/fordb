@@ -1,4 +1,5 @@
 import type {
+  CheckInfo,
   ColumnInfo,
   ConnectionProfile,
   IndexInfo,
@@ -31,6 +32,9 @@ export interface DbAdapter {
   getColumns(schema: string, table: string): Promise<ColumnInfo[]>
   getKeys(schema: string, table: string): Promise<KeyInfo[]>
   getIndexes(schema: string, table: string): Promise<IndexInfo[]>
+  /** CHECK constraints. Optional: engines without introspection for them (or
+   *  where checks don't fit KeyInfo) simply omit it — callers treat it as []. */
+  getChecks?(schema: string, table: string): Promise<CheckInfo[]>
 
   /** Buffered execution — small/interactive statements. */
   executeQuery(sql: string): Promise<QueryResult>
