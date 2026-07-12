@@ -15,7 +15,14 @@ import { useQueryStore } from '../store-query'
 import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
 import { buildDdl } from '@shared/ddl/build-ddl'
-import { buildDropObject, functionTemplate, triggerTemplate } from '@shared/ddl/object-ddl'
+import {
+  buildDropObject,
+  functionTemplate,
+  triggerTemplate,
+  sequenceTemplate,
+  matviewTemplate,
+  refreshMatview
+} from '@shared/ddl/object-ddl'
 import { buildMaintenance, MAINTENANCE_LABELS, type MaintenanceOp } from '@shared/ddl/maintenance'
 import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
@@ -37,7 +44,18 @@ const CATEGORY_LABEL: Record<CategoryKind, string> = {
   table: 'Tables',
   view: 'Views',
   function: 'Functions',
-  trigger: 'Triggers'
+  trigger: 'Triggers',
+  sequence: 'Sequences',
+  materializedView: 'Materialized Views'
+}
+
+// Friendly noun for menu labels ("Drop materialized view", not "materializedView").
+const KIND_NOUN: Record<ObjectKind, string> = {
+  view: 'view',
+  function: 'function',
+  trigger: 'trigger',
+  sequence: 'sequence',
+  materializedView: 'materialized view'
 }
 
 // Lazy tree: schemas come from React Query; a schema's tables load on first
@@ -152,10 +170,21 @@ export function SchemaTree(): React.JSX.Element {
   }
 
   function openNewObject(schema: string, objectKind: ObjectKind): void {
-    setObjectEditor({
-      title: `New ${objectKind}`,
-      initialSql: objectKind === 'function' ? functionTemplate(schema) : triggerTemplate(schema)
-    })
+    const template =
+      objectKind === 'function'
+        ? functionTemplate(schema)
+        : objectKind === 'sequence'
+          ? sequenceTemplate(schema)
+          : objectKind === 'materializedView'
+            ? matviewTemplate(schema)
+            : triggerTemplate(schema)
+    setObjectEditor({ title: `New ${KIND_NOUN[objectKind]}`, initialSql: template })
+  }
+
+  async function refreshMatviewObject(schema: string, name: string): Promise<void> {
+    const sql = refreshMatview(schema, name)
+    if (!window.confirm(`Apply this DDL?\n\n${sql}`)) return
+    await applyRawDdl(sql)
   }
 
   async function openEditObject(schema: string, kind: ObjectKind, name: string): Promise<void> {
@@ -198,8 +227,16 @@ export function SchemaTree(): React.JSX.Element {
           label: 'Edit definition…',
           run: () => void openEditObject(m.schema, m.objectKind, m.name)
         })
+      }
+      if (m.objectKind === 'materializedView')
         items.push({
-          label: `Drop ${m.objectKind}`,
+          label: 'Refresh',
+          run: () => void refreshMatviewObject(m.schema, m.name)
+        })
+      if (m.objectKind !== 'view') {
+        // View has its own preview-gated Drop above; every other kind drops here.
+        items.push({
+          label: `Drop ${KIND_NOUN[m.objectKind]}`,
           run: () => void dropObject(m.schema, m.objectKind, m.name)
         })
       }

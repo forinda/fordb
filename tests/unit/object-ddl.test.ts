@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { buildDropObject, functionTemplate, triggerTemplate } from '../../src/shared/ddl/object-ddl'
+import {
+  buildDropObject,
+  functionTemplate,
+  triggerTemplate,
+  sequenceTemplate,
+  matviewTemplate,
+  refreshMatview
+} from '../../src/shared/ddl/object-ddl'
 
 describe('buildDropObject', () => {
   it('drops a view / function with a qualified quoted name', () => {
@@ -23,6 +30,21 @@ describe('buildDropObject', () => {
     // No usable definition — best effort so the menu item still does something.
     expect(buildDropObject('trigger', 'app', 't')).toBe(`DROP TRIGGER "t" ON "app".<table>`)
   })
+
+  it('drops a sequence and a materialized view', () => {
+    expect(buildDropObject('sequence', 'app', 'order_id_seq')).toBe(
+      `DROP SEQUENCE "app"."order_id_seq"`
+    )
+    expect(buildDropObject('materializedView', 'app', 'daily')).toBe(
+      `DROP MATERIALIZED VIEW "app"."daily"`
+    )
+  })
+})
+
+describe('refreshMatview', () => {
+  it('builds a qualified REFRESH MATERIALIZED VIEW', () => {
+    expect(refreshMatview('app', 'daily')).toBe(`REFRESH MATERIALIZED VIEW "app"."daily"`)
+  })
 })
 
 describe('templates', () => {
@@ -33,5 +55,10 @@ describe('templates', () => {
   it('trigger template is a CREATE TRIGGER referencing the schema', () => {
     expect(triggerTemplate('app')).toContain('CREATE TRIGGER')
     expect(triggerTemplate('app')).toContain('"app".')
+  })
+  it('sequence + matview templates are CREATE statements in the schema', () => {
+    expect(sequenceTemplate('app')).toContain('CREATE SEQUENCE "app".')
+    expect(matviewTemplate('app')).toContain('CREATE MATERIALIZED VIEW "app".')
+    expect(matviewTemplate('app')).toContain('WITH DATA')
   })
 })

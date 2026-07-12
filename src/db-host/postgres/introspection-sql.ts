@@ -94,3 +94,22 @@ export const DEF_TRIGGER = `
   SELECT pg_get_triggerdef(t.oid, true) AS def FROM pg_trigger t
   JOIN pg_class c ON c.oid = t.tgrelid JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = $1 AND t.tgname = $2 LIMIT 1`
+
+export const LIST_SEQUENCES = `
+  SELECT sequencename AS name FROM pg_sequences WHERE schemaname = $1 ORDER BY name`
+export const LIST_MATVIEWS = `
+  SELECT matviewname AS name FROM pg_matviews WHERE schemaname = $1 ORDER BY name`
+// Sequences have no pg_get_*def; reconstruct a CREATE SEQUENCE from pg_sequences.
+export const DEF_SEQUENCE = `
+  SELECT format(
+    'CREATE SEQUENCE %I.%I%s INCREMENT BY %s MINVALUE %s MAXVALUE %s START %s%s',
+    schemaname, sequencename,
+    CASE WHEN data_type::text <> 'bigint' THEN ' AS ' || data_type::text ELSE '' END,
+    increment_by, min_value, max_value, start_value,
+    CASE WHEN cycle THEN ' CYCLE' ELSE '' END
+  ) AS def
+  FROM pg_sequences WHERE schemaname = $1 AND sequencename = $2`
+// pg_get_viewdef works on materialized views too; wrap it in a CREATE.
+export const DEF_MATVIEW = `
+  SELECT 'CREATE MATERIALIZED VIEW ' || quote_ident($1) || '.' || quote_ident($2) ||
+         ' AS ' || pg_get_viewdef((quote_ident($1) || '.' || quote_ident($2))::regclass, true) AS def`

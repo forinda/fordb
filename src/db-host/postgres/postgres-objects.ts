@@ -5,16 +5,20 @@ import * as SQL from './introspection-sql'
 const LIST: Record<ObjectKind, string> = {
   view: SQL.LIST_VIEWS,
   function: SQL.LIST_FUNCTIONS,
-  trigger: SQL.LIST_TRIGGERS
+  trigger: SQL.LIST_TRIGGERS,
+  sequence: SQL.LIST_SEQUENCES,
+  materializedView: SQL.LIST_MATVIEWS
 }
 const DEF: Record<ObjectKind, string> = {
   view: SQL.DEF_VIEW,
   function: SQL.DEF_FUNCTION,
-  trigger: SQL.DEF_TRIGGER
+  trigger: SQL.DEF_TRIGGER,
+  sequence: SQL.DEF_SEQUENCE,
+  materializedView: SQL.DEF_MATVIEW
 }
 
 export class PgObjectBrowser implements ObjectBrowser {
-  readonly kinds = ['view', 'function', 'trigger'] as const
+  readonly kinds = ['view', 'function', 'trigger', 'sequence', 'materializedView'] as const
   constructor(private readonly conn: () => pg.Client) {}
 
   async list(schema: string, kind: ObjectKind): Promise<ObjectSummary[]> {
