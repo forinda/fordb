@@ -15,11 +15,13 @@ import { useQueryStore } from '../store-query'
 import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
 import { buildDdl } from '@shared/ddl/build-ddl'
+import { buildDropObject, functionTemplate, triggerTemplate } from '@shared/ddl/object-ddl'
 import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
 import { CreateTableDialog } from './CreateTableDialog'
 import { CreateDatabaseDialog } from './CreateDatabaseDialog'
+import { ObjectEditorDialog } from './ObjectEditorDialog'
 import { queryClient } from '../query/client'
 import { useSchemas, fetchTables, fetchColumns, fetchObjects } from '../query/introspection'
 import { useDocumentQuerySupported } from '../query/documents'
@@ -66,8 +68,14 @@ export function SchemaTree(): React.JSX.Element {
     | { kind: 'schema'; x: number; y: number; schema: string }
     | { kind: 'object'; x: number; y: number; schema: string; objectKind: ObjectKind; name: string }
     | { kind: 'newview'; x: number; y: number; schema: string }
+    | { kind: 'newobject'; x: number; y: number; schema: string; objectKind: ObjectKind }
     | null
   >(null)
+  // Raw function/trigger editor (create/alter).
+  const [objectEditor, setObjectEditor] = useState<{
+    title: string
+    initialSql: string
+  } | null>(null)
   // Inline "New view" form (name + SELECT) — Electron has no window.prompt.
   const [newView, setNewView] = useState<{ schema: string } | null>(null)
   const [info, setInfo] = useState<{ schema: string; table: string } | null>(null)
@@ -118,6 +126,44 @@ export function SchemaTree(): React.JSX.Element {
     }
   }
 
+  // Run raw DDL (a function/trigger definition or drop) — the editor/confirm is
+  // the review, so no extra window.confirm here.
+  async function applyRawDdl(sql: string): Promise<void> {
+    setDdlError(null)
+    try {
+      await useQueryStore.getState().applyDdl([sql])
+    } catch (err) {
+      setDdlError(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  function openNewObject(schema: string, objectKind: ObjectKind): void {
+    setObjectEditor({
+      title: `New ${objectKind}`,
+      initialSql: objectKind === 'function' ? functionTemplate(schema) : triggerTemplate(schema)
+    })
+  }
+
+  async function openEditObject(schema: string, kind: ObjectKind, name: string): Promise<void> {
+    const def = await (await hostApi()).objectDefinition(connId!, schema, kind, name)
+    setObjectEditor({ title: `Edit ${kind} ${name}`, initialSql: def })
+  }
+
+  async function dropObject(schema: string, kind: ObjectKind, name: string): Promise<void> {
+    // Triggers need their table, which lives in the definition — fetch it first.
+    const def =
+      kind === 'trigger'
+        ? await (
+            await hostApi()
+          )
+            .objectDefinition(connId!, schema, kind, name)
+            .catch(() => undefined)
+        : undefined
+    const sql = buildDropObject(kind, schema, name, def)
+    if (!window.confirm(`Apply this DDL?\n\n${sql}`)) return
+    await applyRawDdl(sql)
+  }
+
   function menuItems(m: NonNullable<typeof menu>): { label: string; run: () => void }[] {
     if (m.kind === 'object') {
       const items: { label: string; run: () => void }[] = [
@@ -133,7 +179,25 @@ export function SchemaTree(): React.JSX.Element {
           // other DDL action.
           run: () => void runDdl({ kind: 'dropView', schema: m.schema, name: m.name })
         })
+      if (m.objectKind === 'function' || m.objectKind === 'trigger') {
+        items.push({
+          label: 'Edit definition…',
+          run: () => void openEditObject(m.schema, m.objectKind, m.name)
+        })
+        items.push({
+          label: `Drop ${m.objectKind}`,
+          run: () => void dropObject(m.schema, m.objectKind, m.name)
+        })
+      }
       return items
+    }
+    if (m.kind === 'newobject') {
+      return [
+        {
+          label: `New ${m.objectKind}…`,
+          run: () => openNewObject(m.schema, m.objectKind)
+        }
+      ]
     }
     if (m.kind === 'newview') {
       return [{ label: 'New view…', run: () => setNewView({ schema: m.schema }) }]
@@ -376,6 +440,16 @@ export function SchemaTree(): React.JSX.Element {
           onSubmit={(change) => void runDdl(change)}
         />
       )}
+      <ObjectEditorDialog
+        open={objectEditor !== null}
+        onClose={() => setObjectEditor(null)}
+        title={objectEditor?.title ?? ''}
+        initialSql={objectEditor?.initialSql ?? ''}
+        onApply={(sql) => {
+          setObjectEditor(null)
+          void applyRawDdl(sql)
+        }}
+      />
       {newView && (
         <NewViewForm
           onCancel={() => setNewView(null)}
@@ -455,6 +529,18 @@ export function SchemaTree(): React.JSX.Element {
                 } else if (kind === 'category' && node.data.category === 'view') {
                   e.preventDefault()
                   setMenu({ kind: 'newview', x: e.clientX, y: e.clientY, schema: node.data.schema })
+                } else if (
+                  kind === 'category' &&
+                  (node.data.category === 'function' || node.data.category === 'trigger')
+                ) {
+                  e.preventDefault()
+                  setMenu({
+                    kind: 'newobject',
+                    x: e.clientX,
+                    y: e.clientY,
+                    schema: node.data.schema,
+                    objectKind: node.data.category
+                  })
                 } else if (kind === 'schema') {
                   e.preventDefault()
                   setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
