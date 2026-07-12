@@ -13,6 +13,8 @@ export interface StoredSecrets {
   sshPassphrase?: string
   authToken?: string
   uri?: string
+  /** PEM text of the TLS client private key (secret; ca/cert persist in the profile). */
+  sslKey?: string
 }
 
 /** On-disk shape: id → base64 of the encrypted JSON of StoredSecrets. */

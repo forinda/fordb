@@ -153,6 +153,7 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
         sshPassphrase?: string
         authToken?: string
         uri?: string
+        sslKey?: string
       }
     ) => {
       await profiles.save(profile)
@@ -161,7 +162,8 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
         secretFields.sshPassword ||
         secretFields.sshPassphrase ||
         secretFields.authToken ||
-        secretFields.uri
+        secretFields.uri ||
+        secretFields.sslKey
       ) {
         await secrets.set(profile.id, secretFields)
       }
@@ -188,7 +190,9 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
         ...profile,
         password: s.password,
         sshPassword: s.sshPassword,
-        sshPassphrase: s.sshPassphrase
+        sshPassphrase: s.sshPassphrase,
+        // Re-inject the TLS client private key into the (persisted) ssl block.
+        ssl: profile.ssl && s.sslKey ? { ...profile.ssl, key: s.sslKey } : profile.ssl
       }
     }
     if (profile.engine === 'sqlite' && (profile.kind === 'remote' || profile.kind === 'replica')) {

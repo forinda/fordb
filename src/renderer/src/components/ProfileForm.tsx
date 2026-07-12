@@ -48,9 +48,16 @@ export function ProfileForm(props: {
   const [user, setUser] = useState(pg?.user ?? '')
   const [password, setPassword] = useState('')
 
-  // SSL — minimal "trust server certificate" toggle for M2.
+  // SSL — verify toggle plus optional client-cert (mutual TLS) material. The CA
+  // and client cert persist in the profile; the client private key is a secret
+  // (keychain, never re-shown — like a password).
   const [useSsl, setUseSsl] = useState(pg?.ssl != null)
   const [verifyCert, setVerifyCert] = useState(pg?.ssl?.rejectUnauthorized ?? true)
+  const [sslCa, setSslCa] = useState(pg?.ssl?.ca ?? '')
+  const [sslCert, setSslCert] = useState(pg?.ssl?.cert ?? '')
+  // Client private key is a secret: like the password, it is never re-shown and
+  // must be re-uploaded to keep it when editing a profile.
+  const [sslKey, setSslKey] = useState('')
 
   // SSH tunnel sub-form — collapsed by default.
   const [useSsh, setUseSsh] = useState(pg?.ssh != null)
@@ -239,7 +246,9 @@ export function ProfileForm(props: {
       port: Number.isNaN(parsedPort) ? 5432 : parsedPort,
       database,
       user,
-      ssl: useSsl ? { rejectUnauthorized: verifyCert } : undefined,
+      ssl: useSsl
+        ? { rejectUnauthorized: verifyCert, ca: sslCa || undefined, cert: sslCert || undefined }
+        : undefined,
       ssh: useSsh
         ? {
             host: sshHost,
@@ -260,6 +269,7 @@ export function ProfileForm(props: {
     sshPassphrase?: string
     authToken?: string
     uri?: string
+    sslKey?: string
   } {
     if (engine === 'sqlite')
       return kind === 'remote' || kind === 'replica' ? { authToken: authToken || undefined } : {}
@@ -270,7 +280,8 @@ export function ProfileForm(props: {
     return {
       password: password || undefined,
       sshPassword: useSsh && authMethod === 'password' ? sshPassword || undefined : undefined,
-      sshPassphrase: useSsh && authMethod === 'key' ? sshPassphrase || undefined : undefined
+      sshPassphrase: useSsh && authMethod === 'key' ? sshPassphrase || undefined : undefined,
+      sslKey: useSsl ? sslKey || undefined : undefined
     }
   }
 
@@ -511,16 +522,36 @@ export function ProfileForm(props: {
             Use SSL
           </Label>
           {useSsl && (
-            <Label className="pl-6">
-              <Checkbox
-                checked={verifyCert}
-                onCheckedChange={(v) => {
-                  setVerifyCert(v === true)
-                  syncPgUriFromFields({ ssl: { rejectUnauthorized: v === true } })
-                }}
+            <div className="flex flex-col gap-2 pl-6 border-l border-border">
+              <Label>
+                <Checkbox
+                  checked={verifyCert}
+                  onCheckedChange={(v) => {
+                    setVerifyCert(v === true)
+                    syncPgUriFromFields({ ssl: { rejectUnauthorized: v === true } })
+                  }}
+                />
+                Verify server certificate
+              </Label>
+              <CertFile
+                label="CA certificate"
+                loaded={!!sslCa}
+                onFile={setSslCa}
+                onClear={() => setSslCa('')}
               />
-              Verify server certificate
-            </Label>
+              <CertFile
+                label="Client certificate"
+                loaded={!!sslCert}
+                onFile={setSslCert}
+                onClear={() => setSslCert('')}
+              />
+              <CertFile
+                label="Client key (secret)"
+                loaded={!!sslKey}
+                onFile={setSslKey}
+                onClear={() => setSslKey('')}
+              />
+            </div>
           )}
 
           <Label className="mt-2">
@@ -719,6 +750,40 @@ export function ProfileForm(props: {
         >
           {testMsg}
         </div>
+      )}
+    </div>
+  )
+}
+
+/** A PEM file picker: reads the chosen file's text into `onFile`, shows a
+ *  loaded/clear affordance. Used for TLS CA / client cert / client key. */
+function CertFile(props: {
+  label: string
+  loaded: boolean
+  onFile: (text: string) => void
+  onClear: () => void
+}): React.JSX.Element {
+  return (
+    <div className="flex items-center gap-2 text-xs">
+      <span className="w-32 text-muted-foreground">{props.label}</span>
+      {props.loaded ? (
+        <>
+          <span className="text-primary">loaded</span>
+          <button className="underline" onClick={props.onClear} type="button">
+            clear
+          </button>
+        </>
+      ) : (
+        <input
+          type="file"
+          aria-label={props.label}
+          accept=".pem,.crt,.cert,.key,.ca,application/x-pem-file"
+          className="text-xs"
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) void f.text().then(props.onFile)
+          }}
+        />
       )}
     </div>
   )
