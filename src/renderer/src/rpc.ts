@@ -2,6 +2,7 @@ import { createRpcClient } from '@shared/rpc/client'
 import type { HostApi } from '@shared/host/host-api'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
+import type { McpStatus } from '@shared/mcp/types'
 
 declare global {
   interface Window {
@@ -55,9 +56,18 @@ declare global {
         save: (defaultName: string, text: string, gzip: boolean) => Promise<boolean>
       }
       onDbHostRestarted: (cb: () => void) => void
+      mcp: {
+        status: () => Promise<McpStatus>
+        setEnabled: (enabled: boolean) => Promise<McpStatus>
+        setPort: (port: number) => Promise<McpStatus>
+        regenerateToken: () => Promise<McpStatus>
+      }
+      appVersion: () => Promise<string>
       updater: {
         check: () => Promise<void>
         install: () => Promise<void>
+        getAuto: () => Promise<boolean>
+        setAuto: (enabled: boolean) => Promise<void>
         onStatus: (cb: (s: UpdaterStatus) => void) => () => void
       }
     }

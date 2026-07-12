@@ -41,6 +41,7 @@ export function ProfileForm(props: {
     p?.environment ?? 'none'
   )
   const [favorite, setFavorite] = useState(p?.favorite ?? false)
+  const [exposeToMcp, setExposeToMcp] = useState(p?.exposeToMcp ?? false)
   const [host, setHost] = useState(pg?.host ?? 'localhost')
   const [port, setPort] = useState(String(pg?.port ?? 5432))
   const [database, setDatabase] = useState(pg?.database ?? '')
@@ -168,7 +169,8 @@ export function ProfileForm(props: {
     // Non-secret Dialect metadata, shared by every engine branch below.
     const meta = {
       environment: environment === 'none' ? undefined : environment,
-      favorite: favorite || undefined
+      favorite: favorite || undefined,
+      exposeToMcp: exposeToMcp || undefined
     }
     if (engine === 'sqlite') {
       const id = p?.id ?? newId()
@@ -327,6 +329,17 @@ export function ProfileForm(props: {
               onChange={(e) => setFavorite(e.target.checked)}
             />
             Favorite
+          </label>
+          <label
+            className="flex items-center gap-1 text-sm text-muted-foreground"
+            title="Let the local MCP server expose this connection to AI agents (read-only) while it is open"
+          >
+            <input
+              type="checkbox"
+              checked={exposeToMcp}
+              onChange={(e) => setExposeToMcp(e.target.checked)}
+            />
+            Expose to MCP
           </label>
         </div>
       </div>

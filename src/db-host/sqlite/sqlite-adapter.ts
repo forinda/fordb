@@ -173,8 +173,7 @@ export class SqliteAdapter implements DbAdapter {
     return (rs.rows as unknown as Row[]).map((r) => cols.map((c) => r[c]))
   }
 
-  async executeQuery(sql: string): Promise<QueryResult> {
-    const rs = await this.conn.execute(sql)
+  private static toResult(rs: ResultSet, sql: string): QueryResult {
     const command = (sql.trim().split(/\s+/)[0] ?? '').toUpperCase()
     // A SELECT reports columns; DML reports rowsAffected and no columns.
     const rowCount = rs.columns.length > 0 ? rs.rows.length : Number(rs.rowsAffected)
@@ -183,6 +182,22 @@ export class SqliteAdapter implements DbAdapter {
       rows: SqliteAdapter.arrayRows(rs),
       rowCount,
       command
+    }
+  }
+
+  async executeQuery(sql: string): Promise<QueryResult> {
+    return SqliteAdapter.toResult(await this.conn.execute(sql), sql)
+  }
+
+  async executeReadOnly(sql: string): Promise<QueryResult> {
+    // A 'read' transaction is engine-enforced read-only over both local and
+    // remote (Hrana) libsql — PRAGMA query_only isn't parsed by sqld. A write
+    // reaching here throws; rollback discards the (read-only) txn regardless.
+    const tx = await this.conn.transaction('read')
+    try {
+      return SqliteAdapter.toResult(await tx.execute(sql), sql)
+    } finally {
+      tx.close()
     }
   }
 

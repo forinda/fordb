@@ -3,6 +3,7 @@ import type { PortLike } from '@shared/rpc/protocol'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HistoryEntry, SavedQuery } from '@shared/query/library-types'
 import type { UpdaterStatus } from '@shared/updater'
+import type { McpStatus } from '@shared/mcp/types'
 
 // contextBridge clones plain values across the isolated-world/main-world
 // boundary but does not preserve MessagePort identity/methods (Electron
@@ -109,9 +110,19 @@ contextBridge.exposeInMainWorld('fordb', {
   onDbHostRestarted: (cb: () => void): void => {
     ipcRenderer.on('db-host:restarted', () => cb())
   },
+  mcp: {
+    status: (): Promise<McpStatus> => ipcRenderer.invoke('mcp:status'),
+    setEnabled: (enabled: boolean): Promise<McpStatus> =>
+      ipcRenderer.invoke('mcp:set-enabled', enabled),
+    setPort: (port: number): Promise<McpStatus> => ipcRenderer.invoke('mcp:set-port', port),
+    regenerateToken: (): Promise<McpStatus> => ipcRenderer.invoke('mcp:regenerate-token')
+  },
+  appVersion: (): Promise<string> => ipcRenderer.invoke('app:version'),
   updater: {
     check: (): Promise<void> => ipcRenderer.invoke('updater:check'),
     install: (): Promise<void> => ipcRenderer.invoke('updater:install'),
+    getAuto: (): Promise<boolean> => ipcRenderer.invoke('updater:get-auto'),
+    setAuto: (enabled: boolean): Promise<void> => ipcRenderer.invoke('updater:set-auto', enabled),
     onStatus: (cb: (s: UpdaterStatus) => void): (() => void) => {
       const listener = (_e: Electron.IpcRendererEvent, s: UpdaterStatus): void => cb(s)
       ipcRenderer.on('updater:status', listener)

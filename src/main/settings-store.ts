@@ -8,6 +8,7 @@ interface SettingsFile {
   theme?: string
   mcpEnabled?: boolean
   mcpPort?: number
+  autoUpdate?: boolean
 }
 
 /** Non-secret MCP settings. The bearer TOKEN is a credential (grants DB read
@@ -50,6 +51,19 @@ export class SettingsStore {
     const data = await this.read()
     data.mcpEnabled = c.enabled
     data.mcpPort = c.port
+    await mkdir(dirname(this.filePath), { recursive: true })
+    await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
+  }
+
+  /** In-app auto-update opt-in (default on). Only takes effect where updates are
+   *  supported at all — packaged AppImage/NSIS. */
+  async getAutoUpdate(): Promise<boolean> {
+    return (await this.read()).autoUpdate ?? true
+  }
+
+  async setAutoUpdate(enabled: boolean): Promise<void> {
+    const data = await this.read()
+    data.autoUpdate = enabled
     await mkdir(dirname(this.filePath), { recursive: true })
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }

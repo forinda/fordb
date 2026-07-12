@@ -5,6 +5,9 @@ import { gzipSync, gunzipSync } from 'node:zlib'
 import { ProfileStore } from './profile-store'
 import { SecretStore, type SafeStorageLike } from './secret-store'
 import { QueryLibraryStore } from './query-library-store'
+import { SettingsStore } from './settings-store'
+import { McpService } from './mcp/service'
+import type { McpConnectionInfo } from './mcp/server'
 import { checkForUpdates, quitAndInstall } from './updater'
 import type { ConnectionProfile } from '@shared/adapter/types'
 import type { HostApi } from '@shared/host/host-api'
@@ -17,9 +20,32 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     safeStorage as unknown as SafeStorageLike
   )
   const queryLibrary = new QueryLibraryStore(join(dir, 'query-library.json'))
+  const settingsStore = new SettingsStore(join(dir, 'settings.json'))
+
+  // connectionId -> profileId for currently-open connections. The MCP allowlist
+  // is the subset whose profile opted in via `exposeToMcp`.
+  const openConnections = new Map<string, string>()
+  const exposedConnections = async (): Promise<McpConnectionInfo[]> => {
+    const byId = new Map((await profiles.list()).map((p) => [p.id, p]))
+    const out: McpConnectionInfo[] = []
+    for (const [connectionId, profileId] of openConnections) {
+      const p = byId.get(profileId)
+      if (p?.exposeToMcp) out.push({ connectionId, name: p.name, engine: p.engine })
+    }
+    return out
+  }
+  const mcp = new McpService(settingsStore, secrets, getHostControl, exposedConnections)
+
+  ipcMain.handle('mcp:status', () => mcp.status())
+  ipcMain.handle('mcp:set-enabled', (_e, enabled: boolean) => mcp.setEnabled(enabled))
+  ipcMain.handle('mcp:set-port', (_e, port: number) => mcp.setPort(port))
+  ipcMain.handle('mcp:regenerate-token', () => mcp.regenerateToken())
 
   ipcMain.handle('updater:check', () => checkForUpdates())
   ipcMain.handle('updater:install', () => quitAndInstall())
+  ipcMain.handle('updater:get-auto', () => settingsStore.getAutoUpdate())
+  ipcMain.handle('updater:set-auto', (_e, enabled: boolean) => settingsStore.setAutoUpdate(enabled))
+  ipcMain.handle('app:version', () => app.getVersion())
   ipcMain.handle('queries:history-list', (_e, profileId: string) =>
     queryLibrary.listHistory(profileId)
   )
@@ -110,11 +136,14 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
       overrideDatabase && profile.engine === 'postgres'
         ? { ...profile, database: overrideDatabase }
         : profile
-    return host.openConnection(eff)
+    const connectionId = await host.openConnection(eff)
+    openConnections.set(connectionId, profileId)
+    return connectionId
   })
   ipcMain.handle('connection:close', async (_e, connectionId: string) => {
     const host = getHostControl()
     if (!host) throw new Error('db-host unavailable')
+    openConnections.delete(connectionId)
     return host.closeConnection(connectionId)
   })
 
@@ -156,4 +185,7 @@ export function registerIpc(getHostControl: () => HostApi | null): void {
     await writeFile(r.filePath, gzip ? gzipSync(Buffer.from(text, 'utf8')) : text)
     return true
   })
+
+  // Start the MCP server now if the user left it enabled (off by default).
+  void mcp.sync()
 }

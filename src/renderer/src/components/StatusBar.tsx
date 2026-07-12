@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { connectionLabel } from '@shared/connection-label'
 import { useProfiles } from '../query/profiles'
 import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
 import { ThemeToggle } from './ThemeToggle'
+import { Preferences } from './Preferences'
 
 /** Dialect status bar: connection state + engine on the left, the active
  *  tab's result summary (message + elapsed) in the middle, theme toggle on
@@ -12,6 +14,7 @@ export function StatusBar(): React.JSX.Element {
   const { data: profiles = [] } = useProfiles()
   const profile = profiles.find((p) => p.id === activeProfileId)
   const activeTab = useQueryStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
+  const [prefsOpen, setPrefsOpen] = useState(false)
 
   return (
     <div className="flex h-6 flex-none items-center gap-3 border-t border-border bg-surface-2 px-3 text-xs text-muted-foreground">
@@ -39,7 +42,15 @@ export function StatusBar(): React.JSX.Element {
           <span> · {Math.round(activeTab.elapsedMs)} ms</span>
         )}
       </span>
+      <button
+        className="flex-none rounded px-1 hover:text-foreground"
+        onClick={() => setPrefsOpen(true)}
+        title="Preferences"
+      >
+        Settings
+      </button>
       <ThemeToggle />
+      <Preferences open={prefsOpen} onClose={() => setPrefsOpen(false)} />
     </div>
   )
 }

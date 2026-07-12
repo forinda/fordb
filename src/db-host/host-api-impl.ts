@@ -89,6 +89,11 @@ export class HostApiImpl implements HostApi {
   executeQuery(id: ConnectionId, sql: string): Promise<QueryResult> {
     return this.registry.get(id).executeQuery(sql)
   }
+  executeReadOnly(id: ConnectionId, sql: string): Promise<QueryResult> {
+    const a = this.registry.get(id)
+    if (!a.executeReadOnly) throw new Error('read-only execution not supported for this engine')
+    return a.executeReadOnly(sql)
+  }
   openQuery(id: ConnectionId, sql: string, pageSize: number): Promise<OpenQueryResult> {
     return this.registry.get(id).openQuery(sql, pageSize)
   }
