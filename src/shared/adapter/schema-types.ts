@@ -67,6 +67,10 @@ export interface IndexSpec {
   name: string
   columns: string[]
   unique?: boolean
+  /** Raw index expression (e.g. "lower(email)"); when set, `columns` is ignored. */
+  expression?: string
+  /** Partial-index predicate (raw SQL), emitted as `WHERE (...)`. */
+  where?: string
 }
 export interface ForeignKeySpec {
   schema: string

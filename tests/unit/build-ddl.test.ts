@@ -412,6 +412,40 @@ describe('reconstructDdl', () => {
     expect(ddl).toContain(`CONSTRAINT "age_positive" CHECK (age >= 0)`)
   })
 
+  it('createIndex: partial (WHERE) + expression indexes', () => {
+    const partial = buildDdl(
+      {
+        kind: 'createIndex',
+        spec: {
+          schema: 'app',
+          table: 'orders',
+          name: 'i_open',
+          columns: ['status'],
+          where: "status = 'open'"
+        }
+      },
+      'pg'
+    )[0]
+    expect(partial).toBe(
+      `CREATE INDEX "i_open" ON "app"."orders" ("status") WHERE (status = 'open')`
+    )
+    const expr = buildDdl(
+      {
+        kind: 'createIndex',
+        spec: {
+          schema: 'app',
+          table: 'users',
+          name: 'i_lower',
+          columns: [],
+          expression: 'lower(email)',
+          unique: true
+        }
+      },
+      'pg'
+    )[0]
+    expect(expr).toBe(`CREATE UNIQUE INDEX "i_lower" ON "app"."users" (lower(email))`)
+  })
+
   it('addCheck / dropCheck build ALTER TABLE constraint statements', () => {
     expect(
       buildDdl(
