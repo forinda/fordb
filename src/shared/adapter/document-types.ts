@@ -40,6 +40,9 @@ export interface DocumentIndexSpec {
 export interface DocumentAdmin {
   createIndex(db: string, coll: string, spec: DocumentIndexSpec): Promise<void>
   dropIndex(db: string, coll: string, name: string): Promise<void>
+  createCollection(db: string, coll: string): Promise<void>
+  dropCollection(db: string, coll: string): Promise<void>
+  renameCollection(db: string, from: string, to: string): Promise<void>
 }
 
 export interface DocumentMutator {

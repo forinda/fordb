@@ -135,6 +135,9 @@ export interface HostApi {
   documentAdminSupported(id: ConnectionId): Promise<boolean>
   createDocIndex(id: ConnectionId, db: string, coll: string, spec: DocumentIndexSpec): Promise<void>
   dropDocIndex(id: ConnectionId, db: string, coll: string, name: string): Promise<void>
+  createCollection(id: ConnectionId, db: string, coll: string): Promise<void>
+  dropCollection(id: ConnectionId, db: string, coll: string): Promise<void>
+  renameCollection(id: ConnectionId, db: string, from: string, to: string): Promise<void>
 
   mongoStatsSupported(id: ConnectionId): Promise<boolean>
   mongoServerStatus(id: ConnectionId): Promise<MongoSnapshot>
