@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useInvalidateProfiles } from '../query/profiles'
 import type { ConnectionProfile, SqliteProfile, SshOptions } from '@shared/adapter/types'
-import { parseConnectionUrl } from '@shared/connection-url'
+import { parseConnectionUrl, buildPostgresUri, type PgUriFields } from '@shared/connection-url'
 import { connectionLabel } from '@shared/connection-label'
 import { parseMongoUri, buildMongoUriFromFields } from '@shared/mongo/uri'
 import { Button } from './ui/button'
@@ -96,31 +96,61 @@ export function ProfileForm(props: {
 
   // Paste-a-URL import — DataGrip-style. Parsing is pure and only fills the
   // form fields above; it never auto-submits.
-  const [connUrl, setConnUrl] = useState('')
   const [urlError, setUrlError] = useState('')
   const [extraParams, setExtraParams] = useState<Record<string, string>>({})
+  // The connection URL and the discrete fields are two views of one connection
+  // (like the Mongo URI): editing either keeps the other in sync. The URL is a
+  // UI view — only the discrete fields + password persist.
+  const [pgUri, setPgUri] = useState(() =>
+    buildPostgresUri({
+      host: pg?.host ?? 'localhost',
+      port: pg?.port ?? 5432,
+      database: pg?.database || undefined,
+      user: pg?.user || undefined,
+      ssl: pg?.ssl ? { rejectUnauthorized: pg.ssl.rejectUnauthorized } : undefined
+    })
+  )
 
-  function fillFromUrl(): void {
-    if (!connUrl.trim()) return
-    try {
-      const parsed = parseConnectionUrl(connUrl)
+  // Rebuild the URL from the current fields (with the just-changed value applied,
+  // since setState is async).
+  function syncPgUriFromFields(over: Partial<PgUriFields> = {}): void {
+    const fields: PgUriFields = {
+      host,
+      port: port ? Number(port) : undefined,
+      database: database || undefined,
+      user: user || undefined,
+      password: password || undefined,
+      ssl: useSsl ? { rejectUnauthorized: verifyCert } : undefined,
+      extraParams,
+      ...over
+    }
+    setPgUri(buildPostgresUri(fields))
+    setUrlError('')
+  }
+
+  // Editing the URL parses it back into the fields. A partial/invalid URL just
+  // shows an error and leaves the fields alone (URL parses only when complete).
+  function syncPgFieldsFromUri(uri: string): void {
+    setPgUri(uri)
+    if (!uri.trim()) {
       setUrlError('')
-      if (parsed.profile.host !== undefined) setHost(parsed.profile.host)
-      if (parsed.profile.port !== undefined) setPort(String(parsed.profile.port))
-      if (parsed.profile.database !== undefined) setDatabase(parsed.profile.database)
-      if (parsed.profile.user !== undefined) setUser(parsed.profile.user)
-      if (parsed.password !== undefined) setPassword(parsed.password)
-      if (parsed.profile.ssl !== undefined) {
+      return
+    }
+    try {
+      const p = parseConnectionUrl(uri)
+      setUrlError('')
+      if (p.profile.host !== undefined) setHost(p.profile.host)
+      if (p.profile.port !== undefined) setPort(String(p.profile.port))
+      setDatabase(p.profile.database ?? '')
+      setUser(p.profile.user ?? '')
+      if (p.password !== undefined) setPassword(p.password)
+      if (p.profile.ssl !== undefined) {
         setUseSsl(true)
-        setVerifyCert(parsed.profile.ssl.rejectUnauthorized)
-      }
-      setExtraParams(parsed.extraParams)
-      // Clear the pasted URL once consumed so the (cleartext) password from the
-      // DSN isn't left sitting in a plain text field.
-      setConnUrl('')
+        setVerifyCert(p.profile.ssl.rejectUnauthorized)
+      } else setUseSsl(false)
+      setExtraParams(p.extraParams)
     } catch {
       setUrlError("Couldn't parse that URL")
-      setExtraParams({}) // don't leave a prior parse's params next to an error
     }
   }
 
@@ -402,24 +432,19 @@ export function ProfileForm(props: {
       {engine === 'postgres' && (
         <>
           <div className="flex flex-col gap-1 pb-2 mb-2 border-b border-border">
-            <Label htmlFor="conn-url">Paste connection URL</Label>
-            <div className="flex gap-2">
-              <Input
-                id="conn-url"
-                className="flex-1"
-                placeholder="postgres://user:pass@host:5432/db?sslmode=require"
-                value={connUrl}
-                onChange={(e) => setConnUrl(e.target.value)}
-                onBlur={fillFromUrl}
-              />
-              <Button type="button" variant="outline" onClick={fillFromUrl}>
-                Fill from URL
-              </Button>
-            </div>
+            <Label htmlFor="conn-url">Connection URL</Label>
+            <Input
+              id="conn-url"
+              aria-label="Connection URL"
+              className="flex-1"
+              placeholder="postgres://user:pass@host:5432/db?sslmode=require"
+              value={pgUri}
+              onChange={(e) => syncPgFieldsFromUri(e.target.value)}
+            />
             {urlError && <div className="text-sm text-destructive">{urlError}</div>}
             {Object.keys(extraParams).length > 0 && (
               <div className="text-sm text-muted-foreground">
-                Extra parameters (not applied yet):{' '}
+                Extra parameters:{' '}
                 {Object.entries(extraParams)
                   .map(([k, v]) => `${k}=${v}`)
                   .join(', ')}
@@ -431,36 +456,69 @@ export function ProfileForm(props: {
               className="flex-[2]"
               placeholder="Host"
               value={host}
-              onChange={(e) => setHost(e.target.value)}
+              onChange={(e) => {
+                setHost(e.target.value)
+                syncPgUriFromFields({ host: e.target.value })
+              }}
             />
             <Input
               className="flex-1"
               type="number"
               placeholder="Port"
               value={port}
-              onChange={(e) => setPort(e.target.value)}
+              onChange={(e) => {
+                setPort(e.target.value)
+                syncPgUriFromFields({ port: e.target.value ? Number(e.target.value) : undefined })
+              }}
             />
           </div>
           <Input
             placeholder="Database"
             value={database}
-            onChange={(e) => setDatabase(e.target.value)}
+            onChange={(e) => {
+              setDatabase(e.target.value)
+              syncPgUriFromFields({ database: e.target.value || undefined })
+            }}
           />
-          <Input placeholder="User" value={user} onChange={(e) => setUser(e.target.value)} />
+          <Input
+            placeholder="User"
+            value={user}
+            onChange={(e) => {
+              setUser(e.target.value)
+              syncPgUriFromFields({ user: e.target.value || undefined })
+            }}
+          />
           <Input
             type="password"
             placeholder="Password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value)
+              syncPgUriFromFields({ password: e.target.value || undefined })
+            }}
           />
 
           <Label className="mt-2">
-            <Checkbox checked={useSsl} onCheckedChange={(v) => setUseSsl(v === true)} />
+            <Checkbox
+              checked={useSsl}
+              onCheckedChange={(v) => {
+                setUseSsl(v === true)
+                syncPgUriFromFields({
+                  ssl: v === true ? { rejectUnauthorized: verifyCert } : undefined
+                })
+              }}
+            />
             Use SSL
           </Label>
           {useSsl && (
             <Label className="pl-6">
-              <Checkbox checked={verifyCert} onCheckedChange={(v) => setVerifyCert(v === true)} />
+              <Checkbox
+                checked={verifyCert}
+                onCheckedChange={(v) => {
+                  setVerifyCert(v === true)
+                  syncPgUriFromFields({ ssl: { rejectUnauthorized: v === true } })
+                }}
+              />
               Verify server certificate
             </Label>
           )}
