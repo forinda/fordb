@@ -110,6 +110,13 @@ export interface HostApi {
   ): Promise<OpenDocsResult>
   fetchDocs(id: ConnectionId, queryId: string): Promise<DocsPage>
   closeDocs(id: ConnectionId, queryId: string): Promise<void>
+  explainDoc(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    mode: 'find' | 'aggregate',
+    query: Record<string, unknown> | Record<string, unknown>[]
+  ): Promise<Record<string, unknown>>
 
   documentMutatorSupported(id: ConnectionId): Promise<boolean>
   insertDoc(

@@ -113,6 +113,7 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
   const doc = tab.doc!
   const setDoc = useQueryStore((s) => s.setDoc)
   const run = useQueryStore((s) => s.run)
+  const explainDoc = useQueryStore((s) => s.explainDoc)
   // Indexes side panel (Dialect Mongo view). The collection lives in the
   // profile's default database — that's what documentQuery targets too.
   const [showIndexes, setShowIndexes] = useState(false)
@@ -169,9 +170,19 @@ function DocumentWorkbench(props: { tab: QueryTab }): React.JSX.Element {
           </Button>
         )}
         {doc.mode !== 'bulk' && (
-          <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
-            Run
-          </Button>
+          <>
+            <Button onClick={() => void run(tab.id)} disabled={tab.status === 'running'}>
+              Run
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void explainDoc(tab.id)}
+              disabled={tab.status === 'running'}
+            >
+              Explain
+            </Button>
+          </>
         )}
         <span className="text-sm text-muted-foreground ml-auto">
           {tab.status === 'running' && 'running…'}

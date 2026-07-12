@@ -27,6 +27,13 @@ export interface DocumentQuery {
   ): Promise<OpenDocsResult>
   fetchDocs(queryId: string): Promise<DocsPage>
   closeDocs(queryId: string): Promise<void>
+  /** Query plan (executionStats) for a find filter or an aggregate pipeline. */
+  explain(
+    db: string,
+    coll: string,
+    mode: 'find' | 'aggregate',
+    query: Record<string, unknown> | Record<string, unknown>[]
+  ): Promise<Record<string, unknown>>
 }
 
 export interface DocumentIndexSpec {
