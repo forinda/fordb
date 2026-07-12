@@ -56,11 +56,14 @@ export interface QueryTab {
   doc?: {
     database: string
     collection: string
-    mode: 'find' | 'aggregate'
+    mode: 'find' | 'aggregate' | 'bulk'
     text: string
     projection?: string
     sort?: string
     limit?: number
+    /** Bulk mode: which write, and the update document (for 'update'). */
+    bulkOp?: 'update' | 'delete'
+    updateText?: string
   }
   /** Accumulates cursor-paged documents for a document-mode tab's run. */
   docSource?: DocumentResultSource
@@ -99,6 +102,10 @@ interface QueryState {
   updateDoc: (tabId: string, docId: unknown, patch: Record<string, unknown>) => Promise<void>
   /** Deletes a document by `_id`, then refetches the tab. */
   deleteDoc: (tabId: string, docId: unknown) => Promise<void>
+  /** Counts documents matching a bulk-mode tab's current filter. */
+  bulkCount: (tabId: string) => Promise<number>
+  /** Runs the bulk-mode tab's updateMany/deleteMany, returns a summary string. */
+  bulkApply: (tabId: string) => Promise<string>
   openFkTarget: (schema: string, refTable: string, filters: Filter[]) => Promise<void>
   applyEdits: (tabId: string, edits: RowEdit[]) => Promise<void>
   openStructure: (schema: string, table: string) => void
@@ -295,6 +302,34 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         tabs: patch(s.tabs, tabId, { status: 'error', message: noMatchWarning(docId) })
       }))
     }
+  },
+  bulkCount: async (tabId) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !tab?.doc) return 0
+    const filter = parseRelaxed(tab.doc.text) as Record<string, unknown>
+    return (await hostApi()).countDocs(connId, tab.doc.database, tab.doc.collection, filter)
+  },
+  bulkApply: async (tabId) => {
+    const connId = useConnStore.getState().activeConnectionId
+    const tab = get().tabs.find((t) => t.id === tabId)
+    if (!connId || !tab?.doc) return ''
+    const { database, collection, bulkOp } = tab.doc
+    const filter = parseRelaxed(tab.doc.text) as Record<string, unknown>
+    const api = await hostApi()
+    if (bulkOp === 'delete') {
+      const { deleted } = await api.deleteManyDocs(connId, database, collection, filter)
+      return `Deleted ${deleted} document(s)`
+    }
+    const update = parseRelaxed(tab.doc.updateText ?? '{}') as Record<string, unknown>
+    const { matched, modified } = await api.updateManyDocs(
+      connId,
+      database,
+      collection,
+      filter,
+      update
+    )
+    return `Matched ${matched}, modified ${modified} document(s)`
   },
   openFkTarget: async (schema, refTable, filters) => {
     await get().openTable(schema, refTable, filters)
@@ -505,6 +540,9 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       }
       if (tab.doc) {
         const { database, collection, mode, text } = tab.doc
+        // Bulk mode is driven by its own bulkCount/bulkApply actions, not the
+        // read-cursor Run path.
+        if (mode === 'bulk') return
         const parsed = parseRelaxed(text) // throws → caught below, shown as parse error
         if (mode === 'aggregate' && !Array.isArray(parsed)) {
           set((s) => ({

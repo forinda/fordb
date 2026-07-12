@@ -290,6 +290,31 @@ export class HostApiImpl implements HostApi {
   ): Promise<{ deleted: number }> {
     return this.docmut(id).deleteById(db, coll, docId)
   }
+  countDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): Promise<number> {
+    return this.docmut(id).countMatching(db, coll, filter)
+  }
+  updateManyDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>
+  ): Promise<{ matched: number; modified: number }> {
+    return this.docmut(id).updateMany(db, coll, filter, update)
+  }
+  deleteManyDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): Promise<{ deleted: number }> {
+    return this.docmut(id).deleteMany(db, coll, filter)
+  }
 
   private docadmin(id: ConnectionId): DocumentAdmin {
     const a = this.registry.get(id).documentAdmin

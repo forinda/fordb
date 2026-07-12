@@ -49,4 +49,33 @@ export class MongoDocumentMutator implements DocumentMutator {
       .deleteOne({ _id: toId(id) as never })
     return { deleted: r.deletedCount }
   }
+  async countMatching(db: string, coll: string, filter: Record<string, unknown>): Promise<number> {
+    return this.dbFor(db)
+      .collection(coll)
+      .countDocuments(reviveEjson(filter) as Record<string, unknown>)
+  }
+  async updateMany(
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>
+  ): Promise<{ matched: number; modified: number }> {
+    const r = await this.dbFor(db)
+      .collection(coll)
+      .updateMany(
+        reviveEjson(filter) as Record<string, unknown>,
+        reviveEjson(update) as Record<string, unknown>
+      )
+    return { matched: r.matchedCount, modified: r.modifiedCount }
+  }
+  async deleteMany(
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): Promise<{ deleted: number }> {
+    const r = await this.dbFor(db)
+      .collection(coll)
+      .deleteMany(reviveEjson(filter) as Record<string, unknown>)
+    return { deleted: r.deletedCount }
+  }
 }

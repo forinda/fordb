@@ -131,6 +131,25 @@ export interface HostApi {
     coll: string,
     docId: unknown
   ): ReturnType<DocumentMutator['deleteById']>
+  countDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): ReturnType<DocumentMutator['countMatching']>
+  updateManyDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>,
+    update: Record<string, unknown>
+  ): ReturnType<DocumentMutator['updateMany']>
+  deleteManyDocs(
+    id: ConnectionId,
+    db: string,
+    coll: string,
+    filter: Record<string, unknown>
+  ): ReturnType<DocumentMutator['deleteMany']>
 
   documentAdminSupported(id: ConnectionId): Promise<boolean>
   createDocIndex(id: ConnectionId, db: string, coll: string, spec: DocumentIndexSpec): Promise<void>
