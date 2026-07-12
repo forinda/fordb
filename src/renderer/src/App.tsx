@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { AiPanel } from './components/AiPanel'
 import { CommandPalette } from './components/CommandPalette'
 import { ConnectionManager, ConnectionDetails } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
@@ -46,6 +47,9 @@ export function App(): React.JSX.Element {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Editor-screen sidebar visibility (toggle from the title bar / palette).
   const [showSidebar, setShowSidebar] = useState(true)
+  // AI assistant panel visibility (toggle from the status bar) — unmounted
+  // (not just hidden) when closed so it holds no state/subscriptions idle.
+  const [aiOpen, setAiOpen] = useState(false)
   const setActive = useConnStore((s) => s.setActive)
   const clearActive = useConnStore((s) => s.clearActive)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
@@ -232,10 +236,12 @@ export function App(): React.JSX.Element {
             onConnect={connectTo}
           />
         ) : (
-          <ResizablePanelGroup direction="horizontal">
-            {/* Editor sidebar: active-connection bar + schema tree. Switching
-            connections happens on the title bar's Connections screen. */}
-            {showSidebar && (
+          <div className="flex h-full min-h-0">
+            <div className="min-w-0 flex-1">
+              <ResizablePanelGroup direction="horizontal">
+                {/* Editor sidebar: active-connection bar + schema tree. Switching
+                connections happens on the title bar's Connections screen. */}
+                {showSidebar && (
               <ResizablePanel
                 defaultSize={18}
                 minSize={12}
@@ -314,10 +320,17 @@ export function App(): React.JSX.Element {
                 )}
               </div>
             </ResizablePanel>
-          </ResizablePanelGroup>
+              </ResizablePanelGroup>
+            </div>
+            {aiOpen && (
+              <aside className="w-80 flex-none border-l border-border bg-surface-1">
+                <AiPanel />
+              </aside>
+            )}
+          </div>
         )}
       </div>
-      <StatusBar />
+      <StatusBar aiOpen={aiOpen} onToggleAi={() => setAiOpen((v) => !v)} />
       <CommandPalette commands={commands} onConnect={connectTo} />
       <QueryLibrary />
       <CsvImportDialog />

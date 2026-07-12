@@ -95,6 +95,70 @@ function UpdatesSection(): React.JSX.Element {
   )
 }
 
+function AiConfigSection(): React.JSX.Element {
+  const [cfg, setCfg] = useState<{ baseUrl: string; model: string; hasKey: boolean } | null>(null)
+  const [key, setKey] = useState('')
+  const [test, setTest] = useState('')
+  useEffect(() => {
+    void window.fordb.ai.getConfig().then(setCfg)
+  }, [])
+  if (!cfg) return <div className="text-sm text-muted-foreground">Loading…</div>
+  const save = (patch: Partial<typeof cfg>): void => {
+    const next = { ...cfg, ...patch }
+    setCfg(next)
+    void window.fordb.ai.setConfig(next.baseUrl, next.model)
+  }
+  return (
+    <div className="flex flex-col gap-2 text-sm">
+      <p className="text-muted-foreground">
+        Any OpenAI-compatible endpoint (OpenAI, OpenRouter, Ollama at{' '}
+        <code>http://localhost:11434/v1</code>, …). The key is stored in your OS keychain.
+      </p>
+      <label className="flex items-center gap-2">
+        <span className="w-20">Base URL</span>
+        <input
+          className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1"
+          value={cfg.baseUrl}
+          placeholder="https://api.openai.com/v1"
+          onChange={(e) => save({ baseUrl: e.target.value })}
+        />
+      </label>
+      <label className="flex items-center gap-2">
+        <span className="w-20">Model</span>
+        <input
+          className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1"
+          value={cfg.model}
+          placeholder="gpt-4o-mini / llama3.1 / …"
+          onChange={(e) => save({ model: e.target.value })}
+        />
+      </label>
+      <label className="flex items-center gap-2">
+        <span className="w-20">API key</span>
+        <input
+          type="password"
+          className="min-w-0 flex-1 rounded border border-border bg-background px-2 py-1 font-mono text-xs"
+          value={key}
+          placeholder={cfg.hasKey ? '•••• (saved)' : 'sk-… (blank for keyless Ollama)'}
+          onChange={(e) => setKey(e.target.value)}
+          onBlur={() => void window.fordb.ai.setKey(key)}
+        />
+      </label>
+      <div className="flex items-center gap-2">
+        <button
+          className="rounded border border-border px-2 py-1 hover:bg-surface-2"
+          onClick={async () => {
+            const r = await window.fordb.ai.test()
+            setTest(r.ok ? 'OK' : `Failed: ${r.message}`)
+          }}
+        >
+          Test
+        </button>
+        <span className="text-muted-foreground">{test}</span>
+      </div>
+    </div>
+  )
+}
+
 function AboutSection(): React.JSX.Element {
   const [version, setVersion] = useState('')
   useEffect(() => {
@@ -122,6 +186,9 @@ export function Preferences(props: { open: boolean; onClose: () => void }): Reac
         </Section>
         <Section title="MCP server">
           <McpSection />
+        </Section>
+        <Section title="AI assistant">
+          <AiConfigSection />
         </Section>
         <Section title="About">
           <AboutSection />
