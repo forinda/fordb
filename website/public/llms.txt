@@ -1,0 +1,23 @@
+# fordb
+
+> A lean, keyboard-first, open-source (MIT) desktop database client for PostgreSQL, SQLite, and MongoDB — all engines shipped and free. Built with Electron + TypeScript across three isolated processes (renderer, main, db-host) so secrets never reach the UI and every destructive change is previewed as SQL and confirmed before it runs.
+
+## Guide
+
+- [Introduction](https://forinda.github.io/fordb/guide/introduction.html): What fordb is, and its three-process architecture.
+- [Install](https://forinda.github.io/fordb/guide/install.html): Packaged installers (apt/dnf, AppImage, .deb/.rpm, Windows .exe, macOS .dmg) and running from source.
+- [Getting Started](https://forinda.github.io/fordb/guide/getting-started.html): First connection to first query.
+- [Connections](https://forinda.github.io/fordb/guide/connections.html): Postgres/SQLite/MongoDB connection flavours; secrets live in the OS keychain.
+- [Query Workbench](https://forinda.github.io/fordb/guide/query-workbench.html): SQL editor with autocomplete, result grid, EXPLAIN, history, saved queries, CSV/JSON export.
+- [Schema & Structure](https://forinda.github.io/fordb/guide/schema-structure.html): Table designer plus Postgres schema depth — generated columns, checks, partial/expression indexes, sequences, materialized views, functions/triggers, roles & grants, maintenance, TLS/SSH.
+- [MongoDB](https://forinda.github.io/fordb/guide/mongodb.html): Document query (find/aggregate), editing, bulk writes, index & collection admin, explain, export, schema validation, user administration.
+- [Keyboard & Palette](https://forinda.github.io/fordb/guide/keyboard.html): Command palette and keyboard shortcuts.
+
+## Reference
+
+- [Engines](https://forinda.github.io/fordb/reference/engines.html): Per-engine capability matrix (Postgres / SQLite / MongoDB) and the DbAdapter contract.
+
+## Optional
+
+- [GitHub repository](https://github.com/forinda/fordb): Source, issues, and releases.
+- [Releases](https://github.com/forinda/fordb/releases): Download packaged installers.

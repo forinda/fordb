@@ -5,6 +5,10 @@ export default defineConfig({
   description: 'A lean, keyboard-first, open-source desktop database client.',
   base: '/fordb/',
   head: [['link', { rel: 'icon', href: '/fordb/icon.png' }]],
+  // The package readme isn't a site page — keep it out of the build + sitemap.
+  srcExclude: ['README.md'],
+  // Emits sitemap.xml at build (GitHub Pages URL includes the /fordb/ base).
+  sitemap: { hostname: 'https://forinda.github.io/fordb/' },
   themeConfig: {
     logo: '/icon.png',
     nav: [
