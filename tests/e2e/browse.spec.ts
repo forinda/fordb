@@ -33,6 +33,7 @@ test('filter a table in the data grid', async () => {
   await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await win.getByText('widgets').click() // single-click opens the data tab
 
   // Filter bar is rendered for the data tab.

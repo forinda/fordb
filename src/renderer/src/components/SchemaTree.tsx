@@ -458,19 +458,17 @@ export function SchemaTree(): React.JSX.Element {
     if (!connId) return
     let kids: TreeNode[]
     if (id.startsWith('s:')) {
-      // schema → table nodes directly (common path, no extra click), plus a
-      // category folder for each object kind the engine exposes.
+      // schema → a Tables/Collections folder, then a folder per object kind the
+      // engine exposes. Tables load lazily under their own folder (like pgAdmin),
+      // so a schema with hundreds of tables doesn't dump them into the schema.
       const schema = id.slice(2)
-      const tables = await fetchTables(queryClient, connId, schema)
-      const tableNodes: TreeNode[] = tables
-        .filter((t) => t.type === 'table')
-        .map((t) => ({
-          id: `t:${schema}.${t.name}`,
-          name: t.name,
-          kind: 'table' as const,
-          schema,
-          table: t.name
-        }))
+      const tableCat: TreeNode = {
+        id: `cat:${schema}.table`,
+        name: docSupported ? 'Collections' : 'Tables',
+        kind: 'category',
+        schema,
+        category: 'table'
+      }
       const catNodes: TreeNode[] = objectKindsRef.current.map((k) => ({
         id: `cat:${schema}.${k}`,
         name: CATEGORY_LABEL[k],
@@ -478,19 +476,32 @@ export function SchemaTree(): React.JSX.Element {
         schema,
         category: k
       }))
-      kids = [...tableNodes, ...catNodes]
+      kids = [tableCat, ...catNodes]
     } else if (id.startsWith('cat:')) {
       const rest = id.slice(4)
       const dot = rest.lastIndexOf('.')
       const schema = rest.slice(0, dot)
       const cat = rest.slice(dot + 1) as CategoryKind
-      const objs = await fetchObjects(queryClient, connId, schema, cat as ObjectKind)
-      kids = objs.map((o) => ({
-        id: `obj:${schema}.${cat}.${o.name}`,
-        name: o.name,
-        kind: cat,
-        schema
-      }))
+      if (cat === 'table') {
+        const tables = await fetchTables(queryClient, connId, schema)
+        kids = tables
+          .filter((t) => t.type === 'table')
+          .map((t) => ({
+            id: `t:${schema}.${t.name}`,
+            name: t.name,
+            kind: 'table' as const,
+            schema,
+            table: t.name
+          }))
+      } else {
+        const objs = await fetchObjects(queryClient, connId, schema, cat as ObjectKind)
+        kids = objs.map((o) => ({
+          id: `obj:${schema}.${cat}.${o.name}`,
+          name: o.name,
+          kind: cat,
+          schema
+        }))
+      }
     } else if (id.startsWith('t:')) {
       // t:<schema>.<table> → columns.
       const rest = id.slice(2)
@@ -724,7 +735,12 @@ export function SchemaTree(): React.JSX.Element {
               {/* Category folders read as 11px uppercase section headers (Dialect). */}
               {kind === 'category' ? (
                 <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  {node.data.name}
+                  <span>{node.data.name}</span>
+                  {/* Count in its own span, like pgAdmin's "Tables (14)" — kept
+                      separate so text matchers still target the bare label. */}
+                  {node.children && node.children.length > 0 ? (
+                    <span> ({node.children.length})</span>
+                  ) : null}
                 </span>
               ) : (
                 <span className="text-foreground">{node.data.name}</span>

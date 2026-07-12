@@ -31,6 +31,7 @@ test('view structure and add a column (previewed)', async () => {
   await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await win.getByText('widgets').click({ button: 'right' })
   await win.getByText('Structure', { exact: true }).click()
 

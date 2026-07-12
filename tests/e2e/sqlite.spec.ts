@@ -36,6 +36,7 @@ test('create a sqlite connection, browse, run a query', async () => {
 
   // The schema tree shows the `main` namespace; expand it to reveal the table.
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await expect(win.getByText('widgets')).toBeVisible({ timeout: 15000 })
 
   await win.locator('.cm-content').click()

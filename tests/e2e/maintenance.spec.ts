@@ -38,9 +38,12 @@ test('run ANALYZE on a table from the schema tree', async () => {
   await win.getByText('maint-pg').click()
   await win.getByText('Connect', { exact: true }).click()
 
-  // Expand the seeded schema → its table, then right-click for the menu.
+  // Expand the seeded schema → Tables folder → its table, then right-click.
   await win.getByText(schema, { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   await win.getByText('widgets', { exact: true }).click({ button: 'right' })
+  // Maintenance actions live under a "Maintenance" submenu (hover to open).
+  await win.getByText('Maintenance', { exact: true }).hover()
   await win.getByText('Analyze', { exact: true }).click()
 
   // No error banner appeared (ANALYZE succeeded).

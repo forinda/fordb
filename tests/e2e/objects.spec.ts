@@ -33,6 +33,7 @@ test('view definition + create/drop view', async () => {
   await win.getByText('Connect', { exact: true }).click()
 
   await win.getByText('main', { exact: true }).click()
+  await win.getByText('Tables', { exact: true }).click() // expand the Tables folder
   // Expand the Views category folder and open the view's definition.
   await win.getByText('Views', { exact: true }).click()
   await win.getByText('v', { exact: true }).click()
@@ -48,7 +49,7 @@ test('view definition + create/drop view', async () => {
 
   // Drop it.
   await win.getByText('v2', { exact: true }).click({ button: 'right' })
-  await win.getByText('Drop view', { exact: true }).click()
+  await win.getByText('Drop view…', { exact: true }).click()
   await expect(win.getByText('v2', { exact: true })).toHaveCount(0, { timeout: 15000 })
 
   await app.close()
