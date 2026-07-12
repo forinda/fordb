@@ -38,6 +38,17 @@ describe('ProfileStore', () => {
     expect(secrets.sshPassword).toBeUndefined()
     expect(secrets.sshPassphrase).toBeUndefined()
   })
+  it('strips the TLS client key but keeps ca/cert on ssl', async () => {
+    await store.save({
+      ...base,
+      ssl: { rejectUnauthorized: true, ca: 'CA-PEM', cert: 'CERT-PEM', key: 'KEY-PEM' }
+    })
+    const [p] = await store.list()
+    const saved = p as { ssl?: { ca?: string; cert?: string; key?: string } }
+    expect(saved.ssl?.ca).toBe('CA-PEM')
+    expect(saved.ssl?.cert).toBe('CERT-PEM')
+    expect(saved.ssl?.key).toBeUndefined()
+  })
   it('strips uri and password from a saved MongoProfile', async () => {
     await store.save({
       id: 'm',

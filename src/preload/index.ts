@@ -53,6 +53,7 @@ contextBridge.exposeInMainWorld('fordb', {
         sshPassphrase?: string
         authToken?: string
         uri?: string
+        sslKey?: string
       }
     ): Promise<void> => ipcRenderer.invoke('profiles:save', p, secrets),
     delete: (id: string): Promise<void> => ipcRenderer.invoke('profiles:delete', id)

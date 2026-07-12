@@ -33,7 +33,9 @@ export class ProfileStore {
       void _pw
       void _sp
       void _pp
-      safe = rest
+      // ssl.key is the TLS client private key (a secret) — persist ca/cert, drop
+      // the key (it lives in the keychain and is re-injected at connect time).
+      safe = rest.ssl?.key ? { ...rest, ssl: { ...rest.ssl, key: undefined } } : rest
     } else if (profile.engine === 'mongodb') {
       const { uri: _u, password: _pw, ...rest } = profile
       void _u
