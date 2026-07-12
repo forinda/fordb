@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.0](https://github.com/forinda/fordb/compare/v0.5.0...v0.6.0) (2026-07-12)
+
+
+### Features
+
+* MCP read-only gate + persistence (MA8-A foundation) ([#246](https://github.com/forinda/fordb/issues/246)) ([af97f80](https://github.com/forinda/fordb/commit/af97f80958f53deced8edb7dd007ca8d84172983))
+* read-only MCP server + Preferences page (MA8-A) ([#248](https://github.com/forinda/fordb/issues/248)) ([3456b8f](https://github.com/forinda/fordb/commit/3456b8f76131d9e97c3595bf67a80bd6c1c06ebf))
+
 ## [0.5.0](https://github.com/forinda/fordb/compare/v0.4.1...v0.5.0) (2026-07-11)
 
 
