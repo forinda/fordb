@@ -14,7 +14,7 @@ Click **+ New connection**, pick an engine, and fill in the details — host, po
 | -------- | ------------------------------------------------------------------------------------------- |
 | Postgres | Standard host/port; switch databases on the same server without re-adding it                |
 | SQLite   | Local file · remote (libsql / Turso) · embedded replica (a local file synced from a remote) |
-| MongoDB  | Connection URI (v0.3)                                                                       |
+| MongoDB  | Connection URI or discrete fields (two-way synced); standalone, replica set, or SRV         |
 
 ## Where secrets live
 
