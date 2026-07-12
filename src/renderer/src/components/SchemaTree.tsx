@@ -276,7 +276,12 @@ export function SchemaTree(): React.JSX.Element {
     }
 
     if (m.kind === 'newobject')
-      return [{ label: `New ${m.objectKind}…`, run: () => openNewObject(m.schema, m.objectKind) }]
+      return [
+        {
+          label: `New ${KIND_NOUN[m.objectKind]}…`,
+          run: () => openNewObject(m.schema, m.objectKind)
+        }
+      ]
 
     if (m.kind === 'newview')
       return [{ label: 'New view…', run: () => setNewView({ schema: m.schema }) }]
@@ -693,7 +698,10 @@ export function SchemaTree(): React.JSX.Element {
                   setMenu({ kind: 'newview', x: e.clientX, y: e.clientY, schema: node.data.schema })
                 } else if (
                   kind === 'category' &&
-                  (node.data.category === 'function' || node.data.category === 'trigger')
+                  (node.data.category === 'function' ||
+                    node.data.category === 'trigger' ||
+                    node.data.category === 'sequence' ||
+                    node.data.category === 'materializedView')
                 ) {
                   e.preventDefault()
                   setMenu({
