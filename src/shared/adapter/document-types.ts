@@ -29,6 +29,19 @@ export interface DocumentQuery {
   closeDocs(queryId: string): Promise<void>
 }
 
+export interface DocumentIndexSpec {
+  /** Field → direction (1 asc, -1 desc). Order matters for compound indexes. */
+  keys: Record<string, 1 | -1>
+  name?: string
+  unique?: boolean
+}
+
+/** Optional collection/index administration (MongoDB). */
+export interface DocumentAdmin {
+  createIndex(db: string, coll: string, spec: DocumentIndexSpec): Promise<void>
+  dropIndex(db: string, coll: string, name: string): Promise<void>
+}
+
 export interface DocumentMutator {
   insertOne(
     db: string,
