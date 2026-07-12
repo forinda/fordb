@@ -6,7 +6,7 @@ Single source of truth for how this codebase is structured and the conventions t
 
 ## What fordb is
 
-A lean, keyboard-first, open-source (MIT) desktop database client. Engines: PostgreSQL (shipped), SQLite (planned v0.2), MongoDB (planned v0.3) — all free in core. Electron + TypeScript. Full product rationale in [docs/06-prd.md](docs/06-prd.md).
+A lean, keyboard-first, open-source (MIT) desktop database client. Engines: PostgreSQL, SQLite, and MongoDB — all shipped, all free in core. Electron + TypeScript. Full product rationale in [docs/06-prd.md](docs/06-prd.md).
 
 ## Architecture
 
@@ -22,7 +22,7 @@ main (windows, menus, keychain, profile/secret stores, db-host supervision)
    ▼
 db-host (utilityProcess — all DB drivers + native modules)
    │  ConnectionRegistry (process singleton): connectionId → { adapter, tunnel? }
-   └─ PostgresAdapter (pg) · SqliteAdapter (planned) · MongoAdapter (planned)
+   └─ PostgresAdapter (pg) · SqliteAdapter (libsql) · MongoAdapter (mongodb)
 ```
 
 Key rules that fall out of this:
