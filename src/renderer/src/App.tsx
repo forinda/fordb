@@ -16,10 +16,11 @@ import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
+import { SidebarMonitoringRow } from './components/SidebarMonitoringRow'
 import { SidebarUsersRow } from './components/SidebarUsersRow'
 import { SidebarServerSettingsRow } from './components/SidebarServerSettingsRow'
 import { SidebarSettingsRow } from './components/SidebarSettingsRow'
-import { ServerDashboard } from './components/ServerDashboard'
+import { MonitoringView } from './components/MonitoringView'
 import { MongoDashboard } from './components/MongoDashboard'
 import { RolesView } from './components/RolesView'
 import { ServerSettingsView } from './components/ServerSettingsView'
@@ -76,7 +77,7 @@ export function App(): React.JSX.Element {
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
   const { dialect, sqlLang } = useDialect()
-  // Hide the Dashboard tab for engines without server stats (e.g. SQLite).
+  // Hide the Monitoring destination for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
   // Mongo has its own server-status dashboard (opcounters/connections/mem/repl)
   // — mutually exclusive with the PG `statsSupported` gate above.
@@ -145,7 +146,7 @@ export function App(): React.JSX.Element {
             run: () => useQueryStore.getState().newTab()
           }
         ]),
-    { id: 'show-dashboard', label: 'Show dashboard', run: () => setMainView('dashboard') },
+    { id: 'show-monitoring', label: 'Show monitoring', run: () => setMainView('monitoring') },
     { id: 'show-query', label: 'Show query', run: () => setMainView('query') },
     {
       id: 'refresh-schema',
@@ -282,6 +283,7 @@ export function App(): React.JSX.Element {
                             </span>
                           </button>
                           <DatabaseHeader />
+                          <SidebarMonitoringRow />
                           <SidebarUsersRow />
                           <SidebarServerSettingsRow />
                           <div className="flex justify-end border-b border-border px-2 py-1">
@@ -315,11 +317,11 @@ export function App(): React.JSX.Element {
                           </button>
                           {dashboardSupported && (
                             <button
-                              aria-pressed={mainView === 'dashboard'}
-                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'dashboard' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                              onClick={() => setMainView('dashboard')}
+                              aria-pressed={mainView === 'monitoring'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'monitoring' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('monitoring')}
                             >
-                              Dashboard
+                              Monitoring
                             </button>
                           )}
                           {adminSupported && (
@@ -346,10 +348,10 @@ export function App(): React.JSX.Element {
                             <RolesView />
                           ) : mainView === 'serverSettings' ? (
                             <ServerSettingsView />
-                          ) : mainView === 'dashboard' && mongoStatsSupported ? (
+                          ) : mainView === 'monitoring' && mongoStatsSupported ? (
                             <MongoDashboard />
-                          ) : mainView === 'dashboard' && statsSupported ? (
-                            <ServerDashboard />
+                          ) : mainView === 'monitoring' && statsSupported ? (
+                            <MonitoringView />
                           ) : (
                             <QueryWorkbench />
                           )}

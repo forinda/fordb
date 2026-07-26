@@ -23,11 +23,11 @@ test('connect, open dashboard, see gauges and sessions', async () => {
   await win.getByText('local-dash').click()
   await win.getByText('Connect', { exact: true }).click()
 
-  // Switch to the dashboard and confirm live stats render.
-  await win.getByText('Dashboard', { exact: true }).click()
+  // Switch to the monitoring view (sidebar destination) and confirm live stats.
+  await win.getByLabel('monitoring').click()
   await expect(win.getByText('Backends')).toBeVisible({ timeout: 15000 }) // a gauge
-  // The sessions tab is present (dashboard admin surface rendered).
-  await expect(win.getByRole('button', { name: 'sessions' })).toBeVisible()
+  // Sessions is a flat section of the monitoring view now (no sub-tabs).
+  await expect(win.getByText('Sessions', { exact: true })).toBeVisible()
 
   await app.close()
 })

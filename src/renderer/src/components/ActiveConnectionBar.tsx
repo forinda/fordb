@@ -14,7 +14,7 @@ import { profileAddress } from './ConnectionManager'
 /** Server-level header shown in the sidebar while connected: a connection
  *  switcher (the active connection's name + a menu to switch to another saved
  *  profile in place, or add a new one), a "⋯" menu for server-scoped actions
- *  (dashboard, roles), and disconnect. Switching reuses the vetted connect path
+ *  (monitoring), and disconnect. Switching reuses the vetted connect path
  *  (secrets resolve in main via connection.open) so no password re-prompt. */
 export function ActiveConnectionBar(props: {
   onDisconnect: () => void
@@ -59,8 +59,7 @@ export function ActiveConnectionBar(props: {
   // Server-scoped actions. Roles moved to the sidebar "Users & roles" row
   // (SidebarUsersRow), so this menu is just the dashboard shortcut now.
   const items: { label: string; run: () => void }[] = []
-  if (dashboardSupported)
-    items.push({ label: 'Server dashboard', run: () => setMainView('dashboard') })
+  if (dashboardSupported) items.push({ label: 'Monitoring', run: () => setMainView('monitoring') })
 
   return (
     <div className="relative flex items-center gap-1 border-b border-border px-2 py-1.5">
