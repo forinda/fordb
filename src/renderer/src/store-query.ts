@@ -80,7 +80,7 @@ export type PickerKind = 'history' | 'saved' | 'save' | null
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
-  mainView: 'query' | 'dashboard'
+  mainView: 'query' | 'dashboard' | 'roles' | 'serverSettings'
   picker: PickerKind
   setPicker: (p: PickerKind) => void
   loadIntoEditor: (sql: string) => void
@@ -91,7 +91,7 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
-  setMainView: (v: 'query' | 'dashboard') => void
+  setMainView: (v: 'query' | 'dashboard' | 'roles' | 'serverSettings') => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
