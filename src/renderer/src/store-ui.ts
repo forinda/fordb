@@ -22,6 +22,11 @@ interface UiState {
   usersRequested: boolean
   requestUsers: () => void
   clearUsersRequested: () => void
+
+  /** App Preferences modal open-state, lifted out of StatusBar so the sidebar
+   *  "Settings" row can open it too (StatusBar still renders the modal). */
+  prefsOpen: boolean
+  setPrefsOpen: (open: boolean) => void
 }
 
 let toastSeq = 1
@@ -36,5 +41,7 @@ export const useUiStore = create<UiState>((set) => ({
   requestDashboardTab: (dashboardTab) => set({ dashboardTab }),
   usersRequested: false,
   requestUsers: () => set({ usersRequested: true }),
-  clearUsersRequested: () => set({ usersRequested: false })
+  clearUsersRequested: () => set({ usersRequested: false }),
+  prefsOpen: false,
+  setPrefsOpen: (prefsOpen) => set({ prefsOpen })
 }))
