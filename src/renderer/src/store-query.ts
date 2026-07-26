@@ -80,7 +80,7 @@ export type PickerKind = 'history' | 'saved' | 'save' | null
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
-  mainView: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export'
+  mainView: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import'
   picker: PickerKind
   setPicker: (p: PickerKind) => void
   loadIntoEditor: (sql: string) => void
@@ -91,7 +91,7 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
-  setMainView: (v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export') => void
+  setMainView: (v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import') => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
@@ -129,7 +129,9 @@ interface QueryState {
   exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<boolean>
   /** Streams a single table's rows to a CSV file. Returns false on failure. */
   exportTableCsv: (schema: string, table: string) => Promise<boolean>
-  importSqlFile: () => Promise<void>
+  /** Picks a .sql/.sql.gz file and runs it. Returns the statement count on
+   *  success, or null on cancel/failure (failure also sets ioError). */
+  importSqlFile: () => Promise<number | null>
   /** Last export/import failure, shown in a global banner. */
   ioError: string | null
   clearIoError: () => void
@@ -556,10 +558,10 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   },
   importSqlFile: async () => {
     const connId = useConnStore.getState().activeConnectionId
-    if (!connId) return
+    if (!connId) return null
     // Accept .sql and .sql.gz (main gunzips transparently).
     const picked = await window.fordb.dialog.openTextFile(['sql', 'gz'])
-    if (!picked) return
+    if (!picked) return null
     set({ ioError: null })
     try {
       // Drop the script's own transaction control — executeScript wraps the whole
@@ -570,8 +572,10 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       )
       await (await hostApi()).executeScript(connId, statements)
       void invalidateIntrospection(queryClient, connId)
+      return statements.length
     } catch (err) {
       set({ ioError: err instanceof Error ? err.message : String(err) })
+      return null
     }
   },
   formatActive: (sqlLang) => {
