@@ -13,17 +13,17 @@ import { useDocumentQuerySupported } from '../query/documents'
 export function SidebarUsersRow(): React.JSX.Element | null {
   const connId = useConnStore((s) => s.activeConnectionId)
   const setMainView = useQueryStore((s) => s.setMainView)
-  const requestDashboardTab = useUiStore((s) => s.requestDashboardTab)
   const requestUsers = useUiStore((s) => s.requestUsers)
   const adminSupported = useServerAdminSupported(connId).data ?? false
   const docSupported = useDocumentQuerySupported(connId).data ?? false
 
   if (!adminSupported && !docSupported) return null
 
+  // Postgres roles are a full-pane view now; Mongo users stay a modal (owned by
+  // SchemaTree, opened via the one-shot ui-store flag).
   function open(): void {
     if (adminSupported) {
-      setMainView('dashboard')
-      requestDashboardTab('roles')
+      setMainView('roles')
     } else {
       requestUsers()
     }

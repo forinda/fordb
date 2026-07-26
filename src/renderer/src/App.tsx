@@ -17,14 +17,18 @@ import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
 import { SidebarUsersRow } from './components/SidebarUsersRow'
+import { SidebarServerSettingsRow } from './components/SidebarServerSettingsRow'
 import { SidebarSettingsRow } from './components/SidebarSettingsRow'
 import { ServerDashboard } from './components/ServerDashboard'
 import { MongoDashboard } from './components/MongoDashboard'
+import { RolesView } from './components/RolesView'
+import { ServerSettingsView } from './components/ServerSettingsView'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
 import { useServerStatsSupported } from './query/stats'
 import { useMongoStatsSupported } from './query/mongo-stats'
+import { useServerAdminSupported } from './query/admin'
 import { useConnStore } from './store'
 import { useProfiles, useInvalidateProfiles } from './query/profiles'
 import { connectionLabel } from '@shared/connection-label'
@@ -78,6 +82,8 @@ export function App(): React.JSX.Element {
   // — mutually exclusive with the PG `statsSupported` gate above.
   const mongoStatsSupported = useMongoStatsSupported(activeConnectionId).data ?? false
   const dashboardSupported = statsSupported || mongoStatsSupported
+  // Roles + server settings are Postgres-only full-pane views (Adminer-flat).
+  const adminSupported = useServerAdminSupported(activeConnectionId).data ?? false
   // Document-mode engines (MongoDB) have no SQL surface — hide the SQL-authoring
   // palette commands (Import SQL file, Explain, default SQL new-tab) so they
   // aren't dead affordances (M7 Phase-1 M3).
@@ -277,6 +283,7 @@ export function App(): React.JSX.Element {
                           </button>
                           <DatabaseHeader />
                           <SidebarUsersRow />
+                          <SidebarServerSettingsRow />
                           <div className="flex justify-end border-b border-border px-2 py-1">
                             <RefreshSchemaButton />
                           </div>
@@ -299,6 +306,13 @@ export function App(): React.JSX.Element {
                     {connected && (
                       <div className="flex h-full flex-col">
                         <div className="flex gap-1 border-b border-border p-1">
+                          <button
+                            aria-pressed={mainView === 'query'}
+                            className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                            onClick={() => setMainView('query')}
+                          >
+                            Query
+                          </button>
                           {dashboardSupported && (
                             <button
                               aria-pressed={mainView === 'dashboard'}
@@ -308,16 +322,31 @@ export function App(): React.JSX.Element {
                               Dashboard
                             </button>
                           )}
-                          <button
-                            aria-pressed={mainView === 'query'}
-                            className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
-                            onClick={() => setMainView('query')}
-                          >
-                            Query
-                          </button>
+                          {adminSupported && (
+                            <button
+                              aria-pressed={mainView === 'roles'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'roles' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('roles')}
+                            >
+                              Roles
+                            </button>
+                          )}
+                          {adminSupported && (
+                            <button
+                              aria-pressed={mainView === 'serverSettings'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'serverSettings' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('serverSettings')}
+                            >
+                              Server settings
+                            </button>
+                          )}
                         </div>
                         <div className="min-h-0 flex-1">
-                          {mainView === 'dashboard' && mongoStatsSupported ? (
+                          {mainView === 'roles' ? (
+                            <RolesView />
+                          ) : mainView === 'serverSettings' ? (
+                            <ServerSettingsView />
+                          ) : mainView === 'dashboard' && mongoStatsSupported ? (
                             <MongoDashboard />
                           ) : mainView === 'dashboard' && statsSupported ? (
                             <ServerDashboard />
