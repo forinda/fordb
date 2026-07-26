@@ -16,9 +16,6 @@ import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
-import { SidebarMonitoringRow } from './components/SidebarMonitoringRow'
-import { SidebarUsersRow } from './components/SidebarUsersRow'
-import { SidebarServerSettingsRow } from './components/SidebarServerSettingsRow'
 import { SidebarSettingsRow } from './components/SidebarSettingsRow'
 import { MonitoringView } from './components/MonitoringView'
 import { MongoDashboard } from './components/MongoDashboard'
@@ -31,6 +28,7 @@ import { useServerStatsSupported } from './query/stats'
 import { useMongoStatsSupported } from './query/mongo-stats'
 import { useServerAdminSupported } from './query/admin'
 import { useConnStore } from './store'
+import { useUiStore } from './store-ui'
 import { useProfiles, useInvalidateProfiles } from './query/profiles'
 import { connectionLabel } from '@shared/connection-label'
 import { useThemeStore } from './store-theme'
@@ -76,6 +74,7 @@ export function App(): React.JSX.Element {
   }
   const mainView = useQueryStore((s) => s.mainView)
   const setMainView = useQueryStore((s) => s.setMainView)
+  const requestUsers = useUiStore((s) => s.requestUsers)
   const { dialect, sqlLang } = useDialect()
   // Hide the Monitoring destination for engines without server stats (e.g. SQLite).
   const statsSupported = useServerStatsSupported(activeConnectionId).data ?? false
@@ -283,9 +282,6 @@ export function App(): React.JSX.Element {
                             </span>
                           </button>
                           <DatabaseHeader />
-                          <SidebarMonitoringRow />
-                          <SidebarUsersRow />
-                          <SidebarServerSettingsRow />
                           <div className="flex justify-end border-b border-border px-2 py-1">
                             <RefreshSchemaButton />
                           </div>
@@ -340,6 +336,16 @@ export function App(): React.JSX.Element {
                               onClick={() => setMainView('serverSettings')}
                             >
                               Server settings
+                            </button>
+                          )}
+                          {/* Mongo has no roles view; its users are a modal (owned by
+                              SchemaTree), opened via the one-shot ui-store flag. */}
+                          {docSupported && (
+                            <button
+                              className="rounded px-2 py-0.5 text-sm text-muted-foreground"
+                              onClick={() => requestUsers()}
+                            >
+                              Users
                             </button>
                           )}
                         </div>
