@@ -20,10 +20,10 @@ function Stat(props: { label: string; value: string; alert?: boolean }): React.J
 }
 
 /** Server-status dashboard for MongoDB connections — separate from the PG
- *  `ServerDashboard` because the metrics don't fit that shape (opcounters
+ *  `MonitoringView` because the metrics don't fit that shape (opcounters
  *  instead of xact/tuple counters, no sessions/locks/roles/settings surface).
  *  Gated by `useMongoStatsSupported` at the call site (App.tsx), mutually
- *  exclusive with `ServerDashboard`.
+ *  exclusive with `MonitoringView`.
  *
  *  Mongo has no `pg_monitor`-style visibility gate — `serverStatus()` is
  *  either available (capability true) or not (dashboard hidden entirely by

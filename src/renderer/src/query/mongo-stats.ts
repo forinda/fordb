@@ -6,7 +6,7 @@ import { qk } from './keys'
 /** Whether the connection's engine exposes the Mongo server-status dashboard
  *  (MongoDB yes, Postgres/SQLite no — those use `useServerStatsSupported`
  *  instead). One-shot — no polling. Used to swap in `MongoDashboard` for the
- *  PG `ServerDashboard`. */
+ *  PG `MonitoringView`. */
 export function useMongoStatsSupported(connId: string | null): UseQueryResult<boolean> {
   return useQuery({
     queryKey: connId

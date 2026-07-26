@@ -15,7 +15,7 @@ import { ControlsBar } from './dashboard/ControlsBar'
 /** Server monitoring: live metrics (gauges + charts) and the sessions/locks
  *  panels. Roles and server settings are peer full-pane views now (RolesView /
  *  ServerSettingsView), not sub-tabs here — this view is monitoring only. */
-export function ServerDashboard(): React.JSX.Element {
+export function MonitoringView(): React.JSX.Element {
   const connId = useConnStore((s) => s.activeConnectionId)
   const [intervalMs, setIntervalMs] = useState(2000)
   const [paused, setPaused] = useState(false)
