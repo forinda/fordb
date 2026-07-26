@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Tree } from 'react-arborist'
 import IconChevronRight from '~icons/lucide/chevron-right'
 import IconChevronDown from '~icons/lucide/chevron-down'
@@ -125,6 +125,22 @@ export function SchemaTree(): React.JSX.Element {
   } | null>(null)
   const [createTable, setCreateTable] = useState<{ schema: string } | null>(null)
   const [createDatabase, setCreateDatabase] = useState(false)
+
+  // react-arborist needs explicit pixel dimensions; measure the wrapper so the
+  // tree fills the sidebar panel instead of a hardcoded 400×600 viewport. A ref
+  // callback (not a plain ref + effect) attaches the observer only once the
+  // wrapper mounts — after the loading/error early-returns.
+  const [treeSize, setTreeSize] = useState({ width: 280, height: 400 })
+  const roRef = useRef<ResizeObserver | null>(null)
+  const setTreeWrap = useCallback((el: HTMLDivElement | null) => {
+    roRef.current?.disconnect()
+    if (!el) return
+    const update = (): void => setTreeSize({ width: el.clientWidth, height: el.clientHeight })
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    roRef.current = ro
+  }, [])
 
   const profileId = useConnStore((s) => s.activeProfileId)
   const { data: profiles = [] } = useProfiles()
@@ -284,7 +300,10 @@ export function SchemaTree(): React.JSX.Element {
     if (m.kind === 'table') {
       const copy: MenuAction = {
         label: 'Copy name',
-        run: () => void navigator.clipboard.writeText(`"${m.schema}"."${m.table}"`)
+        run: () =>
+          void navigator.clipboard.writeText(
+            docSupported ? `${m.schema}.${m.table}` : `"${m.schema}"."${m.table}"`
+          )
       }
       // Mongo collection: navigation via left-click; the menu is info + an Admin
       // submenu + a destructive drop.
@@ -404,8 +423,10 @@ export function SchemaTree(): React.JSX.Element {
     if (items.length) items.push(SEP)
     if (docSupported) items.push({ label: 'Users…', run: () => setUsersDb(m.schema) })
     if (!docSupported)
+      // Scope is this schema's tables (kind:'database' takes a schema) — label it
+      // honestly as "Export schema".
       items.push({
-        label: 'Export database (SQL)',
+        label: 'Export schema (SQL)',
         run: () => void qs().exportSql({ kind: 'database', schema: m.schema }, false, dialect)
       })
 
@@ -558,8 +579,8 @@ export function SchemaTree(): React.JSX.Element {
   if (isLoading) return <div className="p-4 text-muted-foreground">Loading schemas…</div>
 
   return (
-    <div className="p-2">
-      <div className="relative mb-1.5">
+    <div className="flex h-full flex-col p-2">
+      <div className="relative mb-1.5 shrink-0">
         <input
           aria-label="filter-tree"
           className="w-full rounded border border-border bg-background px-2 py-1 pr-6 text-xs placeholder:text-muted-foreground"
@@ -624,135 +645,147 @@ export function SchemaTree(): React.JSX.Element {
           }}
         />
       )}
-      <Tree
-        data={data}
-        openByDefault={false}
-        width={400}
-        height={600}
-        indent={16}
-        rowHeight={24}
-        onToggle={onToggle}
-        searchTerm={filter}
-        searchMatch={(node, term) => node.data.name.toLowerCase().includes(term.toLowerCase())}
-      >
-        {({ node, style, dragHandle }) => {
-          const kind = node.data.kind
-          const isColumn = kind === 'column'
-          const isObject = kind === 'view' || kind === 'function' || kind === 'trigger'
-          const TypeIcon =
-            kind === 'schema'
-              ? IconDatabase
-              : kind === 'category'
-                ? IconFolder
-                : kind === 'view'
-                  ? IconEye
-                  : kind === 'function'
-                    ? IconBraces
-                    : kind === 'trigger'
-                      ? IconZap
-                      : isColumn
-                        ? IconColumn
-                        : IconTable
-          return (
-            <div
-              style={style}
-              ref={dragHandle}
-              // Primary click: a table opens its data tab; an object (view/function/
-              // trigger) opens its definition; schema/category toggle their children.
-              onClick={() => {
-                if (kind === 'table') {
-                  if (docSupported)
-                    void useQueryStore.getState().openCollection(node.data.schema, node.data.name)
-                  else void useQueryStore.getState().openTable(node.data.schema, node.data.name)
-                } else if (isObject)
-                  useQueryStore
-                    .getState()
-                    .openObjectDefinition(node.data.schema, kind as ObjectKind, node.data.name)
-                else if (!isColumn) node.toggle()
-              }}
-              onContextMenu={(e) => {
-                if (kind === 'table') {
-                  e.preventDefault()
-                  setMenu({
-                    kind: 'table',
-                    x: e.clientX,
-                    y: e.clientY,
-                    schema: node.data.schema,
-                    table: node.data.name,
-                    isView: false,
-                    toggle: () => node.toggle()
-                  })
-                } else if (isObject) {
-                  e.preventDefault()
-                  setMenu({
-                    kind: 'object',
-                    x: e.clientX,
-                    y: e.clientY,
-                    schema: node.data.schema,
-                    objectKind: kind as ObjectKind,
-                    name: node.data.name
-                  })
-                } else if (kind === 'category' && node.data.category === 'view') {
-                  e.preventDefault()
-                  setMenu({ kind: 'newview', x: e.clientX, y: e.clientY, schema: node.data.schema })
-                } else if (
-                  kind === 'category' &&
-                  (node.data.category === 'function' || node.data.category === 'trigger')
-                ) {
-                  e.preventDefault()
-                  setMenu({
-                    kind: 'newobject',
-                    x: e.clientX,
-                    y: e.clientY,
-                    schema: node.data.schema,
-                    objectKind: node.data.category
-                  })
-                } else if (kind === 'schema') {
-                  e.preventDefault()
-                  setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
-                }
-              }}
-              className={`flex items-center gap-1 rounded px-1 text-sm ${
-                isColumn ? 'cursor-default' : 'cursor-pointer hover:bg-surface-2'
-              }`}
-            >
-              <span
-                className="w-3.5 shrink-0 text-muted-foreground"
-                // Chevron toggles expand/collapse (columns for a table) without
-                // triggering the row's open action. Objects/columns are leaves —
-                // no chevron.
-                onClick={(e) => {
-                  if (isColumn || isObject) return
-                  e.stopPropagation()
-                  node.toggle()
+      <div ref={setTreeWrap} className="min-h-0 flex-1">
+        <Tree
+          data={data}
+          openByDefault={false}
+          width={treeSize.width}
+          height={treeSize.height}
+          indent={16}
+          rowHeight={24}
+          onToggle={onToggle}
+          searchTerm={filter}
+          searchMatch={(node, term) => node.data.name.toLowerCase().includes(term.toLowerCase())}
+        >
+          {({ node, style, dragHandle }) => {
+            const kind = node.data.kind
+            const isColumn = kind === 'column'
+            const isObject =
+              kind === 'view' ||
+              kind === 'function' ||
+              kind === 'trigger' ||
+              kind === 'sequence' ||
+              kind === 'materializedView'
+            const TypeIcon =
+              kind === 'schema'
+                ? IconDatabase
+                : kind === 'category'
+                  ? IconFolder
+                  : kind === 'view'
+                    ? IconEye
+                    : kind === 'function'
+                      ? IconBraces
+                      : kind === 'trigger'
+                        ? IconZap
+                        : isColumn
+                          ? IconColumn
+                          : IconTable
+            return (
+              <div
+                style={style}
+                ref={dragHandle}
+                // Primary click: a table opens its data tab; an object (view/function/
+                // trigger) opens its definition; schema/category toggle their children.
+                onClick={() => {
+                  if (kind === 'table') {
+                    if (docSupported)
+                      void useQueryStore.getState().openCollection(node.data.schema, node.data.name)
+                    else void useQueryStore.getState().openTable(node.data.schema, node.data.name)
+                  } else if (isObject)
+                    useQueryStore
+                      .getState()
+                      .openObjectDefinition(node.data.schema, kind as ObjectKind, node.data.name)
+                  else if (!isColumn) node.toggle()
                 }}
+                onContextMenu={(e) => {
+                  if (kind === 'table') {
+                    e.preventDefault()
+                    setMenu({
+                      kind: 'table',
+                      x: e.clientX,
+                      y: e.clientY,
+                      schema: node.data.schema,
+                      table: node.data.name,
+                      isView: false,
+                      toggle: () => node.toggle()
+                    })
+                  } else if (isObject) {
+                    e.preventDefault()
+                    setMenu({
+                      kind: 'object',
+                      x: e.clientX,
+                      y: e.clientY,
+                      schema: node.data.schema,
+                      objectKind: kind as ObjectKind,
+                      name: node.data.name
+                    })
+                  } else if (kind === 'category' && node.data.category === 'view') {
+                    e.preventDefault()
+                    setMenu({
+                      kind: 'newview',
+                      x: e.clientX,
+                      y: e.clientY,
+                      schema: node.data.schema
+                    })
+                  } else if (
+                    kind === 'category' &&
+                    (node.data.category === 'function' || node.data.category === 'trigger')
+                  ) {
+                    e.preventDefault()
+                    setMenu({
+                      kind: 'newobject',
+                      x: e.clientX,
+                      y: e.clientY,
+                      schema: node.data.schema,
+                      objectKind: node.data.category
+                    })
+                  } else if (kind === 'schema') {
+                    e.preventDefault()
+                    setMenu({ kind: 'schema', x: e.clientX, y: e.clientY, schema: node.data.name })
+                  }
+                }}
+                className={`flex items-center gap-1 rounded px-1 text-sm ${
+                  isColumn ? 'cursor-default' : 'cursor-pointer hover:bg-surface-2'
+                }`}
               >
-                {!isColumn &&
-                  !isObject &&
-                  (node.isOpen ? (
-                    <IconChevronDown className="h-3.5 w-3.5" />
-                  ) : (
-                    <IconChevronRight className="h-3.5 w-3.5" />
-                  ))}
-              </span>
-              <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              {/* Category folders read as 11px uppercase section headers (Dialect). */}
-              {kind === 'category' ? (
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  <span>{node.data.name}</span>
-                  {/* Count in its own span, like pgAdmin's "Tables (14)" — kept
-                      separate so text matchers still target the bare label. */}
-                  {node.children && node.children.length > 0 ? (
-                    <span> ({node.children.length})</span>
-                  ) : null}
+                <span
+                  className="w-3.5 shrink-0 text-muted-foreground"
+                  // Chevron toggles expand/collapse (columns for a table) without
+                  // triggering the row's open action. Objects/columns are leaves —
+                  // no chevron.
+                  onClick={(e) => {
+                    if (isColumn || isObject) return
+                    e.stopPropagation()
+                    node.toggle()
+                  }}
+                >
+                  {!isColumn &&
+                    !isObject &&
+                    (node.isOpen ? (
+                      <IconChevronDown className="h-3.5 w-3.5" />
+                    ) : (
+                      <IconChevronRight className="h-3.5 w-3.5" />
+                    ))}
                 </span>
-              ) : (
-                <span className="text-foreground">{node.data.name}</span>
-              )}
-            </div>
-          )
-        }}
-      </Tree>
+                <TypeIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                {/* Category folders read as 11px uppercase section headers (Dialect). */}
+                {kind === 'category' ? (
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <span>{node.data.name}</span>
+                    {/* Count in its own span, like pgAdmin's "Tables (14)" — kept
+                      separate so text matchers still target the bare label. */}
+                    {node.children && node.children.length > 0 ? (
+                      <span> ({node.children.length})</span>
+                    ) : null}
+                  </span>
+                ) : (
+                  <span className="text-foreground">{node.data.name}</span>
+                )}
+              </div>
+            )
+          }}
+        </Tree>
+      </div>
 
       {menu && (
         <>
