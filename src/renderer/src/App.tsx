@@ -22,6 +22,7 @@ import { MongoDashboard } from './components/MongoDashboard'
 import { RolesView } from './components/RolesView'
 import { ServerSettingsView } from './components/ServerSettingsView'
 import { ExportView } from './components/ExportView'
+import { ImportView } from './components/ImportView'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
@@ -360,12 +361,23 @@ export function App(): React.JSX.Element {
                               Export
                             </button>
                           )}
+                          {!docSupported && (
+                            <button
+                              aria-pressed={mainView === 'import'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'import' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('import')}
+                            >
+                              Import
+                            </button>
+                          )}
                         </div>
                         <div className="min-h-0 flex-1">
                           {mainView === 'roles' ? (
                             <RolesView />
                           ) : mainView === 'export' ? (
                             <ExportView />
+                          ) : mainView === 'import' ? (
+                            <ImportView />
                           ) : mainView === 'serverSettings' ? (
                             <ServerSettingsView />
                           ) : mainView === 'monitoring' && mongoStatsSupported ? (
