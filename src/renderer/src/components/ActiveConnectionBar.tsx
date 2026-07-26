@@ -56,8 +56,8 @@ export function ActiveConnectionBar(props: {
     }
   }
 
-  // Server-scoped actions. Roles moved to the sidebar "Users & roles" row
-  // (SidebarUsersRow), so this menu is just the dashboard shortcut now.
+  // Server-scoped actions. Destinations (monitoring/roles/settings) live in the
+  // main-pane mode bar now, so this menu is just the monitoring shortcut.
   const items: { label: string; run: () => void }[] = []
   if (dashboardSupported) items.push({ label: 'Monitoring', run: () => setMainView('monitoring') })
 

@@ -26,7 +26,7 @@ test('open server settings as a full-pane view from the sidebar', async () => {
   await win.getByText('Connect', { exact: true }).click()
   await expect(win.getByText('app', { exact: true })).toBeVisible({ timeout: 15000 })
 
-  await win.getByLabel('server-settings').click()
+  await win.getByRole('button', { name: 'Server settings', exact: true }).click()
   // The GUC settings table (own page, not nested under the monitoring charts).
   await expect(win.getByPlaceholder('Filter by name or category…')).toBeVisible({ timeout: 15000 })
 
