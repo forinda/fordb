@@ -9,7 +9,6 @@ import { useUiStore } from '../store-ui'
 import { useQueryStore } from '../store-query'
 import { useServerStatsSupported } from '../query/stats'
 import { useMongoStatsSupported } from '../query/mongo-stats'
-import { useServerAdminSupported } from '../query/admin'
 import { profileAddress } from './ConnectionManager'
 
 /** Server-level header shown in the sidebar while connected: a connection
@@ -28,12 +27,10 @@ export function ActiveConnectionBar(props: {
   const profile = profiles.find((p) => p.id === activeProfileId)
 
   const setMainView = useQueryStore((s) => s.setMainView)
-  const requestDashboardTab = useUiStore((s) => s.requestDashboardTab)
   const setOverlay = useUiStore((s) => s.setConnecting)
   const showToast = useUiStore((s) => s.showToast)
   const statsSupported = useServerStatsSupported(connId).data ?? false
   const mongoStatsSupported = useMongoStatsSupported(connId).data ?? false
-  const adminSupported = useServerAdminSupported(connId).data ?? false
   const dashboardSupported = statsSupported || mongoStatsSupported
 
   const [menuOpen, setMenuOpen] = useState(false)
@@ -59,19 +56,11 @@ export function ActiveConnectionBar(props: {
     }
   }
 
-  // Server-scoped actions. Roles are cluster-wide, so they live here (not on a
-  // database or schema node) — the audit's fix for the split placement.
+  // Server-scoped actions. Roles moved to the sidebar "Users & roles" row
+  // (SidebarUsersRow), so this menu is just the dashboard shortcut now.
   const items: { label: string; run: () => void }[] = []
   if (dashboardSupported)
     items.push({ label: 'Server dashboard', run: () => setMainView('dashboard') })
-  if (adminSupported)
-    items.push({
-      label: 'Roles & privileges…',
-      run: () => {
-        setMainView('dashboard')
-        requestDashboardTab('roles')
-      }
-    })
 
   return (
     <div className="relative flex items-center gap-1 border-b border-border px-2 py-1.5">

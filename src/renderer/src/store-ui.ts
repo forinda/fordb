@@ -16,6 +16,12 @@ interface UiState {
    *  (e.g. the server header's "Roles…"). ServerDashboard consumes and clears it. */
   dashboardTab: 'sessions' | 'roles' | 'settings' | null
   requestDashboardTab: (tab: 'sessions' | 'roles' | 'settings' | null) => void
+
+  /** A one-shot request to open the Mongo users modal (from the sidebar "Users &
+   *  roles" row). SchemaTree owns the modal, so it consumes and clears this. */
+  usersRequested: boolean
+  requestUsers: () => void
+  clearUsersRequested: () => void
 }
 
 let toastSeq = 1
@@ -27,5 +33,8 @@ export const useUiStore = create<UiState>((set) => ({
   showToast: (kind, message) => set({ toast: { id: toastSeq++, kind, message } }),
   clearToast: () => set({ toast: null }),
   dashboardTab: null,
-  requestDashboardTab: (dashboardTab) => set({ dashboardTab })
+  requestDashboardTab: (dashboardTab) => set({ dashboardTab }),
+  usersRequested: false,
+  requestUsers: () => set({ usersRequested: true }),
+  clearUsersRequested: () => set({ usersRequested: false })
 }))

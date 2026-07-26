@@ -16,6 +16,7 @@ import { QueryWorkbench } from './components/QueryWorkbench'
 import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
+import { SidebarUsersRow } from './components/SidebarUsersRow'
 import { ServerDashboard } from './components/ServerDashboard'
 import { MongoDashboard } from './components/MongoDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
@@ -274,6 +275,7 @@ export function App(): React.JSX.Element {
                             </span>
                           </button>
                           <DatabaseHeader />
+                          <SidebarUsersRow />
                           <div className="flex justify-end border-b border-border px-2 py-1">
                             <RefreshSchemaButton />
                           </div>

@@ -11,6 +11,7 @@ import IconBraces from '~icons/lucide/braces'
 import IconZap from '~icons/lucide/zap'
 import { useQuery } from '@tanstack/react-query'
 import { useConnStore } from '../store'
+import { useUiStore } from '../store-ui'
 import { useQueryStore } from '../store-query'
 import { useProfiles } from '../query/profiles'
 import { hostApi } from '../rpc'
@@ -112,6 +113,19 @@ export function SchemaTree(): React.JSX.Element {
     null
   )
   const [usersDb, setUsersDb] = useState<string | null>(null)
+  // The sidebar "Users & roles" row can't reach this modal's state directly, so
+  // it flags a one-shot request in the ui store; consume it here for the active
+  // database (Mongo). Guarded by docSupported so it's a no-op on relational
+  // engines (whose users live in the Postgres roles dashboard instead).
+  const activeDatabase = useConnStore((s) => s.activeDatabase)
+  const usersRequested = useUiStore((s) => s.usersRequested)
+  const clearUsersRequested = useUiStore((s) => s.clearUsersRequested)
+  useEffect(() => {
+    if (usersRequested && docSupported) {
+      setUsersDb(activeDatabase)
+      clearUsersRequested()
+    }
+  }, [usersRequested, docSupported, activeDatabase, clearUsersRequested])
   const [ddlError, setDdlError] = useState<string | null>(null)
   // Type-to-filter the tree. react-arborist opens matching branches; while a
   // filter is active an effect eagerly loads every schema's tables so matches
