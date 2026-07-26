@@ -21,6 +21,7 @@ import { MonitoringView } from './components/MonitoringView'
 import { MongoDashboard } from './components/MongoDashboard'
 import { RolesView } from './components/RolesView'
 import { ServerSettingsView } from './components/ServerSettingsView'
+import { ExportView } from './components/ExportView'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
 import { queryClient } from './query/client'
 import { invalidateIntrospection } from './query/introspection'
@@ -348,10 +349,23 @@ export function App(): React.JSX.Element {
                               Users
                             </button>
                           )}
+                          {/* Export/Import are relational (SQL) destinations; Mongo has
+                              its own per-tab document export. */}
+                          {!docSupported && (
+                            <button
+                              aria-pressed={mainView === 'export'}
+                              className={`rounded px-2 py-0.5 text-sm ${mainView === 'export' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                              onClick={() => setMainView('export')}
+                            >
+                              Export
+                            </button>
+                          )}
                         </div>
                         <div className="min-h-0 flex-1">
                           {mainView === 'roles' ? (
                             <RolesView />
+                          ) : mainView === 'export' ? (
+                            <ExportView />
                           ) : mainView === 'serverSettings' ? (
                             <ServerSettingsView />
                           ) : mainView === 'monitoring' && mongoStatsSupported ? (

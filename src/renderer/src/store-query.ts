@@ -11,7 +11,7 @@ import { reconstructDdl } from '@shared/ddl/build-ddl'
 import { buildInsert } from '@shared/sql/build-insert'
 import { quoteIdent } from '@shared/mutation/build-edits'
 import { splitStatements } from '@shared/sql/split-statements'
-import { parseCsv } from '@shared/csv/csv'
+import { parseCsv, stringifyCsv } from '@shared/csv/csv'
 import { parseRelaxed } from '@shared/mongo/relaxed-json'
 import { formatDocsExport } from '@shared/mongo/export-docs'
 import { noMatchWarning } from '@shared/mongo/mutation-warnings'
@@ -80,7 +80,7 @@ export type PickerKind = 'history' | 'saved' | 'save' | null
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
-  mainView: 'query' | 'monitoring' | 'roles' | 'serverSettings'
+  mainView: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export'
   picker: PickerKind
   setPicker: (p: PickerKind) => void
   loadIntoEditor: (sql: string) => void
@@ -91,7 +91,7 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
-  setMainView: (v: 'query' | 'monitoring' | 'roles' | 'serverSettings') => void
+  setMainView: (v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export') => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
@@ -125,7 +125,10 @@ interface QueryState {
   openExplain: (dialect: 'pg' | 'sqlite', analyze: boolean) => Promise<void>
   /** Explains a document-mode tab's find filter / aggregate pipeline. */
   explainDoc: (tabId: string) => Promise<void>
-  exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<void>
+  /** Returns true when the dump was written, false on failure (also sets ioError). */
+  exportSql: (scope: ExportScope, gzip: boolean, dialect: 'pg' | 'sqlite') => Promise<boolean>
+  /** Streams a single table's rows to a CSV file. Returns false on failure. */
+  exportTableCsv: (schema: string, table: string) => Promise<boolean>
   importSqlFile: () => Promise<void>
   /** Last export/import failure, shown in a global banner. */
   ioError: string | null
@@ -137,7 +140,10 @@ interface QueryState {
 }
 
 export type ExportScope =
-  { kind: 'table'; schema: string; table: string } | { kind: 'database'; schema: string }
+  | { kind: 'table'; schema: string; table: string }
+  // `tables` (optional) restricts a schema dump to a chosen subset; omitted =
+  // every table in the schema (the tree-menu "Export schema" behavior).
+  | { kind: 'database'; schema: string; tables?: string[] }
 
 function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[] {
   return tabs.map((t) => (t.id === id ? { ...t, ...over } : t))
@@ -470,16 +476,17 @@ export const useQueryStore = create<QueryState>((set, get) => ({
   },
   exportSql: async (scope, gzip, dialect) => {
     const connId = useConnStore.getState().activeConnectionId
-    if (!connId) return
+    if (!connId) return false
     set({ ioError: null })
     const api = await hostApi()
     try {
       const tables =
         scope.kind === 'table'
           ? [scope.table]
-          : (await api.listTables(connId, scope.schema))
+          : (scope.tables ??
+            (await api.listTables(connId, scope.schema))
               .filter((t) => t.type === 'table')
-              .map((t) => t.name)
+              .map((t) => t.name))
       const parts: string[] = ['-- fordb dump\n\n']
       for (const table of tables) {
         const [cols, keys, indexes] = await Promise.all([
@@ -510,8 +517,41 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       }
       const name = scope.kind === 'table' ? `${scope.table}.sql` : `${scope.schema}.sql`
       await window.fordb.exportFile.save(name, parts.join(''), gzip)
+      return true
     } catch (err) {
       set({ ioError: err instanceof Error ? err.message : String(err) })
+      return false
+    }
+  },
+  exportTableCsv: async (schema, table) => {
+    const connId = useConnStore.getState().activeConnectionId
+    if (!connId) return false
+    set({ ioError: null })
+    const api = await hostApi()
+    try {
+      const cols = await api.getColumns(connId, schema, table)
+      const names = cols.map((c) => c.name)
+      const lines: string[][] = [names]
+      const open = await api.openQuery(
+        connId,
+        `SELECT * FROM ${quoteIdent(schema)}.${quoteIdent(table)}`,
+        1000
+      )
+      try {
+        for (;;) {
+          const page = await api.fetchPage(connId, open.queryId)
+          for (const row of page.rows) lines.push(row.map((v) => (v == null ? '' : String(v))))
+          if (page.done) break
+        }
+      } catch (err) {
+        await api.closeQuery(connId, open.queryId).catch(() => {})
+        throw err
+      }
+      await window.fordb.exportFile.save(`${table}.csv`, stringifyCsv(lines), false)
+      return true
+    } catch (err) {
+      set({ ioError: err instanceof Error ? err.message : String(err) })
+      return false
     }
   },
   importSqlFile: async () => {
