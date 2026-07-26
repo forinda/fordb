@@ -251,6 +251,11 @@ export function App(): React.JSX.Element {
                     {connected ? (
                       <>
                         <ActiveConnectionBar
+                          onConnect={connectTo}
+                          onAddConnection={() => {
+                            setScreen('connections')
+                            setForm({})
+                          }}
                           onDisconnect={() => {
                             if (activeConnectionId)
                               void window.fordb.connection.close(activeConnectionId)
