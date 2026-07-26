@@ -1,8 +1,8 @@
-import { useState } from 'react'
 import { connectionLabel } from '@shared/connection-label'
 import { useProfiles } from '../query/profiles'
 import { useConnStore } from '../store'
 import { useQueryStore } from '../store-query'
+import { useUiStore } from '../store-ui'
 import { ThemeToggle } from './ThemeToggle'
 import { Preferences } from './Preferences'
 
@@ -14,7 +14,8 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
   const { data: profiles = [] } = useProfiles()
   const profile = profiles.find((p) => p.id === activeProfileId)
   const activeTab = useQueryStore((s) => s.tabs.find((t) => t.id === s.activeTabId))
-  const [prefsOpen, setPrefsOpen] = useState(false)
+  const prefsOpen = useUiStore((s) => s.prefsOpen)
+  const setPrefsOpen = useUiStore((s) => s.setPrefsOpen)
 
   return (
     <div className="flex h-6 flex-none items-center gap-3 border-t border-border bg-surface-2 px-3 text-xs text-muted-foreground">

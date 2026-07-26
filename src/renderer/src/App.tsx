@@ -17,6 +17,7 @@ import { QueryLibrary } from './components/QueryLibrary'
 import { CsvImportDialog } from './components/CsvImportDialog'
 import { ActiveConnectionBar } from './components/ActiveConnectionBar'
 import { SidebarUsersRow } from './components/SidebarUsersRow'
+import { SidebarSettingsRow } from './components/SidebarSettingsRow'
 import { ServerDashboard } from './components/ServerDashboard'
 import { MongoDashboard } from './components/MongoDashboard'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './components/ui/resizable'
@@ -282,6 +283,7 @@ export function App(): React.JSX.Element {
                           <div className="min-h-0 flex-1 overflow-auto">
                             <SchemaTree />
                           </div>
+                          <SidebarSettingsRow />
                         </div>
                       </>
                     ) : (
