@@ -60,8 +60,26 @@ pick one:
 | `pnpm test`                   | Unit tests (fast, no Docker)                                   |
 | `pnpm db:up` / `pnpm db:down` | Start/stop the Postgres test container                         |
 | `pnpm test:contract`          | Contract tests against Dockerized Postgres (run `db:up` first) |
+| `pnpm e2e`                    | Playwright end-to-end against a built app (see below)          |
 
 Before pushing, run: `pnpm lint && pnpm typecheck && pnpm test && pnpm build`, and `pnpm db:up && pnpm test:contract` if you touched db-host/adapters.
+
+### Running the e2e suite locally
+
+`pnpm e2e` drives a **built** app, so build first. The Postgres specs also need the
+`app` schema fixture — which is seeded by the **contract** suite, not by e2e. Skip
+that step and six specs fail on a missing schema, which looks like real breakage:
+
+```sh
+pnpm db:up          # postgres + libsql + mongo
+pnpm test:contract  # seeds tests/contract/fixture.sql (the `app` schema)
+pnpm build
+pnpm e2e
+```
+
+The SQLite specs need none of that — they create their own temp database, so
+`pnpm build && pnpm exec playwright test tests/e2e/sqlite.spec.ts` works on its
+own. Specs that talk to Postgres are the ones referencing port `54329`.
 
 ## Native modules
 

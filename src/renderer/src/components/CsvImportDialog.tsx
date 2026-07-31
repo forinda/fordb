@@ -28,7 +28,12 @@ export function CsvImportDialog(): React.JSX.Element | null {
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 pt-20">
-      <div className="flex max-h-[70vh] w-[40rem] max-w-[90vw] flex-col rounded border border-border bg-background p-3 text-sm shadow-lg">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Import CSV"
+        className="flex max-h-[70vh] w-160 max-w-[90vw] flex-col rounded border border-border bg-background p-3 text-sm shadow-lg"
+      >
         <div className="mb-2 flex items-center gap-2">
           <span className="font-medium">
             Import CSV → {job.schema}.{job.table}
