@@ -71,7 +71,10 @@ test('export a table to SQL and import a CSV', async () => {
   await win.getByText('t', { exact: true }).click({ button: 'right' })
   await win.getByText('Data', { exact: true }).hover()
   await win.getByText('Import CSV…', { exact: true }).click()
-  await win.getByText('Import', { exact: true }).click()
+  // Scope to the dialog: the mode bar has its own "Import" destination button
+  // (#299), which sits behind the modal overlay — an unscoped click resolves to
+  // that one and waits forever for the overlay to stop intercepting it.
+  await win.getByRole('dialog').getByRole('button', { name: 'Import', exact: true }).click()
 
   // Verify: the table now has 3 rows (1 seed + 2 imported).
   await win.locator('.cm-content').click()

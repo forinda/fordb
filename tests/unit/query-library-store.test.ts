@@ -10,6 +10,11 @@ beforeEach(() => {
 })
 
 describe('QueryLibraryStore', () => {
+  // Proving the 200-entry cap needs >200 serialized writes, and addHistory is a
+  // read-modify-write per call — ~500 filesystem round-trips. That lands around
+  // 5s on Windows, right on vitest's default timeout, so the test passed or
+  // failed depending on how busy the machine was. Declared explicitly rather
+  // than shrinking the loop, which would weaken what the cap assertion proves.
   it('history: prepend newest-first, dedup consecutive, cap 200, per-profile', async () => {
     await store.addHistory('p1', 'A')
     await store.addHistory('p1', 'A')
@@ -19,7 +24,7 @@ describe('QueryLibraryStore', () => {
     expect((await store.listHistory('p2')).map((h) => h.sql)).toEqual(['Z'])
     for (let i = 0; i < 250; i++) await store.addHistory('p3', `q${i}`)
     expect(await store.listHistory('p3')).toHaveLength(200)
-  })
+  }, 30_000)
   it('saved: save/list/delete, per-profile, stable ids', async () => {
     const a = await store.saveQuery('p1', 'first', 'SELECT 1')
     const b = await store.saveQuery('p1', 'second', 'SELECT 2')
