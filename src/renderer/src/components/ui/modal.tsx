@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import IconX from '~icons/lucide/x'
 
 interface ModalProps {
   open: boolean
@@ -56,7 +57,28 @@ export function Modal({ open, onClose, title, children, footer }: ModalProps): R
         className="flex max-h-[85vh] w-[720px] max-w-[92vw] flex-col rounded-lg border border-border bg-background shadow-xl"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="border-b border-border px-4 py-2 text-sm font-medium">{title}</div>
+        {/* Escape and click-away already closed the dialog, but nothing said so
+            — there was no visible way out, which reads as a trap. A close
+            button plus the Esc hint states both routes. */}
+        <div className="flex flex-none items-center gap-2 border-b border-border py-1.5 pl-3 pr-1.5">
+          <h2 className="min-w-0 flex-1 truncate text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {title}
+          </h2>
+          <span
+            aria-hidden="true"
+            className="flex-none rounded border border-border bg-surface-2 px-1 text-[10px] text-muted-foreground"
+          >
+            Esc
+          </span>
+          <button
+            aria-label="Close"
+            title="Close"
+            onClick={onClose}
+            className="flex-none rounded p-1 text-muted-foreground hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <IconX className="h-3.5 w-3.5" />
+          </button>
+        </div>
         <div className="min-h-0 flex-1 overflow-auto p-4">{children}</div>
         {footer && (
           <div className="flex items-center justify-end gap-2 border-t border-border px-4 py-2">

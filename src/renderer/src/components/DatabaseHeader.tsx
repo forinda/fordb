@@ -9,6 +9,7 @@ import { useProfiles } from '../query/profiles'
 import { useQueryStore } from '../store-query'
 import { useUiStore } from '../store-ui'
 import { Combobox } from './ui/combobox'
+import { Menu, MenuItem } from './ui/menu'
 
 /** Database-level header in the sidebar: labels the active database (the level
  *  cue), lets you switch when the server exposes more than one, and hosts
@@ -41,7 +42,6 @@ export function DatabaseHeader(): React.JSX.Element | null {
     enabled: !!connId
   })
 
-  const [menuOpen, setMenuOpen] = useState(false)
   const [switching, setSwitching] = useState(false)
   const showToast = useUiStore((s) => s.showToast)
   const [newSchema, setNewSchema] = useState(false)
@@ -114,30 +114,24 @@ export function DatabaseHeader(): React.JSX.Element | null {
           </span>
         )}
         {ops?.createSchema && (
-          <button
-            aria-label="database-actions"
+          <Menu
+            ariaLabel="database-actions"
             title="Database actions"
+            align="end"
             className="shrink-0 rounded px-1.5 py-0.5 text-muted-foreground hover:bg-muted"
-            onClick={() => setMenuOpen((v) => !v)}
+            trigger="⋯"
           >
-            ⋯
-          </button>
-        )}
-        {menuOpen && ops?.createSchema && (
-          <>
-            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
-            <div className="absolute right-2 top-full z-50 mt-1 min-w-40 rounded border border-border bg-background py-1 text-sm shadow-md">
-              <button
-                className="block w-full px-3 py-1 text-left text-foreground hover:bg-muted"
+            {(close) => (
+              <MenuItem
                 onClick={() => {
-                  setMenuOpen(false)
+                  close()
                   setNewSchema(true)
                 }}
               >
                 New schema…
-              </button>
-            </div>
-          </>
+              </MenuItem>
+            )}
+          </Menu>
         )}
       </div>
       {newSchema && (

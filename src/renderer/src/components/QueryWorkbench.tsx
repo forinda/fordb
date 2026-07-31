@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
-import { defaultKeymap } from '@codemirror/commands'
+import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { json } from '@codemirror/lang-json'
 import { basicSetup } from 'codemirror'
 import { useQueryStore, type QueryTab } from '../store-query'
@@ -71,6 +71,9 @@ function DocEditor(props: {
               return true
             }
           },
+          // Tab indents rather than moving focus, matching the SQL editor.
+          // (No completion source here, so there is nothing to accept.)
+          indentWithTab,
           ...defaultKeymap
         ]),
         EditorView.updateListener.of((u) => {
