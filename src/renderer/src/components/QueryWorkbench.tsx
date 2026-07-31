@@ -23,8 +23,10 @@ import IconSave from '~icons/lucide/save'
 import IconBookmark from '~icons/lucide/bookmark'
 import IconClock from '~icons/lucide/clock'
 import IconDownload from '~icons/lucide/download'
-import IconChevronUp from '~icons/lucide/chevron-up'
-import IconChevronDown from '~icons/lucide/chevron-down'
+import IconSearchCode from '~icons/lucide/search-code'
+import IconBraces from '~icons/lucide/braces'
+import IconPanelTop from '~icons/lucide/panel-top'
+import IconPanelBottom from '~icons/lucide/panel-bottom'
 import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
@@ -511,147 +513,137 @@ export function QueryWorkbench(): React.JSX.Element {
   return (
     <div className="flex flex-col h-full">
       <QueryTabs />
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border bg-surface-1 p-2 [&>*]:shrink-0">
-        <button
-          className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-          onClick={() => void run(tab.id)}
-          disabled={tab.status === 'running'}
-        >
-          <IconPlay className="h-3 w-3" />
-          {/* Own span so getByText('Run', {exact:true}) still resolves (e2e). */}
-          <span>Run</span>
-          <span className="text-[10px] opacity-70">
-            {window.fordb.platform === 'darwin' ? '⌘⏎' : 'Ctrl ⏎'}
-          </span>
-        </button>
-        <button
-          className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
-          onClick={() => void cancel(tab.id)}
-          disabled={tab.status !== 'running'}
-        >
-          <IconX className="h-3 w-3" />
-          Cancel
-        </button>
-        <GhostButton
-          icon={<IconAlignLeft className="h-3 w-3" />}
-          onClick={() => formatActive(sqlLang)}
-          disabled={!tab.sql.trim()}
-        >
-          Format
-        </GhostButton>
-        <GhostButton
-          icon={<IconSearch className="h-3 w-3" />}
+      {/* One row, grouped by purpose: primary action · authoring · library ·
+          export · pane layout. Everything but Run is icon-only; each keeps its
+          exact accessible name, so `getByRole('button', { name })` still
+          reaches it. The result summary that used to sit on the right is gone —
+          the status bar already renders it. */}
+      <div className="flex items-center gap-1 overflow-x-auto border-b border-border bg-surface-1 px-2 py-1.5 [&>*]:shrink-0">
+        {/* Run and Cancel were mutually exclusive states of one action drawn as
+            two buttons, one of which was always dead. Now it is one that swaps. */}
+        {tab.status === 'running' ? (
+          <button
+            className="flex items-center gap-1.5 rounded bg-destructive px-3 py-1 text-xs font-medium text-destructive-foreground hover:opacity-90 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => void cancel(tab.id)}
+          >
+            <IconX className="h-3 w-3" />
+            <span>Stop</span>
+          </button>
+        ) : (
+          <button
+            className="flex items-center gap-1.5 rounded bg-primary px-3 py-1 text-xs font-medium text-primary-foreground hover:bg-primary-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            onClick={() => void run(tab.id)}
+          >
+            <IconPlay className="h-3 w-3" />
+            {/* Own span so getByText('Run', {exact:true}) still resolves (e2e). */}
+            <span>Run</span>
+            <span className="text-[10px] opacity-70">
+              {window.fordb.platform === 'darwin' ? '⌘⏎' : 'Ctrl ⏎'}
+            </span>
+          </button>
+        )}
+
+        <Divider />
+        <IconButton label="Format" onClick={() => formatActive(sqlLang)} disabled={!tab.sql.trim()}>
+          <IconAlignLeft className="h-3.5 w-3.5" />
+        </IconButton>
+        <IconButton
+          label="Explain"
           onClick={() => void openExplain(dialect, false)}
           disabled={!tab.sql.trim()}
         >
-          Explain
-        </GhostButton>
+          <IconSearch className="h-3.5 w-3.5" />
+        </IconButton>
         {dialect === 'pg' && (
-          <GhostButton
-            icon={<IconSearch className="h-3 w-3" />}
+          <IconButton
+            label="Explain analyze"
             onClick={() => void openExplain(dialect, true)}
             disabled={!tab.sql.trim()}
           >
-            Explain analyze
-          </GhostButton>
+            <IconSearchCode className="h-3.5 w-3.5" />
+          </IconButton>
         )}
-        <GhostButton
-          icon={<IconSave className="h-3 w-3" />}
-          onClick={() => setPicker('save')}
-          disabled={!tab.sql.trim()}
-        >
-          Save
-        </GhostButton>
-        <GhostButton icon={<IconBookmark className="h-3 w-3" />} onClick={() => setPicker('saved')}>
-          Saved
-        </GhostButton>
-        <GhostButton icon={<IconClock className="h-3 w-3" />} onClick={() => setPicker('history')}>
-          History
-        </GhostButton>
-        <GhostButton
-          icon={<IconDownload className="h-3 w-3" />}
+
+        <Divider />
+        <IconButton label="Save" onClick={() => setPicker('save')} disabled={!tab.sql.trim()}>
+          <IconSave className="h-3.5 w-3.5" />
+        </IconButton>
+        <IconButton label="Saved" onClick={() => setPicker('saved')}>
+          <IconBookmark className="h-3.5 w-3.5" />
+        </IconButton>
+        <IconButton label="History" onClick={() => setPicker('history')}>
+          <IconClock className="h-3.5 w-3.5" />
+        </IconButton>
+
+        <Divider />
+        {/* Kept as two named buttons rather than one "Export ▾" menu: the mode
+            bar already has an Export destination, and a second control named
+            exactly "Export" would make export-page.spec's
+            getByRole('button', { name: 'Export' }) ambiguous. */}
+        <IconButton
+          label="Export CSV"
           onClick={() => void exportData('csv')}
           disabled={!tab.source}
         >
-          Export CSV
-        </GhostButton>
-        <GhostButton
-          icon={<IconDownload className="h-3 w-3" />}
+          <IconDownload className="h-3.5 w-3.5" />
+        </IconButton>
+        <IconButton
+          label="Export JSON"
           onClick={() => void exportData('json')}
           disabled={!tab.source}
         >
-          Export JSON
-        </GhostButton>
-        <span className="text-sm text-muted-foreground ml-auto">
-          {tab.status === 'running' && 'running…'}
-          {tab.status === 'done' &&
-            tab.source &&
-            `${tab.source.loadedRowCount()} rows${tab.source.done() ? '' : '+'} · ${Math.round(tab.elapsedMs ?? 0)}ms`}
-          {tab.status === 'done' && !tab.source && tab.message}
-          {tab.status === 'error' && <span className="text-destructive">{tab.message}</span>}
-        </span>
+          <IconBraces className="h-3.5 w-3.5" />
+        </IconButton>
+
+        {/* Pane collapse lives here, not in a caption row per pane. In the
+            toolbar rather than on the resize handle because the handle is not
+            rendered while a pane is collapsed — the control has to outlive it. */}
+        <div className="ml-auto flex items-center gap-1">
+          <IconButton
+            label={showEditorPane ? 'Hide editor pane' : 'Show editor pane'}
+            onClick={() => setShowEditorPane((v) => !v)}
+            disabled={!showResultsPane}
+            pressed={showEditorPane}
+          >
+            <IconPanelTop className="h-3.5 w-3.5" />
+          </IconButton>
+          <IconButton
+            label={showResultsPane ? 'Hide results pane' : 'Show results pane'}
+            onClick={() => setShowResultsPane((v) => !v)}
+            disabled={!showEditorPane}
+            pressed={showResultsPane}
+          >
+            <IconPanelBottom className="h-3.5 w-3.5" />
+          </IconButton>
+        </div>
       </div>
       <div className="flex-1 min-h-0">
         <ResizablePanelGroup direction="vertical">
+          {/* No per-pane caption rows: a CodeMirror pane above a data grid does
+              not need to be labelled "QUERY EDITOR" and "RESULTS", and both rows
+              existed mainly to carry a collapse chevron that now lives in the
+              toolbar. */}
           {showEditorPane && (
             <ResizablePanel defaultSize={50} minSize={20}>
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Query editor
-                  <button
-                    aria-label={showResultsPane ? 'Hide results pane' : 'Show results pane'}
-                    title={showResultsPane ? 'Hide results pane' : 'Show results pane'}
-                    className="ml-auto rounded p-0.5 hover:bg-surface-2 hover:text-foreground"
-                    onClick={() => setShowResultsPane((v) => !v)}
-                  >
-                    {showResultsPane ? (
-                      <IconChevronDown className="h-3.5 w-3.5" />
-                    ) : (
-                      <IconChevronUp className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1">
-                  {/* key by tab so switching tabs remounts the editor with that tab's
+              {/* key by tab so switching tabs remounts the editor with that tab's
                   text (the editor is uncontrolled — value is the initial doc). */}
-                  <SqlEditor
-                    key={tab.id}
-                    value={tab.sql}
-                    onChange={(v) => setSql(tab.id, v)}
-                    onRun={() => void run(tab.id)}
-                    connectionId={connId}
-                  />
-                </div>
-              </div>
+              <SqlEditor
+                key={tab.id}
+                value={tab.sql}
+                onChange={(v) => setSql(tab.id, v)}
+                onRun={() => void run(tab.id)}
+                connectionId={connId}
+              />
             </ResizablePanel>
           )}
           {showEditorPane && showResultsPane && <ResizableHandle withHandle />}
           {showResultsPane && (
             <ResizablePanel minSize={20}>
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="flex flex-none items-center border-b border-border-soft bg-surface-1 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                  Results
-                  <button
-                    aria-label={showEditorPane ? 'Hide editor pane' : 'Show editor pane'}
-                    title={showEditorPane ? 'Hide editor pane' : 'Show editor pane'}
-                    className="ml-auto rounded p-0.5 hover:bg-surface-2 hover:text-foreground"
-                    onClick={() => setShowEditorPane((v) => !v)}
-                  >
-                    {showEditorPane ? (
-                      <IconChevronUp className="h-3.5 w-3.5" />
-                    ) : (
-                      <IconChevronDown className="h-3.5 w-3.5" />
-                    )}
-                  </button>
-                </div>
-                <div className="min-h-0 flex-1">
-                  {tab.source ? (
-                    <ResultsGrid source={tab.source} />
-                  ) : (
-                    <div className="p-4 text-muted-foreground">Run a query to see results.</div>
-                  )}
-                </div>
-              </div>
+              {tab.source ? (
+                <ResultsGrid source={tab.source} />
+              ) : (
+                <div className="p-4 text-muted-foreground">Run a query to see results.</div>
+              )}
             </ResizablePanel>
           )}
         </ResizablePanelGroup>
@@ -660,21 +652,34 @@ export function QueryWorkbench(): React.JSX.Element {
   )
 }
 
-/** Dialect ghost toolbar button: 12px, icon + label, hairline hover. */
-function GhostButton(props: {
-  icon: React.ReactNode
+/** Icon-only toolbar button. `label` is both the tooltip and the accessible
+ *  name, so a control that loses its visible text stays reachable by role+name
+ *  (`getByRole('button', { name: 'Format' })`). */
+function IconButton(props: {
+  label: string
   onClick: () => void
   disabled?: boolean
+  pressed?: boolean
   children: React.ReactNode
 }): React.JSX.Element {
   return (
     <button
-      className="flex items-center gap-1 rounded border border-transparent px-2 py-1 text-xs text-muted-foreground hover:border-border hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+      aria-label={props.label}
+      title={props.label}
+      aria-pressed={props.pressed}
       onClick={props.onClick}
       disabled={props.disabled}
+      className={`flex items-center rounded border border-transparent p-1.5 hover:border-border hover:bg-surface-2 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 ${
+        props.pressed === false ? 'text-faint' : 'text-muted-foreground'
+      }`}
     >
-      {props.icon}
       {props.children}
     </button>
   )
+}
+
+/** Hairline separator grouping the toolbar into primary / authoring / library /
+ *  export. Ten equal-weight buttons read as one undifferentiated row. */
+function Divider(): React.JSX.Element {
+  return <span className="mx-1 h-4 w-px flex-none bg-border" aria-hidden="true" />
 }

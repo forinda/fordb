@@ -28,6 +28,7 @@ import { buildMaintenance, MAINTENANCE_LABELS, type MaintenanceOp } from '@share
 import type { DdlChange, SchemaOps } from '@shared/adapter/schema-types'
 import type { ObjectKind } from '@shared/adapter/object-types'
 import { TableInfoDialog } from './TableInfoDialog'
+import { RefreshSchemaButton } from './RefreshSchemaButton'
 import { CreateTableDialog } from './CreateTableDialog'
 import { CreateDatabaseDialog } from './CreateDatabaseDialog'
 import { ObjectEditorDialog } from './ObjectEditorDialog'
@@ -594,23 +595,28 @@ export function SchemaTree(): React.JSX.Element {
 
   return (
     <div className="flex h-full flex-col p-2">
-      <div className="relative mb-1.5 shrink-0">
-        <input
-          aria-label="filter-tree"
-          className="w-full rounded border border-border bg-background px-2 py-1 pr-6 text-xs placeholder:text-muted-foreground"
-          placeholder="Filter tables, objects…"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-        {filter && (
-          <button
-            aria-label="clear-filter"
-            className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
-            onClick={() => setFilter('')}
-          >
-            ✕
-          </button>
-        )}
+      {/* Filter + refresh share one row. Refresh used to own a full-width
+          bordered row above the tree for a single button. */}
+      <div className="mb-1.5 flex shrink-0 items-center gap-1">
+        <div className="relative min-w-0 flex-1">
+          <input
+            aria-label="filter-tree"
+            className="w-full rounded border border-border bg-background px-2 py-1 pr-6 text-xs placeholder:text-muted-foreground"
+            placeholder="Filter tables, objects…"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+          {filter && (
+            <button
+              aria-label="clear-filter"
+              className="absolute right-1 top-1/2 -translate-y-1/2 rounded px-1 text-xs text-muted-foreground hover:bg-muted"
+              onClick={() => setFilter('')}
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        <RefreshSchemaButton />
       </div>
       {ddlError && (
         <div className="mb-1 flex items-start gap-2 rounded bg-destructive/10 p-1 text-xs text-destructive">

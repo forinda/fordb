@@ -77,10 +77,21 @@ function tabId(): string {
 
 export type PickerKind = 'history' | 'saved' | 'save' | null
 
+/** The main pane's destination — the app's single navigation axis.
+ *
+ *  `connections` used to be a separate `screen` state in App, layered on top of
+ *  this one: two parallel ways to say "what is on screen", where the title bar
+ *  and the mode bar could each move you somewhere the other didn't know about.
+ *  Folding it in here leaves one axis, and the mode bar is the one control for
+ *  it. (Query tabs are a third thing — documents *within* the query
+ *  destination — not a navigation mode.) */
+export type MainView =
+  'connections' | 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import'
+
 interface QueryState {
   tabs: QueryTab[]
   activeTabId: string | null
-  mainView: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import'
+  mainView: MainView
   picker: PickerKind
   setPicker: (p: PickerKind) => void
   loadIntoEditor: (sql: string) => void
@@ -91,9 +102,7 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
-  setMainView: (
-    v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import'
-  ) => void
+  setMainView: (v: MainView) => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
@@ -156,7 +165,9 @@ function patch(tabs: QueryTab[], id: string, over: Partial<QueryTab>): QueryTab[
 export const useQueryStore = create<QueryState>((set, get) => ({
   tabs: [],
   activeTabId: null,
-  mainView: 'query',
+  // Boots on Connections: nothing is connected yet, so it's the only
+  // destination that can do anything.
+  mainView: 'connections',
   ioError: null,
   clearIoError: () => set({ ioError: null }),
   csvImport: null,

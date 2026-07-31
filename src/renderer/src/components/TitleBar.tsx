@@ -3,8 +3,6 @@ import IconMinus from '~icons/lucide/minus'
 import IconSquare from '~icons/lucide/square'
 import IconCopy from '~icons/lucide/copy'
 import IconX from '~icons/lucide/x'
-import IconDatabase from '~icons/lucide/database'
-import IconTerminal from '~icons/lucide/terminal'
 import IconPanelLeft from '~icons/lucide/panel-left'
 import { controlMode } from '@shared/window-controls'
 import { connectionLabel } from '@shared/connection-label'
@@ -44,17 +42,18 @@ function ControlButton(props: {
   )
 }
 
-/** Dialect title bar: 44px navy gradient, draggable. Left: the Connections /
- *  Editor screen toggle (segmented pills per the mockup). Center: the current
- *  connection (env dot + label + engine). Right: custom window controls
- *  off-macOS (mac shows native traffic lights via titleBarStyle:'hiddenInset'). */
+/** Title bar: navy gradient, draggable. Left: the sidebar toggle. Center: the
+ *  current connection (env dot + label + engine). Right: custom window controls
+ *  off-macOS (mac shows native traffic lights via titleBarStyle:'hiddenInset').
+ *
+ *  The Connections/Editor segmented pills are gone: Connections is a mode-bar
+ *  destination now, so the bar no longer carries a navigation mode of its own. */
 export function TitleBar(props: {
-  screen: 'connections' | 'editor'
-  onScreenChange: (screen: 'connections' | 'editor') => void
-  editorEnabled: boolean
-  /** Editor-screen sidebar collapse toggle (panels get out of the way). */
+  /** Sidebar collapse toggle (panels get out of the way). */
   onToggleSidebar?: () => void
   sidebarVisible?: boolean
+  /** There is no sidebar to toggle while disconnected. */
+  sidebarAvailable?: boolean
 }): React.JSX.Element {
   const platform = window.fordb.platform
   const custom = controlMode(platform) === 'custom'
@@ -67,11 +66,6 @@ export function TitleBar(props: {
     void window.fordb.windowControls.isMaximized().then(setMaximized)
     return window.fordb.windowControls.onMaximizeChanged(setMaximized)
   }, [])
-
-  const tabs = [
-    { id: 'connections' as const, label: 'Connections', icon: IconDatabase, enabled: true },
-    { id: 'editor' as const, label: 'Editor', icon: IconTerminal, enabled: props.editorEnabled }
-  ]
 
   return (
     <div
@@ -90,30 +84,7 @@ export function TitleBar(props: {
         </div>
       )}
 
-      {/* Screen toggle (segmented pills). */}
-      <div
-        style={noDrag}
-        className="flex flex-none rounded-lg border border-white/10 bg-white/5 p-0.5"
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            disabled={!t.enabled}
-            aria-pressed={props.screen === t.id}
-            onClick={() => props.onScreenChange(t.id)}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-0.5 text-xs font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-40 ${
-              props.screen === t.id
-                ? 'bg-primary text-primary-foreground'
-                : 'text-chrome-foreground/70 hover:text-chrome-foreground'
-            }`}
-          >
-            <t.icon className="h-3.5 w-3.5" />
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {props.onToggleSidebar && props.screen === 'editor' && (
+      {props.onToggleSidebar && props.sidebarAvailable && (
         <button
           style={noDrag}
           aria-label="Toggle sidebar"

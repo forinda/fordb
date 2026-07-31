@@ -17,6 +17,18 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
   const prefsOpen = useUiStore((s) => s.prefsOpen)
   const setPrefsOpen = useUiStore((s) => s.setPrefsOpen)
 
+  // The run summary lives here alone — the workbench toolbar used to render a
+  // second copy of it. A SELECT reports its row count (with `+` while more
+  // pages remain streamable); a non-SELECT has no source and reports its
+  // command summary ("UPDATE 3") from `message`.
+  const source = activeTab?.source
+  const summary =
+    activeTab?.status === 'running'
+      ? 'running…'
+      : source
+        ? `${source.loadedRowCount()} rows${source.done() ? '' : '+'}`
+        : activeTab?.message
+
   return (
     <div className="flex h-6 flex-none items-center gap-3 border-t border-border bg-surface-2 px-3 text-xs text-muted-foreground">
       <span className="flex items-center gap-1.5 truncate">
@@ -38,11 +50,24 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
           activeTab?.status === 'error' ? 'text-destructive' : ''
         }`}
       >
-        {activeTab?.message}
+        {summary}
         {activeTab?.elapsedMs != null && activeTab.status !== 'error' && (
           <span> · {Math.round(activeTab.elapsedMs)} ms</span>
         )}
       </span>
+      {/* Advertises ⌘K, replacing the sidebar's fake "Search…" button — a
+          keycap here states the shortcut without pretending to be a control you
+          can type into. */}
+      <button
+        aria-label="Open command palette"
+        title="Search connections, tables, commands"
+        onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
+        className="flex flex-none items-center rounded px-1 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="rounded border border-border bg-background px-1 text-[10px]">
+          {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
+        </span>
+      </button>
       <button
         className={`flex-none rounded px-1 hover:text-foreground ${props.aiOpen ? 'text-foreground' : ''}`}
         onClick={props.onToggleAi}
