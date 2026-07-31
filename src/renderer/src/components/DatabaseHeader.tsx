@@ -7,6 +7,8 @@ import { hostApi } from '../rpc'
 import { useConnStore } from '../store'
 import { useProfiles } from '../query/profiles'
 import { useQueryStore } from '../store-query'
+import { useUiStore } from '../store-ui'
+import { Combobox } from './ui/combobox'
 
 /** Database-level header in the sidebar: labels the active database (the level
  *  cue), lets you switch when the server exposes more than one, and hosts
@@ -40,16 +42,29 @@ export function DatabaseHeader(): React.JSX.Element | null {
   })
 
   const [menuOpen, setMenuOpen] = useState(false)
+  const [switching, setSwitching] = useState(false)
+  const showToast = useUiStore((s) => s.showToast)
   const [newSchema, setNewSchema] = useState(false)
   const [name, setName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
+  // Switching = reopen the same profile against another database (a live
+  // connection can't change db). A failure here (database dropped mid-session,
+  // no CONNECT privilege) used to reject unhandled and leave the UI claiming the
+  // old database was still selected; surface it and keep the current session.
   async function switchTo(db: string): Promise<void> {
-    if (!profileId || db === activeDatabase) return
+    if (!profileId || db === activeDatabase || switching) return
     const old = connId
-    const newId = await window.fordb.connection.open(profileId, db)
-    setActive(newId, profileId, db)
-    if (old) void window.fordb.connection.close(old)
+    setSwitching(true)
+    try {
+      const newId = await window.fordb.connection.open(profileId, db)
+      setActive(newId, profileId, db)
+      if (old) void window.fordb.connection.close(old)
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : String(err))
+    } finally {
+      setSwitching(false)
+    }
   }
 
   async function createSchema(): Promise<void> {
@@ -79,21 +94,20 @@ export function DatabaseHeader(): React.JSX.Element | null {
         />
         <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Database</span>
         {canSwitch ? (
-          <select
-            aria-label="database-switch"
-            className="min-w-0 flex-1 rounded border border-border bg-background px-1 py-0.5 text-xs text-foreground"
-            value={activeDatabase}
-            onChange={(e) => void switchTo(e.target.value)}
-          >
-            {!dbs.includes(activeDatabase) && (
-              <option value={activeDatabase}>{activeDatabase}</option>
-            )}
-            {dbs.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
+          <div className="min-w-0 flex-1">
+            <Combobox
+              ariaLabel="database-switch"
+              placeholder="Search databases…"
+              emptyText="No databases match."
+              value={activeDatabase}
+              // A server can expose dozens of databases; the current one is
+              // included even if listDatabases hasn't returned it (permissions,
+              // a rename mid-session) so the trigger never shows a stale blank.
+              options={dbs.includes(activeDatabase) ? dbs : [activeDatabase, ...dbs]}
+              disabled={switching}
+              onChange={(db) => void switchTo(db)}
+            />
+          </div>
         ) : (
           <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
             {activeDatabase}

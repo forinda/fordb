@@ -1,5 +1,5 @@
 import { Command as CommandPrimitive } from 'cmdk'
-import * as Dialog from '@radix-ui/react-dialog'
+import { Dialog } from 'radix-ui'
 import { cn } from '../../lib/utils'
 
 // Token-styled wrappers around cmdk (+ Radix Dialog for the overlay). Adapted
