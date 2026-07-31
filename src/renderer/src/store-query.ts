@@ -91,7 +91,9 @@ interface QueryState {
   run: (id: string) => Promise<void>
   cancel: (id: string) => Promise<void>
   connectionLost: () => void
-  setMainView: (v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import') => void
+  setMainView: (
+    v: 'query' | 'monitoring' | 'roles' | 'serverSettings' | 'export' | 'import'
+  ) => void
   openTable: (schema: string, table: string, initialFilters?: Filter[]) => Promise<void>
   setBrowse: (tabId: string, browse: { filters: Filter[]; sort: Sort[] }) => void
   /** Opens a new document-mode tab for a MongoDB collection (default find/{}). */
