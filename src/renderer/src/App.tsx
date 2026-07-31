@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { AiPanel } from './components/AiPanel'
 import { CommandPalette } from './components/CommandPalette'
-import { ConnectionManager, ConnectionDetails } from './components/ConnectionManager'
+import { ConnectionManager } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
 import { RefreshSchemaButton } from './components/RefreshSchemaButton'
@@ -31,7 +31,7 @@ import { useMongoStatsSupported } from './query/mongo-stats'
 import { useServerAdminSupported } from './query/admin'
 import { useConnStore } from './store'
 import { useUiStore } from './store-ui'
-import { useProfiles, useInvalidateProfiles } from './query/profiles'
+import { useInvalidateProfiles } from './query/profiles'
 import { connectionLabel } from '@shared/connection-label'
 import { useThemeStore } from './store-theme'
 import { useQueryStore } from './store-query'
@@ -413,8 +413,9 @@ export function App(): React.JSX.Element {
   )
 }
 
-/** Connections screen: manager + a 340px right panel hosting the profile
- *  form (new/edit) or the selected profile's details (Connect lives there). */
+/** Connections screen: one list. The 340px right panel now appears only while
+ *  adding/editing a profile — selecting a connection expands it in place, so
+ *  the details column is no longer a permanent third of the screen. */
 function ConnectionsScreen(props: {
   form: { profile?: ConnectionProfile } | null
   setForm: (f: { profile?: ConnectionProfile } | null) => void
@@ -422,12 +423,10 @@ function ConnectionsScreen(props: {
   setSelectedId: (id: string | null) => void
   onConnect: (connectionId: string, profileId: string, database: string | null) => void
 }): React.JSX.Element {
-  const { data: profiles = [] } = useProfiles()
   const invalidateProfiles = useInvalidateProfiles()
   const activeProfileId = useConnStore((s) => s.activeProfileId)
   const activeConnectionId = useConnStore((s) => s.activeConnectionId)
   const clearActive = useConnStore((s) => s.clearActive)
-  const selected = profiles.find((p) => p.id === props.selectedId) ?? null
 
   return (
     <div className="flex h-full min-h-0">
@@ -435,42 +434,37 @@ function ConnectionsScreen(props: {
         <ConnectionManager
           selectedId={props.selectedId}
           onSelect={(p) => {
-            props.setSelectedId(p.id)
+            // Clicking the selected row again collapses it.
+            props.setSelectedId(p.id === props.selectedId ? null : p.id)
             props.setForm(null)
           }}
           onNew={() => props.setForm({})}
+          onEdit={(p) => props.setForm({ profile: p })}
+          onConnect={props.onConnect}
+          onDelete={(p) => {
+            const isActiveProfile = p.id === activeProfileId
+            const msg = isActiveProfile
+              ? `Delete "${connectionLabel(p)}"? This disconnects the current session and removes its stored secrets.`
+              : `Delete "${connectionLabel(p)}"? This removes its stored secrets.`
+            if (!window.confirm(msg)) return
+            // Deleting the active profile must not orphan the live session:
+            // close + clear before the profile (and keychain entry) go away.
+            if (isActiveProfile) {
+              if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
+              clearActive()
+            }
+            props.setSelectedId(null)
+            void window.fordb.profiles.delete(p.id).then(() => invalidateProfiles())
+          }}
         />
       </div>
-      {(props.form || selected) && (
+      {props.form && (
         <aside className="w-[340px] flex-none overflow-auto border-l border-border bg-card">
-          {props.form ? (
-            <ProfileForm
-              profile={props.form.profile}
-              onSaved={() => props.setForm(null)}
-              onCancel={() => props.setForm(null)}
-            />
-          ) : selected ? (
-            <ConnectionDetails
-              profile={selected}
-              onConnect={props.onConnect}
-              onEdit={() => props.setForm({ profile: selected })}
-              onDelete={() => {
-                const isActiveProfile = selected.id === activeProfileId
-                const msg = isActiveProfile
-                  ? `Delete "${connectionLabel(selected)}"? This disconnects the current session and removes its stored secrets.`
-                  : `Delete "${connectionLabel(selected)}"? This removes its stored secrets.`
-                if (!window.confirm(msg)) return
-                // Deleting the active profile must not orphan the live session:
-                // close + clear before the profile (and keychain entry) go away.
-                if (isActiveProfile) {
-                  if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
-                  clearActive()
-                }
-                props.setSelectedId(null)
-                void window.fordb.profiles.delete(selected.id).then(() => invalidateProfiles())
-              }}
-            />
-          ) : null}
+          <ProfileForm
+            profile={props.form.profile}
+            onSaved={() => props.setForm(null)}
+            onCancel={() => props.setForm(null)}
+          />
         </aside>
       )}
     </div>
