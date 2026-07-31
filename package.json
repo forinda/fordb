@@ -89,6 +89,7 @@
     "tailwind-merge": "^3.6.0",
     "tunnel-ssh": "^5.2.0",
     "uplot": "^1.6.32",
+    "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },
   "author": {
