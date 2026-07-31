@@ -109,7 +109,10 @@ contextBridge.exposeInMainWorld('fordb', {
       ipcRenderer.invoke('appearance:set-mode', mode),
     onThemeChanged: (cb: (t: 'light' | 'dark') => void): void => {
       ipcRenderer.on('appearance:theme-changed', (_e, t: 'light' | 'dark') => cb(t))
-    }
+    },
+    getEditorTheme: (): Promise<string> => ipcRenderer.invoke('appearance:get-editor-theme'),
+    setEditorTheme: (id: string): Promise<void> =>
+      ipcRenderer.invoke('appearance:set-editor-theme', id)
   },
   dialog: {
     openFile: (): Promise<string | null> => ipcRenderer.invoke('dialog:open-file'),

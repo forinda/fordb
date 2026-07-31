@@ -1,11 +1,13 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { dirname } from 'node:path'
 import type { ThemeMode } from '@shared/theme'
+import { DEFAULT_EDITOR_THEME, isEditorThemeId, type EditorThemeId } from '@shared/editor-theme'
 
 const MODES: ReadonlySet<string> = new Set(['light', 'dark', 'system'])
 
 interface SettingsFile {
   theme?: string
+  editorTheme?: string
   mcpEnabled?: boolean
   mcpPort?: number
   autoUpdate?: boolean
@@ -41,6 +43,21 @@ export class SettingsStore {
   async setTheme(mode: ThemeMode): Promise<void> {
     const data = await this.read()
     data.theme = mode
+    await mkdir(dirname(this.filePath), { recursive: true })
+    await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
+  }
+
+  /** The editor colour scheme, independent of the app's light/dark mode. An
+   *  unknown id (hand-edited file, or a theme removed in a later version) falls
+   *  back to the default rather than leaving the editor unstyled. */
+  async getEditorTheme(): Promise<EditorThemeId> {
+    const raw = (await this.read()).editorTheme
+    return isEditorThemeId(raw) ? raw : DEFAULT_EDITOR_THEME
+  }
+
+  async setEditorTheme(id: EditorThemeId): Promise<void> {
+    const data = await this.read()
+    data.editorTheme = id
     await mkdir(dirname(this.filePath), { recursive: true })
     await writeFile(this.filePath, JSON.stringify(data, null, 2), 'utf8')
   }

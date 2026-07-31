@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { ThemeMode } from '@shared/theme'
+import { EDITOR_THEMES } from '@shared/editor-theme'
+import { EDITOR_THEME_REGISTRY } from '../query/editor-themes'
 import { useThemeStore } from '../store-theme'
 import { useUpdaterStore } from '../store-updater'
 import { Modal } from './ui/modal'
+import { Combobox } from './ui/combobox'
 import { McpSection } from './McpSettings'
 
 const THEMES: ThemeMode[] = ['system', 'light', 'dark']
@@ -19,23 +22,48 @@ function Section(props: { title: string; children: React.ReactNode }): React.JSX
 function AppearanceSection(): React.JSX.Element {
   const mode = useThemeStore((s) => s.mode)
   const setMode = useThemeStore((s) => s.setMode)
+  const editorTheme = useThemeStore((s) => s.editorTheme)
+  const setEditorTheme = useThemeStore((s) => s.setEditorTheme)
+
+  // Label → id, so the combobox (which works in display strings) can map back.
+  const byLabel = new Map(EDITOR_THEMES.map((id) => [EDITOR_THEME_REGISTRY[id].label, id] as const))
+
   return (
-    <label className="flex items-center gap-2 text-sm">
-      <span className="w-28">Theme</span>
-      <div className="flex gap-1">
-        {THEMES.map((t) => (
-          <button
-            key={t}
-            onClick={() => void setMode(t)}
-            className={`rounded border px-2 py-1 capitalize ${
-              mode === t ? 'border-primary bg-surface-2' : 'border-border hover:bg-surface-2'
-            }`}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-    </label>
+    <div className="flex flex-col gap-3">
+      <label className="flex items-center gap-2 text-sm">
+        <span className="w-28">Theme</span>
+        <div className="flex gap-1">
+          {THEMES.map((t) => (
+            <button
+              key={t}
+              onClick={() => void setMode(t)}
+              className={`rounded border px-2 py-1 capitalize ${
+                mode === t ? 'border-primary bg-surface-2' : 'border-border hover:bg-surface-2'
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </label>
+      {/* The editor scheme is deliberately independent of the app mode — a
+          light UI with Monokai is a normal thing to want. */}
+      <label className="flex items-center gap-2 text-sm">
+        <span className="w-28">Editor theme</span>
+        <div className="w-56">
+          <Combobox
+            ariaLabel="editor-theme"
+            placeholder="Search themes…"
+            value={EDITOR_THEME_REGISTRY[editorTheme].label}
+            options={EDITOR_THEMES.map((id) => EDITOR_THEME_REGISTRY[id].label)}
+            onChange={(label) => {
+              const id = byLabel.get(label)
+              if (id) void setEditorTheme(id)
+            }}
+          />
+        </div>
+      </label>
+    </div>
   )
 }
 
