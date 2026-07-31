@@ -17,6 +17,18 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
   const prefsOpen = useUiStore((s) => s.prefsOpen)
   const setPrefsOpen = useUiStore((s) => s.setPrefsOpen)
 
+  // The run summary lives here alone — the workbench toolbar used to render a
+  // second copy of it. A SELECT reports its row count (with `+` while more
+  // pages remain streamable); a non-SELECT has no source and reports its
+  // command summary ("UPDATE 3") from `message`.
+  const source = activeTab?.source
+  const summary =
+    activeTab?.status === 'running'
+      ? 'running…'
+      : source
+        ? `${source.loadedRowCount()} rows${source.done() ? '' : '+'}`
+        : activeTab?.message
+
   return (
     <div className="flex h-6 flex-none items-center gap-3 border-t border-border bg-surface-2 px-3 text-xs text-muted-foreground">
       <span className="flex items-center gap-1.5 truncate">
@@ -38,7 +50,7 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
           activeTab?.status === 'error' ? 'text-destructive' : ''
         }`}
       >
-        {activeTab?.message}
+        {summary}
         {activeTab?.elapsedMs != null && activeTab.status !== 'error' && (
           <span> · {Math.round(activeTab.elapsedMs)} ms</span>
         )}
