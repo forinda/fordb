@@ -43,9 +43,6 @@ import type { ConnectionProfile } from '@shared/adapter/types'
 import './rpc'
 
 export function App(): React.JSX.Element {
-  // Top-level screen per the Dialect design: Connections (manager) vs Editor,
-  // toggled from the title bar; Editor needs a live connection.
-  const [screen, setScreen] = useState<'connections' | 'editor'>('connections')
   // Profile form overlay on the Connections screen — independent of the
   // connection lifecycle so editing a profile never tears down the session.
   const [form, setForm] = useState<{ profile?: ConnectionProfile } | null>(null)
@@ -71,7 +68,7 @@ export function App(): React.JSX.Element {
   function connectTo(connectionId: string, profileId: string, database: string | null): void {
     const prev = activeConnectionId
     setActive(connectionId, profileId, database)
-    setScreen('editor')
+    useQueryStore.getState().setMainView('query')
     if (prev && prev !== connectionId) void window.fordb.connection.close(prev)
   }
   const mainView = useQueryStore((s) => s.mainView)
@@ -95,18 +92,18 @@ export function App(): React.JSX.Element {
     void useThemeStore.getState().init()
     window.fordb.onDbHostRestarted(() => useQueryStore.getState().connectionLost())
   }, [])
-  // Losing the connection (restart, active-profile delete) strands the editor
-  // screen — fall back to Connections.
+  // Losing the connection (restart, active-profile delete) strands every other
+  // destination — fall back to Connections, the only one that still works.
   useEffect(() => {
-    if (!connected) setScreen('connections')
-  }, [connected])
+    if (!connected) setMainView('connections')
+  }, [connected, setMainView])
 
   const commands = [
     {
       id: 'new',
       label: 'New connection',
       run: () => {
-        setScreen('connections')
+        setMainView('connections')
         setForm({})
       }
     },
@@ -116,9 +113,10 @@ export function App(): React.JSX.Element {
       run: () => {
         if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
         clearActive()
-        setScreen('connections')
+        setMainView('connections')
       }
     },
+    { id: 'show-connections', label: 'Show connections', run: () => setMainView('connections') },
     {
       id: 'run-query',
       label: 'Run query',
@@ -224,20 +222,16 @@ export function App(): React.JSX.Element {
     <div className="flex h-screen flex-col overflow-hidden text-foreground bg-background">
       <UpdateBanner />
       <TitleBar
-        screen={screen}
-        onScreenChange={(next) => {
-          setScreen(next)
-          if (next === 'editor') setForm(null) // don't resurface a stale form later (M4)
-        }}
-        editorEnabled={connected}
         onToggleSidebar={() => setShowSidebar((v) => !v)}
         sidebarVisible={showSidebar}
+        sidebarAvailable={connected}
       />
       <div className="min-h-0 flex-1">
-        {screen === 'connections' ? (
-          /* Connections screen: the manager IS the page; the profile form
-             opens as a 340px right panel beside it (Dialect design) with a
-             direct Connect action. */
+        {/* Disconnected: Connections is the whole window — there is no schema
+            to put in a sidebar and no other destination that works. Once
+            connected it becomes a destination like any other, so managing
+            connections no longer costs you the schema tree. */}
+        {!connected ? (
           <ConnectionsScreen
             form={form}
             setForm={setForm}
@@ -263,14 +257,14 @@ export function App(): React.JSX.Element {
                         <ActiveConnectionBar
                           onConnect={connectTo}
                           onAddConnection={() => {
-                            setScreen('connections')
+                            setMainView('connections')
                             setForm({})
                           }}
                           onDisconnect={() => {
                             if (activeConnectionId)
                               void window.fordb.connection.close(activeConnectionId)
                             clearActive()
-                            setScreen('connections')
+                            setMainView('connections')
                           }}
                         />
                         <div className="flex min-h-0 flex-1 flex-col">
@@ -306,6 +300,17 @@ export function App(): React.JSX.Element {
                     {connected && (
                       <div className="flex h-full flex-col">
                         <div className="flex gap-1 border-b border-border p-1">
+                          {/* Connections is a destination like the rest now —
+                              it used to be a separate `screen` toggled from the
+                              title bar, a second navigation axis on top of this
+                              one. */}
+                          <button
+                            aria-pressed={mainView === 'connections'}
+                            className={`rounded px-2 py-0.5 text-sm ${mainView === 'connections' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
+                            onClick={() => setMainView('connections')}
+                          >
+                            Connections
+                          </button>
                           <button
                             aria-pressed={mainView === 'query'}
                             className={`rounded px-2 py-0.5 text-sm ${mainView === 'query' ? 'bg-muted text-foreground' : 'text-muted-foreground'}`}
@@ -372,7 +377,15 @@ export function App(): React.JSX.Element {
                           )}
                         </div>
                         <div className="min-h-0 flex-1">
-                          {mainView === 'roles' ? (
+                          {mainView === 'connections' ? (
+                            <ConnectionsScreen
+                              form={form}
+                              setForm={setForm}
+                              selectedId={selectedId}
+                              setSelectedId={setSelectedId}
+                              onConnect={connectTo}
+                            />
+                          ) : mainView === 'roles' ? (
                             <RolesView />
                           ) : mainView === 'export' ? (
                             <ExportView />
