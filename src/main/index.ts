@@ -15,6 +15,7 @@ import type { HostApi } from '@shared/host/host-api'
 import { registerIpc } from './ipc'
 import { SettingsStore } from './settings-store'
 import { resolveTheme, type ThemeMode } from '@shared/theme'
+import { DEFAULT_EDITOR_THEME, type EditorThemeId } from '@shared/editor-theme'
 
 let dbHost: Electron.UtilityProcess | null = null
 export let hostControl: HostApi | null = null
@@ -46,6 +47,14 @@ ipcMain.handle('appearance:set-mode', async (_e, mode: ThemeMode) => {
   currentMode = mode
   await settings?.setTheme(mode)
   broadcastTheme()
+})
+// Editor colour scheme — independent of the app's light/dark mode.
+ipcMain.handle(
+  'appearance:get-editor-theme',
+  async () => (await settings?.getEditorTheme()) ?? DEFAULT_EDITOR_THEME
+)
+ipcMain.handle('appearance:set-editor-theme', async (_e, id: EditorThemeId) => {
+  await settings?.setEditorTheme(id)
 })
 nativeTheme.on('updated', () => broadcastTheme())
 

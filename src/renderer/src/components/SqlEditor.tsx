@@ -5,7 +5,7 @@ import { defaultKeymap } from '@codemirror/commands'
 import { sql, PostgreSQL, keywordCompletionSource } from '@codemirror/lang-sql'
 import { autocompletion } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
-import { cmTheme, editorHighlight } from '../query/cm-theme'
+import { editorThemeExtension } from '../query/editor-themes'
 import { schemaCompletionSource } from '../query/completion'
 import { useThemeStore } from '../store-theme'
 
@@ -21,6 +21,9 @@ export function SqlEditor(props: {
   const effective = useThemeStore((s) => s.effective)
   const effectiveRef = useRef(effective)
   effectiveRef.current = effective
+  const editorTheme = useThemeStore((s) => s.editorTheme)
+  const editorThemeRef = useRef(editorTheme)
+  editorThemeRef.current = editorTheme
   const onChangeRef = useRef(props.onChange)
   const onRunRef = useRef(props.onRun)
   onChangeRef.current = props.onChange
@@ -33,8 +36,12 @@ export function SqlEditor(props: {
       doc: props.value,
       extensions: [
         basicSetup,
-        cmTheme,
-        themeCompartment.current.of(editorHighlight(effectiveRef.current)),
+        // The theme lives entirely in the compartment so a packaged scheme
+        // (Monokai etc.) fully replaces the app-token surfaces rather than
+        // layering over them.
+        themeCompartment.current.of(
+          editorThemeExtension(editorThemeRef.current, effectiveRef.current)
+        ),
         sql({ dialect: PostgreSQL, upperCaseKeywords: true }),
         autocompletion(
           connId
@@ -71,13 +78,14 @@ export function SqlEditor(props: {
     // initial doc only (CodeMirror owns the doc after mount).
   }, [props.connectionId])
 
-  // Swap the syntax palette when the app theme flips — reconfigure the
+  // Swap the whole editor theme (surfaces + syntax palette) when the app theme
+  // flips or the user picks a different editor scheme — reconfigure the
   // compartment in place (no remount, doc/selection preserved).
   useEffect(() => {
     viewRef.current?.dispatch({
-      effects: themeCompartment.current.reconfigure(editorHighlight(effective))
+      effects: themeCompartment.current.reconfigure(editorThemeExtension(editorTheme, effective))
     })
-  }, [effective])
+  }, [effective, editorTheme])
 
   // Reconcile external value changes (Format, load from history/saved) that the
   // editor didn't originate. A programmatic replace re-fires onChange with the

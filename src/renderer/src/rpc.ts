@@ -56,6 +56,8 @@ declare global {
         getMode: () => Promise<'light' | 'dark' | 'system'>
         setMode: (mode: 'light' | 'dark' | 'system') => Promise<void>
         onThemeChanged: (cb: (t: 'light' | 'dark') => void) => void
+        getEditorTheme: () => Promise<string>
+        setEditorTheme: (id: string) => Promise<void>
       }
       dialog: {
         openFile: () => Promise<string | null>

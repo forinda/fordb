@@ -31,7 +31,7 @@ import { useDialect } from '../query/use-dialect'
 import { Button } from './ui/button'
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable'
 import { stringifyCsv } from '@shared/csv/csv'
-import { cmTheme, editorHighlight } from '../query/cm-theme'
+import { editorThemeExtension } from '../query/editor-themes'
 import { useThemeStore } from '../store-theme'
 import { useDocumentQuerySupported } from '../query/documents'
 
@@ -49,6 +49,7 @@ function DocEditor(props: {
   const viewRef = useRef<EditorView | null>(null)
   const themeCompartment = useRef(new Compartment())
   const effective = useThemeStore((s) => s.effective)
+  const editorTheme = useThemeStore((s) => s.editorTheme)
   const onChangeRef = useRef(props.onChange)
   const onRunRef = useRef(props.onRun)
   onChangeRef.current = props.onChange
@@ -60,8 +61,7 @@ function DocEditor(props: {
       doc: props.value,
       extensions: [
         basicSetup,
-        cmTheme,
-        themeCompartment.current.of(editorHighlight(effective)),
+        themeCompartment.current.of(editorThemeExtension(editorTheme, effective)),
         json(),
         keymap.of([
           {
@@ -91,9 +91,9 @@ function DocEditor(props: {
 
   useEffect(() => {
     viewRef.current?.dispatch({
-      effects: themeCompartment.current.reconfigure(editorHighlight(effective))
+      effects: themeCompartment.current.reconfigure(editorThemeExtension(editorTheme, effective))
     })
-  }, [effective])
+  }, [effective, editorTheme])
 
   // Reconcile external value changes (mode toggle doesn't touch text, but a
   // future "load into editor" affordance could) that the editor didn't
