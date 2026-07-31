@@ -100,6 +100,7 @@ export function App(): React.JSX.Element {
   const commands = [
     {
       id: 'new',
+      group: 'Connection',
       label: 'New connection',
       run: () => {
         setMainView('connections')
@@ -108,6 +109,7 @@ export function App(): React.JSX.Element {
     },
     {
       id: 'disconnect',
+      group: 'Connection',
       label: 'Disconnect',
       run: () => {
         if (activeConnectionId) void window.fordb.connection.close(activeConnectionId)
@@ -115,10 +117,17 @@ export function App(): React.JSX.Element {
         setMainView('connections')
       }
     },
-    { id: 'show-connections', label: 'Show connections', run: () => setMainView('connections') },
+    {
+      id: 'show-connections',
+      group: 'View',
+      label: 'Show connections',
+      run: () => setMainView('connections')
+    },
     {
       id: 'run-query',
+      group: 'Query',
       label: 'Run query',
+      shortcut: window.fordb.platform === 'darwin' ? '⌘⏎' : 'Ctrl ⏎',
       run: () => {
         const s = useQueryStore.getState()
         if (s.activeTabId) void s.run(s.activeTabId)
@@ -126,6 +135,7 @@ export function App(): React.JSX.Element {
     },
     {
       id: 'cancel-query',
+      group: 'Query',
       label: 'Cancel query',
       run: () => {
         const s = useQueryStore.getState()
@@ -140,14 +150,21 @@ export function App(): React.JSX.Element {
       : [
           {
             id: 'new-query-tab',
+            group: 'Query',
             label: 'New query tab',
             run: () => useQueryStore.getState().newTab()
           }
         ]),
-    { id: 'show-monitoring', label: 'Show monitoring', run: () => setMainView('monitoring') },
-    { id: 'show-query', label: 'Show query', run: () => setMainView('query') },
+    {
+      id: 'show-monitoring',
+      group: 'View',
+      label: 'Show monitoring',
+      run: () => setMainView('monitoring')
+    },
+    { id: 'show-query', group: 'View', label: 'Show query', run: () => setMainView('query') },
     {
       id: 'refresh-schema',
+      group: 'View',
       label: 'Refresh schema',
       run: () => {
         if (activeConnectionId) void invalidateIntrospection(queryClient, activeConnectionId)
@@ -155,6 +172,7 @@ export function App(): React.JSX.Element {
     },
     {
       id: 'format-sql',
+      group: 'Query',
       label: 'Format SQL',
       run: () => useQueryStore.getState().formatActive(sqlLang)
     },
@@ -165,6 +183,7 @@ export function App(): React.JSX.Element {
       : [
           {
             id: 'explain',
+            group: 'Query',
             label: 'Explain',
             run: () => void useQueryStore.getState().openExplain(dialect, false)
           },
@@ -174,6 +193,7 @@ export function App(): React.JSX.Element {
             ? [
                 {
                   id: 'explain-analyze',
+                  group: 'Query',
                   label: 'Explain analyze',
                   run: () => void useQueryStore.getState().openExplain(dialect, true)
                 }
@@ -182,16 +202,19 @@ export function App(): React.JSX.Element {
         ]),
     {
       id: 'save-query',
+      group: 'Library',
       label: 'Save query',
       run: () => useQueryStore.getState().setPicker('save')
     },
     {
       id: 'open-saved-query',
+      group: 'Library',
       label: 'Open saved query',
       run: () => useQueryStore.getState().setPicker('saved')
     },
     {
       id: 'query-history',
+      group: 'Library',
       label: 'Query history',
       run: () => useQueryStore.getState().setPicker('history')
     },
@@ -202,16 +225,38 @@ export function App(): React.JSX.Element {
       : [
           {
             id: 'import-sql',
+            group: 'Data',
             label: 'Import SQL file',
             run: () => void useQueryStore.getState().importSqlFile()
           }
         ]),
-    { id: 'toggle-sidebar', label: 'Toggle sidebar', run: () => setShowSidebar((v) => !v) },
-    { id: 'theme-light', label: 'Theme: Light', run: () => void setMode('light') },
-    { id: 'theme-dark', label: 'Theme: Dark', run: () => void setMode('dark') },
-    { id: 'theme-system', label: 'Theme: System', run: () => void setMode('system') },
+    {
+      id: 'toggle-sidebar',
+      group: 'View',
+      label: 'Toggle sidebar',
+      run: () => setShowSidebar((v) => !v)
+    },
+    {
+      id: 'theme-light',
+      group: 'Appearance',
+      label: 'Theme: Light',
+      run: () => void setMode('light')
+    },
+    {
+      id: 'theme-dark',
+      group: 'Appearance',
+      label: 'Theme: Dark',
+      run: () => void setMode('dark')
+    },
+    {
+      id: 'theme-system',
+      group: 'Appearance',
+      label: 'Theme: System',
+      run: () => void setMode('system')
+    },
     {
       id: 'check-updates',
+      group: 'Application',
       label: 'Check for updates',
       run: () => void window.fordb.updater.check()
     }

@@ -23,22 +23,25 @@ export function Command({
 export function CommandDialog({
   open,
   onOpenChange,
-  children
+  children,
+  filter
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   children: React.ReactNode
+  /** Overrides cmdk's matching (e.g. to strip a mode sigil from the query). */
+  filter?: React.ComponentProps<typeof CommandPrimitive>['filter']
 }): React.JSX.Element {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50" />
         <Dialog.Content
-          className="fixed left-1/2 top-32 w-96 -translate-x-1/2 overflow-hidden rounded-md border border-border bg-card shadow-lg"
+          className="fixed left-1/2 top-32 w-[34rem] max-w-[92vw] -translate-x-1/2 overflow-hidden rounded-md border border-border bg-card shadow-lg"
           aria-label="Command palette"
         >
           <Dialog.Title className="sr-only">Command palette</Dialog.Title>
-          <Command>{children}</Command>
+          <Command filter={filter}>{children}</Command>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
@@ -73,6 +76,21 @@ export function CommandEmpty(
   props: React.ComponentProps<typeof CommandPrimitive.Empty>
 ): React.JSX.Element {
   return <CommandPrimitive.Empty className="px-3 py-2 text-sm text-muted-foreground" {...props} />
+}
+
+export function CommandGroup({
+  className,
+  ...props
+}: React.ComponentProps<typeof CommandPrimitive.Group>): React.JSX.Element {
+  return (
+    <CommandPrimitive.Group
+      className={cn(
+        'px-1 py-1 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[10px] [&_[cmdk-group-heading]]:font-semibold [&_[cmdk-group-heading]]:uppercase [&_[cmdk-group-heading]]:tracking-wider [&_[cmdk-group-heading]]:text-muted-foreground',
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
 export function CommandItem({
