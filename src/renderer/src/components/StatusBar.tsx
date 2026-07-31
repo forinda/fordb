@@ -43,6 +43,19 @@ export function StatusBar(props: { aiOpen: boolean; onToggleAi: () => void }): R
           <span> · {Math.round(activeTab.elapsedMs)} ms</span>
         )}
       </span>
+      {/* Advertises ⌘K, replacing the sidebar's fake "Search…" button — a
+          keycap here states the shortcut without pretending to be a control you
+          can type into. */}
+      <button
+        aria-label="Open command palette"
+        title="Search connections, tables, commands"
+        onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
+        className="flex flex-none items-center rounded px-1 hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <span className="rounded border border-border bg-background px-1 text-[10px]">
+          {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
+        </span>
+      </button>
       <button
         className={`flex-none rounded px-1 hover:text-foreground ${props.aiOpen ? 'text-foreground' : ''}`}
         onClick={props.onToggleAi}

@@ -4,7 +4,6 @@ import { CommandPalette } from './components/CommandPalette'
 import { ConnectionManager } from './components/ConnectionManager'
 import { ProfileForm } from './components/ProfileForm'
 import { SchemaTree } from './components/SchemaTree'
-import { RefreshSchemaButton } from './components/RefreshSchemaButton'
 import { DatabaseHeader } from './components/DatabaseHeader'
 import { TitleBar } from './components/TitleBar'
 import { UpdateBanner } from './components/UpdateBanner'
@@ -267,20 +266,13 @@ export function App(): React.JSX.Element {
                             setMainView('connections')
                           }}
                         />
+                        {/* The "Search…" button that used to sit here only
+                            dispatched the ⌘K palette event — it looked like an
+                            input you could type into but wasn't one, and it sat
+                            directly above the tree's real filter box. The
+                            shortcut is advertised in the status bar instead. */}
                         <div className="flex min-h-0 flex-1 flex-col">
-                          <button
-                            className="mx-2 mt-2 flex items-center justify-between rounded border border-border bg-surface-2 px-2 py-1 text-xs text-muted-foreground hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            onClick={() => window.dispatchEvent(new Event('fordb:palette-toggle'))}
-                          >
-                            <span>Search…</span>
-                            <span className="rounded border border-border bg-background px-1 text-[10px]">
-                              {window.fordb.platform === 'darwin' ? '⌘K' : 'Ctrl K'}
-                            </span>
-                          </button>
                           <DatabaseHeader />
-                          <div className="flex justify-end border-b border-border px-2 py-1">
-                            <RefreshSchemaButton />
-                          </div>
                           <div className="min-h-0 flex-1 overflow-auto">
                             <SchemaTree />
                           </div>
