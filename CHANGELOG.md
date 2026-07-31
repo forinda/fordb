@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.10.0](https://github.com/forinda/fordb/compare/v0.9.0...v0.10.0) (2026-07-31)
+
+
+### Features
+
+* connection switcher in the sidebar (switch in place) ([#292](https://github.com/forinda/fordb/issues/292)) ([dd77cb9](https://github.com/forinda/fordb/commit/dd77cb9806061ca755331f579136144ae1e9eedf))
+* Export destination page (SQL + CSV) ([#298](https://github.com/forinda/fordb/issues/298)) ([ac8f308](https://github.com/forinda/fordb/commit/ac8f308d376b52bb0784fa6e023ae9287bb40548))
+* Import destination page (SQL + CSV) ([#299](https://github.com/forinda/fordb/issues/299)) ([992f9c3](https://github.com/forinda/fordb/commit/992f9c305510d956d75368b9762999408a25c36a))
+* pick an editor colour scheme (Monokai, Dracula, Nord, …) ([#307](https://github.com/forinda/fordb/issues/307)) ([beda0e3](https://github.com/forinda/fordb/commit/beda0e35b584d87f0cbf448244eac0c56b6ce50a))
+* pin a "Settings" row at the bottom of the sidebar ([#294](https://github.com/forinda/fordb/issues/294)) ([a875ee1](https://github.com/forinda/fordb/commit/a875ee11fdfdee83a6cc6f2da661237b269bb355))
+* rename Dashboard→Monitoring + sidebar destinations group ([#296](https://github.com/forinda/fordb/issues/296)) ([f16f76f](https://github.com/forinda/fordb/commit/f16f76f50210ba85fee0d900ca48ccecafd3c65b))
+* Roles & Server-settings as full-pane views (un-nest from dashboard) ([#295](https://github.com/forinda/fordb/issues/295)) ([426640b](https://github.com/forinda/fordb/commit/426640b11f31952cf294f9d4cf8f3d8d56bc14c4))
+* searchable combobox for the database switcher ([#305](https://github.com/forinda/fordb/issues/305)) ([4c7b95a](https://github.com/forinda/fordb/commit/4c7b95a8769f2b38a8143fc938d2fbbb09261066))
+* sidebar "Users & roles" row (surface buried user management) ([#293](https://github.com/forinda/fordb/issues/293)) ([4a504d3](https://github.com/forinda/fordb/commit/4a504d3a266646055981453fcf369d2bebe3d006))
+
+
+### Bug Fixes
+
+* dark-mode contrast in the query editor ([#306](https://github.com/forinda/fordb/issues/306)) ([9568186](https://github.com/forinda/fordb/commit/9568186ecea8c4a392d36eb8ebe72aea8e3a4cd0))
+* green test suite — CSV dialog selector, slow history test, e2e docs ([#304](https://github.com/forinda/fordb/issues/304)) ([e7ba390](https://github.com/forinda/fordb/commit/e7ba39024c9c5adca0251021ea3fdff2d890b4be))
+* reachable sequence/matview menus, tree fills panel, honest labels ([#290](https://github.com/forinda/fordb/issues/290)) ([58cc651](https://github.com/forinda/fordb/commit/58cc651732d8a483b59441e2b7b8e1fb763231e9))
+* repo does not build from a clean checkout ([#300](https://github.com/forinda/fordb/issues/300)) ([beeb64c](https://github.com/forinda/fordb/commit/beeb64cf33e265bbea16b6fe84f4e94fc1301f10))
+* sidebar menu clipping, modal close, Tab completion; feat: VS Code-style palette ([#308](https://github.com/forinda/fordb/issues/308)) ([7ffe16d](https://github.com/forinda/fordb/commit/7ffe16d5ce24b137f130ea503c21f4c7fdeb67c9))
+
 ## [0.9.0](https://github.com/forinda/fordb/compare/v0.8.0...v0.9.0) (2026-07-12)
 
 
