@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { EditorView, keymap } from '@codemirror/view'
 import { EditorState, Compartment } from '@codemirror/state'
-import { defaultKeymap } from '@codemirror/commands'
+import { defaultKeymap, indentWithTab } from '@codemirror/commands'
 import { sql, PostgreSQL, keywordCompletionSource } from '@codemirror/lang-sql'
-import { autocompletion } from '@codemirror/autocomplete'
+import { autocompletion, acceptCompletion } from '@codemirror/autocomplete'
 import { basicSetup } from 'codemirror'
 import { editorThemeExtension } from '../query/editor-themes'
 import { schemaCompletionSource } from '../query/completion'
@@ -61,6 +61,16 @@ export function SqlEditor(props: {
               return true
             }
           },
+          // Tab: accept the open completion, else indent. CodeMirror leaves Tab
+          // unbound by default so it moves focus, which is the accessible
+          // default but wrong for a SQL editor — Tab did nothing to the
+          // suggestion list and jumped to the next control instead.
+          //
+          // Binding Tab traps it, so Escape-then-Tab is the way out; that is
+          // the documented CodeMirror escape hatch and matches what code
+          // editors do.
+          { key: 'Tab', run: acceptCompletion },
+          indentWithTab,
           ...defaultKeymap
         ]),
         EditorView.updateListener.of((u) => {
